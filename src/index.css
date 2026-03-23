@@ -1,0 +1,166 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 215 28% 17%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 17%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
+
+    --primary: 209 100% 29%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 213 94% 68%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 209 100% 29%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --nestle-blue: 209 100% 29%;
+    --nestle-sky: 213 94% 68%;
+    --nestle-emerald: 160 84% 39%;
+    --nestle-red: 0 84% 60%;
+    --nestle-slate: 215 28% 17%;
+    --nestle-gray: 210 40% 96%;
+    --nestle-border: 214 32% 89%;
+
+    --glass-bg: 0 0% 100% / 0.7;
+    --glass-border: 0 0% 100% / 0.3;
+    --glass-shadow: 209 100% 29% / 0.08;
+
+    --sidebar-background: 209 100% 29%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 209 100% 29%;
+    --sidebar-accent: 209 100% 35%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 209 100% 35%;
+    --sidebar-ring: 213 94% 68%;
+
+    --font-display: 'Montserrat', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: 0 4px 24px hsl(var(--glass-shadow));
+    border-radius: var(--radius);
+  }
+
+  .glass-sidebar {
+    background: linear-gradient(180deg, hsl(209 100% 29%), hsl(209 100% 22%));
+    backdrop-filter: blur(20px);
+  }
+
+  .stat-card {
+    @apply glass-card p-6 transition-all duration-200;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px hsl(var(--glass-shadow));
+  }
+
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .status-pass {
+    @apply status-badge;
+    background: hsl(160 84% 39% / 0.12);
+    color: hsl(var(--nestle-emerald));
+  }
+
+  .status-fail {
+    @apply status-badge;
+    background: hsl(0 84% 60% / 0.12);
+    color: hsl(var(--nestle-red));
+  }
+
+  .status-pending {
+    @apply status-badge;
+    background: hsl(38 92% 50% / 0.12);
+    color: hsl(38 92% 40%);
+  }
+
+  .status-dispatched {
+    @apply status-badge;
+    background: hsl(213 94% 68% / 0.12);
+    color: hsl(var(--nestle-sky));
+  }
+
+  .status-approved {
+    @apply status-pass;
+  }
+
+  .status-rejected {
+    @apply status-fail;
+  }
+
+  .status-paid {
+    @apply status-pass;
+  }
+
+  .fade-in-up {
+    animation: fadeInUp 0.3s ease-out forwards;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .btn-press:active {
+    transform: scale(0.98);
+  }
+}

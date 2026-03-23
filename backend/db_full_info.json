@@ -1,0 +1,169 @@
+[
+  {
+    "table": "bank_accounts",
+    "columns": [
+      "id",
+      "farmer_id",
+      "bank_name",
+      "account_number",
+      "branch"
+    ]
+  },
+  {
+    "table": "chilling_center_accounts",
+    "columns": [
+      "id",
+      "chilling_center_id",
+      "bank_name",
+      "account_number",
+      "branch"
+    ]
+  },
+  {
+    "table": "chilling_centers",
+    "columns": [
+      "id",
+      "name",
+      "location",
+      "user_id",
+      "created_at"
+    ]
+  },
+  {
+    "table": "dispatch_items",
+    "columns": [
+      "id",
+      "dispatch_id",
+      "collection_id"
+    ]
+  },
+  {
+    "table": "dispatches",
+    "columns": [
+      "id",
+      "chilling_center_id",
+      "transporter_name",
+      "vehicle_number",
+      "driver_contact",
+      "dispatch_date",
+      "status",
+      "rejection_reason",
+      "created_at"
+    ]
+  },
+  {
+    "table": "farmers",
+    "columns": [
+      "id",
+      "farmer_id",
+      "user_id",
+      "name",
+      "address",
+      "phone",
+      "nic",
+      "chilling_center_id",
+      "created_at"
+    ]
+  },
+  {
+    "table": "milk_collections",
+    "columns": [
+      "id",
+      "farmer_id",
+      "chilling_center_id",
+      "date",
+      "time",
+      "temperature",
+      "quantity",
+      "quality_result",
+      "failure_reason",
+      "dispatch_status",
+      "created_at"
+    ]
+  },
+  {
+    "table": "nestle_officer_accounts",
+    "columns": [
+      "id",
+      "nestle_officer_id",
+      "bank_name",
+      "account_number",
+      "branch"
+    ]
+  },
+  {
+    "table": "nestle_officers",
+    "columns": [
+      "id",
+      "name",
+      "designation",
+      "user_id",
+      "created_at"
+    ]
+  },
+  {
+    "table": "notifications",
+    "columns": [
+      "id",
+      "user_id",
+      "title",
+      "message",
+      "type",
+      "is_read",
+      "created_at"
+    ]
+  },
+  {
+    "table": "payments",
+    "columns": [
+      "id",
+      "farmer_id",
+      "collection_id",
+      "quantity",
+      "base_pay",
+      "fat_bonus",
+      "snf_bonus",
+      "amount",
+      "status",
+      "paid_at",
+      "created_at"
+    ]
+  },
+  {
+    "table": "pricing_rules",
+    "columns": [
+      "id",
+      "base_price_per_liter",
+      "fat_bonus",
+      "snf_bonus",
+      "effective_from",
+      "is_active",
+      "created_at"
+    ]
+  },
+  {
+    "table": "quality_tests",
+    "columns": [
+      "id",
+      "collection_id",
+      "fat",
+      "snf",
+      "water",
+      "result",
+      "reason",
+      "tested_at"
+    ]
+  },
+  {
+    "table": "users",
+    "columns": [
+      "id",
+      "email",
+      "password_hash",
+      "name",
+      "role",
+      "created_at",
+      "updated_at"
+    ]
+  }
+]

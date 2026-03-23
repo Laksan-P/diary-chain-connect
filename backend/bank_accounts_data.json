@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "farmer_id": 1,
+    "bank_name": "BOC",
+    "account_number": "1234567890",
+    "branch": "Kandy"
+  },
+  {
+    "id": 2,
+    "farmer_id": 2,
+    "bank_name": "Peoples Bank",
+    "account_number": "9876543210",
+    "branch": "Matale"
+  },
+  {
+    "id": 3,
+    "farmer_id": 3,
+    "bank_name": "Commercial Bank",
+    "account_number": "5555666677",
+    "branch": "Kurunegala"
+  },
+  {
+    "id": 4,
+    "farmer_id": 4,
+    "bank_name": "Peoples",
+    "account_number": "820312244644",
+    "branch": "Galle"
+  }
+]

@@ -1,0 +1,7 @@
+Users in database:
+ID: 1, Email: cc@nestle.com, Role: chilling_center
+ID: 2, Email: nestle@nestle.com, Role: nestle
+ID: 10, Email: anura@farmer.com, Role: farmer
+ID: 11, Email: kumara@farmer.com, Role: farmer
+ID: 12, Email: nimal@farmer.com, Role: farmer
+Password 'password' matches nestle@nestle.com hash: true

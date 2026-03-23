@@ -1,0 +1,46 @@
+[
+  {
+    "id": 1,
+    "farmer_id": "FRM-001",
+    "user_id": 10,
+    "name": "Anura Perera",
+    "address": "123 Kandy Rd",
+    "phone": "0771234567",
+    "nic": "901234567V",
+    "chilling_center_id": 1,
+    "created_at": "2026-03-17T07:30:35.000Z"
+  },
+  {
+    "id": 2,
+    "farmer_id": "FRM-002",
+    "user_id": 11,
+    "name": "Kumara Silva",
+    "address": "456 Matale Rd",
+    "phone": "0779876543",
+    "nic": "881234567V",
+    "chilling_center_id": 1,
+    "created_at": "2026-03-17T07:30:35.000Z"
+  },
+  {
+    "id": 3,
+    "farmer_id": "FRM-003",
+    "user_id": 12,
+    "name": "Nimal Fernando",
+    "address": "789 Kurunegala",
+    "phone": "0765551234",
+    "nic": "951234567V",
+    "chilling_center_id": 2,
+    "created_at": "2026-03-17T07:30:35.000Z"
+  },
+  {
+    "id": 4,
+    "farmer_id": "FRM-004",
+    "user_id": 13,
+    "name": "Heshan Nipuna",
+    "address": "Colombo",
+    "phone": "0746556554",
+    "nic": "200385665665",
+    "chilling_center_id": 3,
+    "created_at": "2026-03-17T08:57:17.000Z"
+  }
+]
