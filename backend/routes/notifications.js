@@ -1,19 +1,32 @@
 const express = require('express');
-const pool = require('../db');
+const supabase = require('../db');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
-// GET /api/notifications — get for current user or by userId query
+// GET /api/notifications
 router.get('/', authenticate, async (req, res) => {
   try {
     const userId = req.query.userId || req.user.id;
-    const [rows] = await pool.query(
-      'SELECT id, user_id AS userId, title, message, type, is_read AS isRead, created_at AS createdAt FROM notifications WHERE user_id = ? ORDER BY created_at DESC',
-      [userId]
-    );
-    rows.forEach(r => r.isRead = !!r.isRead);
-    res.json(rows);
+    const { data: notes, error } = await supabase
+       .from('notifications')
+       .select('id, user_id, title, message, type, is_read, created_at')
+       .eq('user_id', userId)
+       .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+
+    const flattened = notes.map(n => ({
+       id: n.id,
+       userId: n.user_id,
+       title: n.title,
+       message: n.message,
+       type: n.type,
+       isRead: n.is_read,
+       createdAt: n.created_at
+    }));
+
+    res.json(flattened);
   } catch (err) {
     console.error('Get notifications error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -23,7 +36,7 @@ router.get('/', authenticate, async (req, res) => {
 // PATCH /api/notifications/:id/read
 router.patch('/:id/read', authenticate, async (req, res) => {
   try {
-    await pool.query('UPDATE notifications SET is_read = TRUE WHERE id = ?', [req.params.id]);
+    await supabase.from('notifications').update({ is_read: true }).eq('id', req.params.id);
     res.json({ success: true });
   } catch (err) {
     console.error('Mark notification read error:', err);

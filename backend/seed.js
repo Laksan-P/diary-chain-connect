@@ -1,137 +1,131 @@
 /**
- * Seed script — creates the database, tables, and inserts demo data.
+ * Seed script — inserts demo data into Supabase using the SDK.
  * Run with: node seed.js
  */
-const mysql = require('mysql2/promise');
+const supabase = require('./db');
 const bcrypt = require('bcryptjs');
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
 
 async function seed() {
-  // Connect without database to create it
-  const rootConn = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    multipleStatements: true,
-  });
+  console.log('⏳ Connecting to Supabase via SDK...');
 
-  console.log('⏳ Creating database and tables...');
-  const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  await rootConn.query(schema);
-  await rootConn.end();
+  try {
+    const hash = await bcrypt.hash('password', 10);
 
-  // Now connect to the database
-  const conn = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-  });
+    // ---- Users ----
+    console.log('👤 Seeding users...');
+    const users = [
+      { id: 1, email: 'cc@nestle.com', password_hash: hash, name: 'CC Staff', role: 'chilling_center' },
+      { id: 2, email: 'nestle@nestle.com', password_hash: hash, name: 'Nestlé Officer', role: 'nestle' },
+      { id: 10, email: 'anura@farmer.com', password_hash: hash, name: 'Anura Perera', role: 'farmer' },
+      { id: 11, email: 'kumara@farmer.com', password_hash: hash, name: 'Kumara Silva', role: 'farmer' },
+      { id: 12, email: 'nimal@farmer.com', password_hash: hash, name: 'Nimal Fernando', role: 'farmer' }
+    ];
+    await supabase.from('users').upsert(users);
 
-  const hash = await bcrypt.hash('password', 10);
+    // ---- Nestle Officers ----
+    console.log('👔 Seeding nestle officers...');
+    const officers = [
+      { id: 1, name: 'Nestlé Officer', designation: 'Senior Manager', user_id: 2 }
+    ];
+    await supabase.from('nestle_officers').upsert(officers);
 
-  // ---- Users ----
-  console.log('👤 Seeding users...');
-  await conn.query(`INSERT IGNORE INTO users (id, email, password_hash, name, role) VALUES
-    (1, 'cc@nestle.com', ?, 'CC Staff', 'chilling_center'),
-    (2, 'nestle@nestle.com', ?, 'Nestlé Officer', 'nestle'),
-    (10, 'anura@farmer.com', ?, 'Anura Perera', 'farmer'),
-    (11, 'kumara@farmer.com', ?, 'Kumara Silva', 'farmer'),
-    (12, 'nimal@farmer.com', ?, 'Nimal Fernando', 'farmer')
-  `, [hash, hash, hash, hash, hash]);
+    // ---- Chilling Centers ----
+    console.log('🏭 Seeding chilling centers...');
+    const centers = [
+      { id: 1, name: 'Kandy Central CC', location: 'Kandy', user_id: 1 },
+      { id: 2, name: 'Kurunegala CC', location: 'Kurunegala', user_id: null },
+      { id: 3, name: 'Matale CC', location: 'Matale', user_id: null }
+    ];
+    await supabase.from('chilling_centers').upsert(centers);
 
-  // ---- Nestle Officers ----
-  console.log('👔 Seeding nestle officers...');
-  await conn.query(`INSERT IGNORE INTO nestle_officers (id, name, designation, user_id) VALUES
-    (1, 'Nestlé Officer', 'Senior Manager', 2)
-  `);
+    // ---- Farmers ----
+    console.log('🧑‍🌾 Seeding farmers...');
+    const farmers = [
+      { id: 1, farmer_id: 'FRM-001', user_id: 10, name: 'Anura Perera', address: '123 Kandy Rd', phone: '0771234567', nic: '901234567V', chilling_center_id: 1 },
+      { id: 2, farmer_id: 'FRM-002', user_id: 11, name: 'Kumara Silva', address: '456 Matale Rd', phone: '0779876543', nic: '881234567V', chilling_center_id: 1 },
+      { id: 3, farmer_id: 'FRM-003', user_id: 12, name: 'Nimal Fernando', address: '789 Kurunegala', phone: '0765551234', nic: '951234567V', chilling_center_id: 2 }
+    ];
+    await supabase.from('farmers').upsert(farmers);
 
-  // ---- Chilling Centers ----
-  console.log('🏭 Seeding chilling centers...');
-  await conn.query(`INSERT IGNORE INTO chilling_centers (id, name, location, user_id) VALUES
-    (1, 'Kandy Central CC', 'Kandy', 1),
-    (2, 'Kurunegala CC', 'Kurunegala', NULL),
-    (3, 'Matale CC', 'Matale', NULL)
-  `);
+    // ---- Bank Accounts ----
+    console.log('🏦 Seeding bank accounts...');
+    const bankAccounts = [
+      { id: 1, farmer_id: 1, bank_name: 'BOC', account_number: '1234567890', branch: 'Kandy' },
+      { id: 2, farmer_id: 2, bank_name: 'Peoples Bank', account_number: '9876543210', branch: 'Matale' },
+      { id: 3, farmer_id: 3, bank_name: 'Commercial Bank', account_number: '5555666677', branch: 'Kurunegala' }
+    ];
+    await supabase.from('bank_accounts').upsert(bankAccounts);
 
-  // ---- Farmers ----
-  console.log('🧑‍🌾 Seeding farmers...');
-  await conn.query(`INSERT IGNORE INTO farmers (id, farmer_id, user_id, name, address, phone, nic, chilling_center_id) VALUES
-    (1, 'FRM-001', 10, 'Anura Perera', '123 Kandy Rd', '0771234567', '901234567V', 1),
-    (2, 'FRM-002', 11, 'Kumara Silva', '456 Matale Rd', '0779876543', '881234567V', 1),
-    (3, 'FRM-003', 12, 'Nimal Fernando', '789 Kurunegala', '0765551234', '951234567V', 2)
-  `);
+    // ---- Milk Collections ----
+    console.log('🥛 Seeding milk collections...');
+    const collections = [
+      { id: 1, farmer_id: 1, chilling_center_id: 1, date: '2026-03-15', time: '06:30:00', temperature: 4.2, quantity: 120, milk_type: 'Cow', quality_result: 'Pass', failure_reason: null, dispatch_status: 'Approved' },
+      { id: 2, farmer_id: 2, chilling_center_id: 1, date: '2026-03-15', time: '07:00:00', temperature: 4.5, quantity: 95, milk_type: 'Buffalo', quality_result: 'Fail', failure_reason: 'Low FAT', dispatch_status: 'Pending' },
+      { id: 3, farmer_id: 1, chilling_center_id: 1, date: '2026-03-14', time: '06:45:00', temperature: 4.0, quantity: 130, milk_type: 'Cow', quality_result: 'Pass', failure_reason: null, dispatch_status: 'Dispatched' },
+      { id: 4, farmer_id: 3, chilling_center_id: 2, date: '2026-03-15', time: '06:15:00', temperature: 3.8, quantity: 200, milk_type: 'Cow', quality_result: 'Pass', failure_reason: null, dispatch_status: 'Dispatched' },
+      { id: 5, farmer_id: 1, chilling_center_id: 1, date: '2026-03-13', time: '06:30:00', temperature: 4.1, quantity: 110, milk_type: 'Goat', quality_result: 'Pass', failure_reason: null, dispatch_status: 'Approved' }
+    ];
+    await supabase.from('milk_collections').upsert(collections);
 
-  // ---- Bank Accounts ----
-  console.log('🏦 Seeding bank accounts...');
-  await conn.query(`INSERT IGNORE INTO bank_accounts (id, farmer_id, bank_name, account_number, branch) VALUES
-    (1, 1, 'BOC', '1234567890', 'Kandy'),
-    (2, 2, 'Peoples Bank', '9876543210', 'Matale'),
-    (3, 3, 'Commercial Bank', '5555666677', 'Kurunegala')
-  `);
+    // ---- Quality Tests ----
+    console.log('🔬 Seeding quality tests...');
+    const qualityTests = [
+      { id: 1, collection_id: 1, fat: 4.2, snf: 8.8, water: 0.2, result: 'Pass', reason: null },
+      { id: 2, collection_id: 2, fat: 3.0, snf: 8.5, water: 0.3, result: 'Fail', reason: 'Low FAT' },
+      { id: 3, collection_id: 3, fat: 3.8, snf: 9.0, water: 0.1, result: 'Pass', reason: null },
+      { id: 4, collection_id: 4, fat: 4.0, snf: 8.9, water: 0.2, result: 'Pass', reason: null },
+      { id: 5, collection_id: 5, fat: 3.9, snf: 8.7, water: 0.3, result: 'Pass', reason: null }
+    ];
+    await supabase.from('quality_tests').upsert(qualityTests);
 
-  // ---- Milk Collections ----
-  console.log('🥛 Seeding milk collections...');
-  await conn.query(`INSERT IGNORE INTO milk_collections (id, farmer_id, chilling_center_id, date, time, temperature, quantity, milk_type, quality_result, failure_reason, dispatch_status) VALUES
-    (1, 1, 1, '2026-03-15', '06:30:00', 4.2, 120, 'Cow', 'Pass', NULL, 'Approved'),
-    (2, 2, 1, '2026-03-15', '07:00:00', 4.5, 95, 'Buffalo', 'Fail', 'Low FAT', 'Pending'),
-    (3, 1, 1, '2026-03-14', '06:45:00', 4.0, 130, 'Cow', 'Pass', NULL, 'Dispatched'),
-    (4, 3, 2, '2026-03-15', '06:15:00', 3.8, 200, 'Cow', 'Pass', NULL, 'Dispatched'),
-    (5, 1, 1, '2026-03-13', '06:30:00', 4.1, 110, 'Goat', 'Pass', NULL, 'Approved')
-  `);
+    // ---- Dispatches ----
+    console.log('🚛 Seeding dispatches...');
+    const dispatches = [
+      { id: 1, chilling_center_id: 1, transporter_name: 'Lanka Transport', vehicle_number: 'WP-AB-1234', driver_contact: '0771112233', dispatch_date: '2026-03-14', status: 'Approved' },
+      { id: 2, chilling_center_id: 2, transporter_name: 'Express Dairy', vehicle_number: 'NW-CD-5678', driver_contact: '0764445566', dispatch_date: '2026-03-15', status: 'Dispatched' }
+    ];
+    await supabase.from('dispatches').upsert(dispatches);
 
-  // ---- Quality Tests ----
-  console.log('🔬 Seeding quality tests...');
-  await conn.query(`INSERT IGNORE INTO quality_tests (id, collection_id, fat, snf, water, result, reason) VALUES
-    (1, 1, 4.2, 8.8, 0.2, 'Pass', NULL),
-    (2, 2, 3.0, 8.5, 0.3, 'Fail', 'Low FAT'),
-    (3, 3, 3.8, 9.0, 0.1, 'Pass', NULL),
-    (4, 4, 4.0, 8.9, 0.2, 'Pass', NULL),
-    (5, 5, 3.9, 8.7, 0.3, 'Pass', NULL)
-  `);
+    // ---- Dispatch Items ----
+    console.log('📦 Seeding dispatch items...');
+    const dispatchItems = [
+      { id: 1, dispatch_id: 1, collection_id: 3 },
+      { id: 2, dispatch_id: 2, collection_id: 4 }
+    ];
+    await supabase.from('dispatch_items').upsert(dispatchItems);
 
-  // ---- Dispatches ----
-  console.log('🚛 Seeding dispatches...');
-  await conn.query(`INSERT IGNORE INTO dispatches (id, chilling_center_id, transporter_name, vehicle_number, driver_contact, dispatch_date, status) VALUES
-    (1, 1, 'Lanka Transport', 'WP-AB-1234', '0771112233', '2026-03-14', 'Approved'),
-    (2, 2, 'Express Dairy', 'NW-CD-5678', '0764445566', '2026-03-15', 'Dispatched')
-  `);
+    // ---- Pricing Rules ----
+    console.log('💰 Seeding pricing rules...');
+    const pricingRules = [
+      { id: 1, base_price_per_liter: 85, fat_bonus: 2.5, snf_bonus: 1.8, effective_from: '2026-01-01', is_active: true },
+      { id: 2, base_price_per_liter: 80, fat_bonus: 2.0, snf_bonus: 1.5, effective_from: '2025-07-01', is_active: false }
+    ];
+    await supabase.from('pricing_rules').upsert(pricingRules);
 
-  // ---- Dispatch Items ----
-  console.log('📦 Seeding dispatch items...');
-  await conn.query(`INSERT IGNORE INTO dispatch_items (id, dispatch_id, collection_id) VALUES
-    (1, 1, 3),
-    (2, 2, 4)
-  `);
+    // ---- Payments ----
+    console.log('💵 Seeding payments...');
+    const payments = [
+      { id: 1, farmer_id: 1, collection_id: 1, quantity: 120, base_pay: 10200, fat_bonus: 300, snf_bonus: 150, amount: 10650, status: 'Paid', paid_at: '2026-03-16 10:00:00' },
+      { id: 2, farmer_id: 1, collection_id: 5, quantity: 110, base_pay: 9350, fat_bonus: 275, snf_bonus: 110, amount: 9735, status: 'Pending', paid_at: null }
+    ];
+    await supabase.from('payments').upsert(payments);
 
-  // ---- Pricing Rules ----
-  console.log('💰 Seeding pricing rules...');
-  await conn.query(`INSERT IGNORE INTO pricing_rules (id, base_price_per_liter, fat_bonus, snf_bonus, effective_from, is_active) VALUES
-    (1, 85, 2.5, 1.8, '2026-01-01', TRUE),
-    (2, 80, 2.0, 1.5, '2025-07-01', FALSE)
-  `);
+    // ---- Notifications ----
+    console.log('🔔 Seeding notifications...');
+    const notifications = [
+      { id: 1, user_id: 10, title: 'Quality Test Passed', message: 'Your milk collection on 2026-03-15 passed quality testing.', type: 'quality_result', is_read: false },
+      { id: 2, user_id: 10, title: 'Payment Completed', message: 'Payment of Rs. 10,650 has been credited.', type: 'payment', is_read: true }
+    ];
+    await supabase.from('notifications').upsert(notifications);
 
-  // ---- Payments ----
-  console.log('💵 Seeding payments...');
-  await conn.query(`INSERT IGNORE INTO payments (id, farmer_id, collection_id, quantity, base_pay, fat_bonus, snf_bonus, amount, status, paid_at) VALUES
-    (1, 1, 1, 120, 10200, 300, 150, 10650, 'Paid', '2026-03-16 10:00:00'),
-    (2, 1, 5, 110, 9350, 275, 110, 9735, 'Pending', NULL)
-  `);
-
-  // ---- Notifications ----
-  console.log('🔔 Seeding notifications...');
-  await conn.query(`INSERT IGNORE INTO notifications (id, user_id, title, message, type, is_read) VALUES
-    (1, 10, 'Quality Test Passed', 'Your milk collection on 2026-03-15 passed quality testing.', 'quality_result', FALSE),
-    (2, 10, 'Payment Completed', 'Payment of Rs. 10,650 has been credited.', 'payment', TRUE)
-  `);
-
-  console.log('✅ Seed complete!');
-  await conn.end();
+    console.log('✅ Seed complete!');
+  } catch (err) {
+    console.error('❌ Seed failed:', err.message);
+    throw err;
+  }
 }
 
 seed().catch(err => {
-  console.error('❌ Seed failed:', err.message);
+  console.error('❌ Fatal error during seed:', err);
   process.exit(1);
 });

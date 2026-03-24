@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const pool = require('../db');
-const { authenticate, signToken } = require('../middleware/auth');
+const supabase = require('../db');
+const { signToken, authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -10,59 +10,92 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log(`[BACKEND] Login attempt received for email: ${email}`);
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    if (!email || !password) {
+       console.log('[BACKEND] Missing email or password');
+       return res.status(400).json({ error: 'Email and password required' });
+    }
 
-    const [rows] = await pool.query('SELECT * FROM users WHERE BINARY email = ?', [email]);
-    if (rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
+    console.log('[BACKEND] Connecting to Supabase to fetch user...');
+    const { data: user, error } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+    
+    console.log('[BACKEND] Supabase response received. Error:', !!error);
+    if (error) {
+       console.error('[BACKEND] Supabase query error:', error);
+       throw error;
+    }
+    
+    if (!user) {
+       console.log('[BACKEND] User not found in database');
+       return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-    const user = rows[0];
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+    console.log('[BACKEND] User found, comparing password...');
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    console.log('[BACKEND] Password match:', isMatch);
+    if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // Map role for frontend compatibility
+    // Map role for token consistency
     const roleMap = { nestle: 'nestle_officer', chilling_center: 'chilling_center', farmer: 'farmer' };
-    const frontendRole = roleMap[user.role] || user.role;
+    const payload = {
+      id: user.id,
+      email: user.email,
+      role: roleMap[user.role] || user.role,
+      name: user.name,
+    };
 
-    let payload = { id: user.id, email: user.email, role: frontendRole, name: user.name };
-    const token = signToken(payload);
-
-    // If user is a farmer, fetch and REQUIRE farmer details
+    // If user is farmer, fetch and attach details
     let farmerId = null;
     let farmerCode = null;
     if (user.role === 'farmer') {
-      const [farmerRows] = await pool.query('SELECT id, farmer_id, address, phone, nic FROM farmers WHERE user_id = ?', [user.id]);
-      if (farmerRows.length === 0) return res.status(401).json({ error: 'Farmer profile no longer exists' });
+      const { data: fRows, error: fErr } = await supabase
+        .from('farmers')
+        .select('id, farmer_id, address, phone, nic')
+        .eq('user_id', user.id)
+        .maybeSingle();
       
-      farmerId = farmerRows[0].id;
-      farmerCode = farmerRows[0].farmer_id;
-      payload.address = farmerRows[0].address;
-      payload.phone = farmerRows[0].phone;
-      payload.nic = farmerRows[0].nic;
+      if (fErr) throw fErr;
+      if (!fRows) return res.status(401).json({ error: 'Farmer profile no longer exists' });
+
+      farmerId = fRows.id;
+      farmerCode = fRows.farmer_id;
+      payload.address = fRows.address;
+      payload.phone = fRows.phone;
+      payload.nic = fRows.nic;
 
       // Fetch bank details for farmer
-      const [bankRows] = await pool.query('SELECT bank_name AS bankName, account_number AS accountNumber, branch FROM bank_accounts WHERE farmer_id = ?', [farmerId]);
-      if (bankRows.length > 0) {
-        payload.bankName = bankRows[0].bankName;
-        payload.accountNumber = bankRows[0].accountNumber;
-        payload.branch = bankRows[0].branch;
+      const { data: bRows, error: bErr } = await supabase
+        .from('bank_accounts')
+        .select('bank_name, account_number, branch')
+        .eq('farmer_id', farmerId)
+        .maybeSingle();
+      
+      if (bErr) throw bErr;
+      if (bRows) {
+        payload.bankName = bRows.bank_name;
+        payload.accountNumber = bRows.account_number;
+        payload.branch = bRows.branch;
       }
     }
 
     // If user is chilling_center, fetch and REQUIRE center id
     let chillingCenterId = null;
     if (user.role === 'chilling_center') {
-      const [ccRows] = await pool.query('SELECT id FROM chilling_centers WHERE user_id = ?', [user.id]);
-      if (ccRows.length === 0) return res.status(401).json({ error: 'Chilling Center profile no longer exists' });
-      chillingCenterId = ccRows[0].id;
+      const { data: cc, error: ccErr } = await supabase.from('chilling_centers').select('id').eq('user_id', user.id).maybeSingle();
+      if (ccErr) throw ccErr;
+      if (!cc) return res.status(401).json({ error: 'Chilling Center profile no longer exists' });
+      chillingCenterId = cc.id;
     }
 
     // If user is nestle, fetch and REQUIRE officer id
     let nestleOfficerId = null;
     if (user.role === 'nestle') {
-      const [offRows] = await pool.query('SELECT id FROM nestle_officers WHERE user_id = ?', [user.id]);
-      if (offRows.length === 0) return res.status(401).json({ error: 'Nestle Officer profile no longer exists' });
-      nestleOfficerId = offRows[0].id;
+      const { data: off, error: offErr } = await supabase.from('nestle_officers').select('id').eq('user_id', user.id).maybeSingle();
+      if (offErr) throw offErr;
+      if (!off) return res.status(401).json({ error: 'Nestle Officer profile no longer exists' });
+      nestleOfficerId = off.id;
     }
+
+    const token = signToken(payload);
 
     res.json({
       token,
@@ -76,64 +109,61 @@ router.post('/login', async (req, res) => {
 
 // ---------- POST /api/auth/register-farmer ----------
 router.post('/register-farmer', async (req, res) => {
-  const conn = await pool.getConnection();
   try {
     const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password } = req.body;
     if (!email || !password || !name || !chillingCenterId) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    await conn.beginTransaction();
-
     // Check duplicate email
-    const [existing] = await conn.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (existing.length > 0) {
-      await conn.rollback();
-      return res.status(409).json({ error: 'Email already registered' });
-    }
+    const { data: existingEmail, error: eErr } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+    if (eErr) throw eErr;
+    if (existingEmail) return res.status(409).json({ error: 'Email already registered' });
 
     // Check duplicate NIC
     if (nic && nic.trim() !== '') {
-      const [existingNic] = await conn.query('SELECT id FROM farmers WHERE nic = ?', [nic]);
-      if (existingNic.length > 0) {
-        await conn.rollback();
-        return res.status(409).json({ error: 'NIC already registered' });
-      }
+      const { data: existingNic, error: nicErr } = await supabase.from('farmers').select('id').eq('nic', nic).maybeSingle();
+      if (nicErr) throw nicErr;
+      if (existingNic) return res.status(409).json({ error: 'NIC already registered' });
     }
 
     // Check duplicate Phone
     if (phone && phone.trim() !== '') {
-      const [existingPhone] = await conn.query('SELECT id FROM farmers WHERE phone = ?', [phone]);
-      if (existingPhone.length > 0) {
-        await conn.rollback();
-        return res.status(409).json({ error: 'Phone number already registered' });
-      }
+      const { data: existingPhone, error: phoneErr } = await supabase.from('farmers').select('id').eq('phone', phone).maybeSingle();
+      if (phoneErr) throw phoneErr;
+      if (existingPhone) return res.status(409).json({ error: 'Phone number already registered' });
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const [userResult] = await conn.query(
-      'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-      [email, hash, name, 'farmer']
-    );
-    const userId = userResult.insertId;
+    
+    // Insert user
+    const { data: userResult, error: uErr } = await supabase
+      .from('users')
+      .insert({ email, password_hash: hash, name, role: 'farmer' })
+      .select('id')
+      .single();
+    
+    if (uErr) throw uErr;
+    const userId = userResult.id;
 
     // Generate farmer ID
-    const [countRows] = await conn.query('SELECT COUNT(*) as cnt FROM farmers');
-    const farmerCode = `FRM-${String(countRows[0].cnt + 1).padStart(3, '0')}`;
+    const { count: farmerCount, error: countErr } = await supabase.from('farmers').select('*', { count: 'exact', head: true });
+    if (countErr) throw countErr;
+    const farmerCode = `FRM-${String(farmerCount + 1).padStart(3, '0')}`;
 
-    const [farmerResult] = await conn.query(
-      'INSERT INTO farmers (farmer_id, user_id, name, address, phone, nic, chilling_center_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [farmerCode, userId, name, address || '', phone || '', nic || '', chillingCenterId]
-    );
+    // Insert farmer
+    const { data: farmerResult, error: fErr } = await supabase
+      .from('farmers')
+      .insert({ farmer_id: farmerCode, user_id: userId, name, address: address || '', phone: phone || '', nic: nic || '', chilling_center_id: chillingCenterId })
+      .select('id')
+      .single();
+    
+    if (fErr) throw fErr;
+    const farmerIdGenerated = farmerResult.id;
 
     if (bankName || accountNumber || branch) {
-      await conn.query(
-        'INSERT INTO bank_accounts (farmer_id, bank_name, account_number, branch) VALUES (?, ?, ?, ?)',
-        [farmerResult.insertId, bankName || '', accountNumber || '', branch || '']
-      );
+      await supabase.from('bank_accounts').insert({ farmer_id: farmerIdGenerated, bank_name: bankName || '', account_number: accountNumber || '', branch: branch || '' });
     }
-
-    await conn.commit();
 
     const roleForToken = 'farmer';
     const payload = { id: userId, email, role: roleForToken, name };
@@ -141,161 +171,134 @@ router.post('/register-farmer', async (req, res) => {
 
     res.status(201).json({
       token,
-      user: { ...payload, farmerId: farmerResult.insertId, farmerCode, address, phone, nic, bankName: bankName || '', accountNumber: accountNumber || '', branch: branch || '' },
+      user: { ...payload, farmerId: farmerIdGenerated, farmerCode, address, phone, nic, bankName: bankName || '', accountNumber: accountNumber || '', branch: branch || '' },
     });
   } catch (err) {
-    await conn.rollback();
     console.error('Register farmer error:', err);
     res.status(500).json({ error: 'Server error' });
-  } finally {
-    conn.release();
   }
 });
 
 // ---------- POST /api/auth/register-farmer-by-center ----------
 router.post('/register-farmer-by-center', authenticate, async (req, res) => {
-  const conn = await pool.getConnection();
   try {
     const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password } = req.body;
     if (!email || !password || !name || !chillingCenterId) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    await conn.beginTransaction();
-
-    const [existing] = await conn.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (existing.length > 0) {
-      await conn.rollback();
-      return res.status(409).json({ error: 'Email already registered' });
-    }
+    // Check duplicate email
+    const { data: existingEmail } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+    if (existingEmail) return res.status(409).json({ error: 'Email already registered' });
 
     // Check duplicate NIC
     if (nic && nic.trim() !== '') {
-      const [existingNic] = await conn.query('SELECT id FROM farmers WHERE nic = ?', [nic]);
-      if (existingNic.length > 0) {
-        await conn.rollback();
-        return res.status(409).json({ error: 'NIC already registered' });
-      }
+      const { data: existingNic } = await supabase.from('farmers').select('id').eq('nic', nic).maybeSingle();
+      if (existingNic) return res.status(409).json({ error: 'NIC already registered' });
     }
 
     // Check duplicate Phone
     if (phone && phone.trim() !== '') {
-      const [existingPhone] = await conn.query('SELECT id FROM farmers WHERE phone = ?', [phone]);
-      if (existingPhone.length > 0) {
-        await conn.rollback();
-        return res.status(409).json({ error: 'Phone number already registered' });
-      }
+      const { data: existingPhone } = await supabase.from('farmers').select('id').eq('phone', phone).maybeSingle();
+      if (existingPhone) return res.status(409).json({ error: 'Phone number already registered' });
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const [userResult] = await conn.query(
-      'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-      [email, hash, name, 'farmer']
-    );
-    const userId = userResult.insertId;
+    const { data: userResult, error: uErr } = await supabase
+      .from('users')
+      .insert({ email, password_hash: hash, name, role: 'farmer' })
+      .select('id')
+      .single();
+    
+    if (uErr) throw uErr;
+    const userId = userResult.id;
 
-    const [countRows] = await conn.query('SELECT COUNT(*) as cnt FROM farmers');
-    const farmerCode = `FRM-${String(countRows[0].cnt + 1).padStart(3, '0')}`;
+    const { count: farmerCount } = await supabase.from('farmers').select('*', { count: 'exact', head: true });
+    const farmerCode = `FRM-${String(farmerCount + 1).padStart(3, '0')}`;
 
-    const [farmerResult] = await conn.query(
-      'INSERT INTO farmers (farmer_id, user_id, name, address, phone, nic, chilling_center_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [farmerCode, userId, name, address || '', phone || '', nic || '', chillingCenterId]
-    );
+    const { data: farmerResult, error: fErr } = await supabase
+      .from('farmers')
+      .insert({ farmer_id: farmerCode, user_id: userId, name, address: address || '', phone: phone || '', nic: nic || '', chilling_center_id: chillingCenterId })
+      .select('id')
+      .single();
+    
+    if (fErr) throw fErr;
+    const farmerRowId = farmerResult.id;
 
     if (bankName || accountNumber || branch) {
-      await conn.query(
-        'INSERT INTO bank_accounts (farmer_id, bank_name, account_number, branch) VALUES (?, ?, ?, ?)',
-        [farmerResult.insertId, bankName || '', accountNumber || '', branch || '']
-      );
+      await supabase.from('bank_accounts').insert({ farmer_id: farmerRowId, bank_name: bankName || '', account_number: accountNumber || '', branch: branch || '' });
     }
 
-    await conn.commit();
-
     res.status(201).json({
-      id: farmerResult.insertId,
+      id: farmerRowId,
       farmerId: farmerCode,
       userId,
       name,
-      address: address || '',
-      phone: phone || '',
-      nic: nic || '',
-      bankName: bankName || '',
-      accountNumber: accountNumber || '',
-      branch: branch || '',
-      chillingCenterId,
-      createdAt: new Date().toISOString(),
+      address,
+      phone,
+      nic,
     });
   } catch (err) {
-    await conn.rollback();
     console.error('Register farmer by center error:', err);
     res.status(500).json({ error: 'Server error' });
-  } finally {
-    conn.release();
   }
 });
 
-// ---------- GET /api/auth/me ----------
 // ---------- POST /api/auth/register-user ----------
 router.post('/register-user', async (req, res) => {
-  const conn = await pool.getConnection();
   try {
     const { name, email, password, role, bankName, accountNumber, branch, location, designation } = req.body;
     if (!email || !password || !name || !role) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Validate role
     if (!['nestle', 'chilling_center'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
-    await conn.beginTransaction();
-
-    const [existing] = await conn.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (existing.length > 0) {
-      await conn.rollback();
-      return res.status(409).json({ error: 'Email already registered' });
-    }
+    const { data: existingEmail } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+    if (existingEmail) return res.status(409).json({ error: 'Email already registered' });
 
     const hash = await bcrypt.hash(password, 10);
-    const [userResult] = await conn.query(
-      'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-      [email, hash, name, role]
-    );
-    const userId = userResult.insertId;
+    const { data: userResult, error: uErr } = await supabase
+      .from('users')
+      .insert({ email, password_hash: hash, name, role })
+      .select('id')
+      .single();
+    if (uErr) throw uErr;
+    const userId = userResult.id;
 
     let chillingCenterId = null;
     let nestleOfficerId = null;
+
     if (role === 'chilling_center') {
-      const [ccResult] = await conn.query(
-        'INSERT INTO chilling_centers (name, location, user_id) VALUES (?, ?, ?)',
-        [name, location || 'Default Location', userId]
-      );
-      chillingCenterId = ccResult.insertId;
-      
+      const { data: cc, error: ccErr } = await supabase
+        .from('chilling_centers')
+        .insert({ name, location: location || 'Default Location', user_id: userId })
+        .select('id')
+        .single();
+      if (ccErr) throw ccErr;
+      chillingCenterId = cc.id;
+
       if (bankName || accountNumber || branch) {
-          await conn.query(
-            'INSERT INTO chilling_center_accounts (chilling_center_id, bank_name, account_number, branch) VALUES (?, ?, ?, ?)',
-            [chillingCenterId, bankName || '', accountNumber || '', branch || '']
-          );
+        await supabase.from('chilling_center_accounts').insert({ chilling_center_id: chillingCenterId, bank_name: bankName || '', account_number: accountNumber || '', branch: branch || '' });
       }
     }
 
     if (role === 'nestle') {
-      const [offResult] = await conn.query(
-        'INSERT INTO nestle_officers (name, designation, user_id) VALUES (?, ?, ?)',
-        [name, designation || 'Officer', userId]
-      );
-      nestleOfficerId = offResult.insertId;
+      const { data: off, error: offErr } = await supabase
+        .from('nestle_officers')
+        .insert({ name, designation: designation || 'Officer', user_id: userId })
+        .select('id')
+        .single();
+      if (offErr) throw offErr;
+      nestleOfficerId = off.id;
 
       if (bankName || accountNumber || branch) {
-          await conn.query(
-            'INSERT INTO nestle_officer_accounts (nestle_officer_id, bank_name, account_number, branch) VALUES (?, ?, ?, ?)',
-            [nestleOfficerId, bankName || '', accountNumber || '', branch || '']
-          );
+        await supabase.from('nestle_officer_accounts').insert({ nestle_officer_id: nestleOfficerId, bank_name: bankName || '', account_number: accountNumber || '', branch: branch || '' });
       }
     }
-
-    await conn.commit();
 
     // Map role for token consistency
     const roleMap = { nestle: 'nestle_officer', chilling_center: 'chilling_center' };
@@ -307,54 +310,49 @@ router.post('/register-user', async (req, res) => {
       user: { ...payload, chillingCenterId, nestleOfficerId },
     });
   } catch (err) {
-    if (conn) await conn.rollback();
     console.error('Register user error:', err);
     res.status(500).json({ error: 'Server error' });
-  } finally {
-    if (conn) conn.release();
   }
 });
 
+// ---------- GET /api/auth/me ----------
 router.get('/me', authenticate, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT id, email, name, role FROM users WHERE id = ?', [req.user.id]);
-    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const { data: user, error } = await supabase.from('users').select('id, email, name, role').eq('id', req.user.id).single();
+    if (error) throw error;
 
-    const user = rows[0];
     const roleMap = { nestle: 'nestle_officer', chilling_center: 'chilling_center', farmer: 'farmer' };
     user.role = roleMap[user.role] || user.role;
 
     if (user.role === 'farmer') {
-      const [fRows] = await pool.query('SELECT id, farmer_id, address, phone, nic FROM farmers WHERE user_id = ?', [user.id]);
-      if (fRows.length === 0) return res.status(401).json({ error: 'Farmer profile no longer exists' });
-      user.farmerId = fRows[0].id;
-      user.farmerCode = fRows[0].farmer_id;
-      user.address = fRows[0].address;
-      user.phone = fRows[0].phone;
-      user.nic = fRows[0].nic;
+      const { data: fRows } = await supabase.from('farmers').select('id, farmer_id, address, phone, nic').eq('user_id', user.id).maybeSingle();
+      if (fRows) {
+        user.farmerId = fRows.id;
+        user.farmerCode = fRows.farmer_id;
+        user.address = fRows.address;
+        user.phone = fRows.phone;
+        user.nic = fRows.nic;
 
-      const [bRows] = await pool.query('SELECT bank_name AS bankName, account_number AS accountNumber, branch FROM bank_accounts WHERE farmer_id = ?', [user.farmerId]);
-      if (bRows.length > 0) {
-        user.bankName = bRows[0].bankName;
-        user.accountNumber = bRows[0].accountNumber;
-        user.branch = bRows[0].branch;
+        const { data: bRows } = await supabase.from('bank_accounts').select('bank_name, account_number, branch').eq('farmer_id', user.farmerId).maybeSingle();
+        if (bRows) {
+          user.bankName = bRows.bank_name;
+          user.accountNumber = bRows.account_number;
+          user.branch = bRows.branch;
+        }
       }
     }
     if (user.role === 'chilling_center') {
-      const [ccRows] = await pool.query('SELECT id FROM chilling_centers WHERE user_id = ?', [user.id]);
-      if (ccRows.length === 0) return res.status(401).json({ error: 'Center profile no longer exists' });
-      user.chillingCenterId = ccRows[0].id;
+      const { data: cc } = await supabase.from('chilling_centers').select('id').eq('user_id', user.id).maybeSingle();
+      if (cc) user.chillingCenterId = cc.id;
     }
-
     if (user.role === 'nestle_officer' || user.role === 'nestle') {
-        const [offRows] = await pool.query('SELECT id FROM nestle_officers WHERE user_id = ?', [user.id]);
-        if (offRows.length === 0) return res.status(401).json({ error: 'Officer profile no longer exists' });
-        user.nestleOfficerId = offRows[0].id;
+      const { data: off } = await supabase.from('nestle_officers').select('id').eq('user_id', user.id).maybeSingle();
+      if (off) user.nestleOfficerId = off.id;
     }
 
     res.json(user);
   } catch (err) {
-    console.error('Get me error:', err);
+    console.error('Me error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -362,13 +360,20 @@ router.get('/me', authenticate, async (req, res) => {
 // ---------- GET /api/auth/nestle-officers ----------
 router.get('/nestle-officers', async (req, res) => {
   try {
-    const [rows] = await pool.query(`
-      SELECT u.id, u.email, u.name, n.designation, n.created_at
-      FROM users u
-      JOIN nestle_officers n ON u.id = n.user_id
-      WHERE u.role = 'nestle'
-    `);
-    res.json(rows);
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, email, name, nestle_officers!inner(designation, created_at)')
+      .order('id', { foreignTable: 'nestle_officers', ascending: false });
+    
+    if (error) throw error;
+    // Flatten result for frontend
+    const flattened = data.map(u => ({
+      id: u.id, email: u.email, name: u.name,
+      designation: u.nestle_officers[0]?.designation,
+      created_at: u.nestle_officers[0]?.created_at
+    }));
+
+    res.json(flattened);
   } catch (err) {
     console.error('Get nestle officers error:', err);
     res.status(500).json({ error: 'Server error' });

@@ -1,5 +1,5 @@
 const express = require('express');
-const pool = require('../db');
+const supabase = require('../db');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
@@ -7,26 +7,42 @@ const router = express.Router();
 // GET /api/payments — list all or filter by farmerId
 router.get('/', authenticate, async (req, res) => {
   try {
-    let sql = `
-      SELECT p.id, p.farmer_id AS farmerId, f.name AS farmerName, f.farmer_id AS farmerCode,
-             p.collection_id AS collectionId, p.quantity, p.base_pay AS basePay,
-             p.fat_bonus AS fatBonus, p.snf_bonus AS snfBonus, p.amount,
-             p.status, p.paid_at AS paidAt, p.created_at AS createdAt,
-             mc.date AS collectionDate, mc.quality_result AS qualityResult,
-             mc.dispatch_status AS dispatchStatus
-      FROM payments p
-      JOIN farmers f ON p.farmer_id = f.id
-      JOIN milk_collections mc ON p.collection_id = mc.id
-    `;
-    const params = [];
-    if (req.query.farmerId) {
-      sql += ' WHERE p.farmer_id = ?';
-      params.push(req.query.farmerId);
-    }
-    sql += ' ORDER BY p.created_at DESC';
+    let query = supabase
+      .from('payments')
+      .select(`
+        id, farmer_id, collection_id, quantity, base_pay, fat_bonus, snf_bonus, amount, status, paid_at, created_at,
+        farmers (name, farmer_id),
+        milk_collections (date, quality_result, dispatch_status)
+      `);
 
-    const [rows] = await pool.query(sql, params);
-    res.json(rows);
+    if (req.query.farmerId) {
+      query = query.eq('farmer_id', req.query.farmerId);
+    }
+
+    const { data: payments, error } = await query.order('created_at', { ascending: false });
+    
+    if (error) throw error;
+
+    const flattened = payments.map(p => ({
+      id: p.id,
+      farmerId: p.farmer_id,
+      farmerName: p.farmers?.name,
+      farmerCode: p.farmers?.farmer_id,
+      collectionId: p.collection_id,
+      quantity: p.quantity,
+      basePay: p.base_pay,
+      fatBonus: p.fat_bonus,
+      snfBonus: p.snf_bonus,
+      amount: p.amount,
+      status: p.status,
+      paidAt: p.paid_at,
+      createdAt: p.created_at,
+      collectionDate: p.milk_collections?.date,
+      qualityResult: p.milk_collections?.quality_result,
+      dispatchStatus: p.milk_collections?.dispatch_status
+    }));
+
+    res.json(flattened);
   } catch (err) {
     console.error('Get payments error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -35,110 +51,91 @@ router.get('/', authenticate, async (req, res) => {
 
 // POST /api/payments/generate — generate payment for an approved collection
 router.post('/generate', authenticate, async (req, res) => {
-  const conn = await pool.getConnection();
   try {
     const { collectionId } = req.body;
     if (!collectionId) return res.status(400).json({ error: 'collectionId required' });
 
-    // Check collection is approved
-    const [colRows] = await conn.query(
-      'SELECT mc.*, f.name AS farmerName, f.farmer_id AS farmerCode FROM milk_collections mc JOIN farmers f ON mc.farmer_id = f.id WHERE mc.id = ?',
-      [collectionId]
-    );
-    if (colRows.length === 0) return res.status(404).json({ error: 'Collection not found' });
-    const col = colRows[0];
+    // Check collection
+    const { data: col, error: colErr } = await supabase
+       .from('milk_collections')
+       .select('*, farmers(name, farmer_id)')
+       .eq('id', collectionId)
+       .maybeSingle();
 
-    if (col.dispatch_status !== 'Approved') {
-      return res.status(400).json({ error: 'Only approved collections can be paid' });
-    }
+    if (colErr || !col) return res.status(404).json({ error: 'Collection not found' });
+    if (col.dispatch_status !== 'Approved') return res.status(400).json({ error: 'Only approved collections can be paid' });
 
-    // Check if already paid
-    const [existingPay] = await conn.query('SELECT id FROM payments WHERE collection_id = ?', [collectionId]);
-    if (existingPay.length > 0) {
-      return res.status(409).json({ error: 'Payment already exists for this collection' });
-    }
+    // Check if paid
+    const { data: exPay } = await supabase.from('payments').select('id').eq('collection_id', collectionId).maybeSingle();
+    if (exPay) return res.status(409).json({ error: 'Payment already exists' });
 
-    // Get active pricing rule
-    const [priceRows] = await conn.query(
-      'SELECT * FROM pricing_rules WHERE is_active = TRUE ORDER BY effective_from DESC LIMIT 1'
-    );
-    if (priceRows.length === 0) return res.status(400).json({ error: 'No active pricing rule' });
-    const rule = priceRows[0];
+    // Active pricing
+    const { data: rule } = await supabase.from('pricing_rules').select('*').eq('is_active', true).order('effective_from', { ascending: false }).limit(1).maybeSingle();
+    if (!rule) return res.status(400).json({ error: 'No active pricing rule' });
 
-    // Get quality test for bonuses
-    const [qtRows] = await conn.query('SELECT fat, snf FROM quality_tests WHERE collection_id = ?', [collectionId]);
-    const qt = qtRows[0] || { fat: 0, snf: 0 };
+    // Quality test
+    const { data: qt } = await supabase.from('quality_tests').select('fat, snf').eq('collection_id', collectionId).maybeSingle();
+    const quality = qt || { fat: 0, snf: 0 };
 
     const quantity = parseFloat(col.quantity);
     const basePay = quantity * parseFloat(rule.base_price_per_liter);
-    const fatBonus = quantity * parseFloat(rule.fat_bonus) * (parseFloat(qt.fat) / 100);
-    const snfBonus = quantity * parseFloat(rule.snf_bonus) * (parseFloat(qt.snf) / 100);
-    const amount = basePay + fatBonus + snfBonus;
+    const fatBonus = quantity * parseFloat(rule.fat_bonus) * (parseFloat(quality.fat) / 100);
+    const snfBonus = quantity * parseFloat(rule.snf_bonus) * (parseFloat(quality.snf) / 100);
+    const totalAmount = basePay + fatBonus + snfBonus;
 
-    await conn.beginTransaction();
-
-    const [payResult] = await conn.query(
-      'INSERT INTO payments (farmer_id, collection_id, quantity, base_pay, fat_bonus, snf_bonus, amount) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [col.farmer_id, collectionId, quantity, basePay.toFixed(2), fatBonus.toFixed(2), snfBonus.toFixed(2), amount.toFixed(2)]
-    );
-
-    await conn.commit();
+    const { data: pay, error: pErr } = await supabase
+       .from('payments')
+       .insert({ farmer_id: col.farmer_id, collection_id: collectionId, quantity, base_pay: basePay.toFixed(2), fat_bonus: fatBonus.toFixed(2), snf_bonus: snfBonus.toFixed(2), amount: totalAmount.toFixed(2) })
+       .select('id')
+       .single();
+    
+    if (pErr) throw pErr;
 
     res.status(201).json({
-      id: payResult.insertId,
+      id: pay.id,
       farmerId: col.farmer_id,
-      farmerName: col.farmerName,
-      farmerCode: col.farmerCode,
+      farmerName: col.farmers?.name,
+      farmerCode: col.farmers?.farmer_id,
       collectionId,
       quantity,
       basePay: parseFloat(basePay.toFixed(2)),
       fatBonus: parseFloat(fatBonus.toFixed(2)),
       snfBonus: parseFloat(snfBonus.toFixed(2)),
-      amount: parseFloat(amount.toFixed(2)),
+      amount: parseFloat(totalAmount.toFixed(2)),
       status: 'Pending',
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
     });
   } catch (err) {
-    await conn.rollback();
     console.error('Generate payment error:', err);
     res.status(500).json({ error: 'Server error' });
-  } finally {
-    conn.release();
   }
 });
 
-// PATCH /api/payments/:id/status — mark as paid
+// PATCH /api/payments/:id/status
 router.patch('/:id/status', authenticate, async (req, res) => {
-  const conn = await pool.getConnection();
   try {
     const { status } = req.body;
     if (status !== 'Paid') return res.status(400).json({ error: 'Status must be Paid' });
 
-    await conn.beginTransaction();
+    await supabase.from('payments').update({ status: 'Paid', paid_at: new Date().toISOString() }).eq('id', req.params.id);
 
-    await conn.query('UPDATE payments SET status = ?, paid_at = NOW() WHERE id = ?', [status, req.params.id]);
+    // Notification
+    const { data: p } = await supabase
+       .from('payments')
+       .select('amount, farmers!inner(user_id)')
+       .eq('id', req.params.id)
+       .maybeSingle();
 
-    // Send notification to farmer
-    const [payRows] = await conn.query(
-      'SELECT p.amount, f.user_id FROM payments p JOIN farmers f ON p.farmer_id = f.id WHERE p.id = ?',
-      [req.params.id]
-    );
-    if (payRows.length > 0) {
-      const { amount, user_id } = payRows[0];
-      await conn.query(
-        'INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)',
-        [user_id, 'Payment Completed', `Payment of Rs. ${parseFloat(amount).toLocaleString()} has been credited.`, 'payment']
-      );
+    if (p && p.farmers?.user_id) {
+       const user_id = p.farmers.user_id;
+       const amount = p.amount;
+       await supabase.from('notifications').insert({ user_id, title: 'Payment Completed', message: `Payment of Rs. ${parseFloat(amount).toLocaleString()} has been credited.`, type: 'payment' });
     }
 
-    await conn.commit();
     res.json({ success: true });
   } catch (err) {
-    await conn.rollback();
     console.error('Update payment status error:', err);
     res.status(500).json({ error: 'Server error' });
-  } finally {
-    conn.release();
   }
 });
 

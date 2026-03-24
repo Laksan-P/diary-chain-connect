@@ -1,10 +1,16 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const supabase = require('./db');
 
-const pool = require('./db');
+const app = express();
+const PORT = process.env.PORT || 4000;
 
-// Route imports
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Routes
 const authRoutes = require('./routes/auth');
 const farmerRoutes = require('./routes/farmers');
 const collectionRoutes = require('./routes/collections');
@@ -14,86 +20,6 @@ const pricingRoutes = require('./routes/pricing');
 const paymentRoutes = require('./routes/payments');
 const notificationRoutes = require('./routes/notifications');
 
-const app = express();
-const PORT = process.env.PORT || 4000;
-
-// ---------- Middleware ----------
-app.use(cors());
-app.use(express.json());
-
-// ---------- Test DB endpoint ----------
-app.get('/test-db', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT 1 AS result');
-    res.json({ status: 'ok', db: 'connected', result: rows[0].result });
-  } catch (err) {
-    console.error('DB test error:', err);
-    res.status(500).json({ status: 'error', message: err.message });
-  }
-});
-
-// ---------- Chilling Centers (simple) ----------
-app.get('/api/chilling-centers', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT id, name, location FROM chilling_centers');
-    res.json(rows);
-  } catch (err) {
-    console.error('Get chilling centers error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ---------- Center Performance (analytics) ----------
-const { authenticate } = require('./middleware/auth');
-app.get('/api/chilling-centers/performance', authenticate, async (req, res) => {
-  try {
-    const [rows] = await pool.query(`
-      SELECT
-        cc.id AS centerId, cc.name AS centerName,
-        COALESCE(SUM(mc.quantity), 0) AS totalQuantity,
-        COALESCE(AVG(mc.quantity), 0) AS avgQuantity,
-        COUNT(mc.id) AS collectionCount
-      FROM chilling_centers cc
-      LEFT JOIN milk_collections mc ON mc.chilling_center_id = cc.id
-      GROUP BY cc.id
-      ORDER BY totalQuantity DESC
-    `);
-
-    // Calculate quality rate and revenue per center
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
-      const [qRows] = await pool.query(`
-        SELECT COUNT(*) AS total,
-               SUM(CASE WHEN mc.quality_result = 'Pass' THEN 1 ELSE 0 END) AS passed
-        FROM milk_collections mc
-        WHERE mc.chilling_center_id = ? AND mc.quality_result IS NOT NULL
-      `, [r.centerId]);
-
-      const total = qRows[0].total || 0;
-      const passed = qRows[0].passed || 0;
-      r.qualityRate = total > 0 ? parseFloat(((passed / total) * 100).toFixed(1)) : 0;
-      r.totalQuantity = parseFloat(r.totalQuantity);
-      r.avgQuantity = parseFloat(parseFloat(r.avgQuantity).toFixed(0));
-
-      // Revenue estimate from payments
-      const [revRows] = await pool.query(`
-        SELECT COALESCE(SUM(p.amount), 0) AS rev
-        FROM payments p
-        JOIN milk_collections mc ON p.collection_id = mc.id
-        WHERE mc.chilling_center_id = ?
-      `, [r.centerId]);
-      r.totalRevenue = parseFloat(revRows[0].rev || 0);
-      r.rank = i + 1;
-    }
-
-    res.json(rows);
-  } catch (err) {
-    console.error('Performance error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ---------- API Routes ----------
 app.use('/api/auth', authRoutes);
 app.use('/api/farmers', farmerRoutes);
 app.use('/api/collections', collectionRoutes);
@@ -103,8 +29,94 @@ app.use('/api/pricing-rules', pricingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// ---------- Start ----------
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🚀 Nestlé Dairy Supply Chain API running on http://0.0.0.0:${PORT}`);
-  console.log(`📊 Test DB connection: http://localhost:${PORT}/test-db\n`);
+// ---------- Test Supabase Connection ----------
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('chilling_centers').select('count', { count: 'exact', head: true });
+    if (error) throw error;
+    res.json({ status: 'ok', db: 'connected (Supabase SDK)', result: data });
+  } catch (err) {
+    console.error('Supabase test error:', err);
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// ---------- Chilling Centers (simple) ----------
+app.get('/api/chilling-centers', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('chilling_centers').select('id, name, location');
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error('Get chilling centers error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ---------- Performance Stats (Dashboard) ----------
+const { authenticate } = require('./middleware/auth');
+app.get('/api/chilling-centers/performance', authenticate, async (req, res) => {
+  try {
+    // We get all centers first
+    const { data: centers, error: cErr } = await supabase.from('chilling_centers').select('id, name');
+    if (cErr) throw cErr;
+
+    const result = [];
+
+    for (const cc of centers) {
+       // Get total quantity
+       const { data: mc, error: mcErr } = await supabase
+         .from('milk_collections')
+         .select('quantity, quality_result')
+         .eq('chilling_center_id', cc.id);
+       
+       if (mcErr) throw mcErr;
+
+       const totalQuantity = mc.reduce((sum, item) => sum + parseFloat(item.quantity || 0), 0);
+       const collectionCount = mc.length;
+       const avgQuantity = collectionCount > 0 ? (totalQuantity / collectionCount) : 0;
+
+       // Calculate quality rate
+       const testedCount = mc.filter(item => item.quality_result !== null).length;
+       const passedCount = mc.filter(item => item.quality_result === 'Pass').length;
+       const qualityRate = testedCount > 0 ? parseFloat(((passedCount / testedCount) * 100).toFixed(1)) : 0;
+
+       // Revenue estimate from payments (approximate join via SDK logic)
+       // For large data, this should be a DB view or RPC.
+       const { data: payments, error: pErr } = await supabase
+         .from('payments')
+         .select('amount, milk_collections!inner(chilling_center_id)')
+         .eq('milk_collections.chilling_center_id', cc.id);
+       
+       if (pErr) throw pErr;
+       const totalRevenue = payments.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+
+       result.push({
+         centerId: cc.id,
+         centerName: cc.name,
+         totalQuantity,
+         avgQuantity: Math.round(avgQuantity),
+         collectionCount,
+         qualityRate,
+         totalRevenue,
+         rank: 0 // Will set later
+       });
+    }
+
+    result.sort((a, b) => b.totalQuantity - a.totalQuantity);
+    result.forEach((item, index) => item.rank = index + 1);
+
+    res.json(result);
+  } catch (err) {
+    console.error('Performance stats error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/', (req, res) => {
+  res.send('Nestlé Dairy Supply Chain Backend (Supabase SDK) is running');
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
 });

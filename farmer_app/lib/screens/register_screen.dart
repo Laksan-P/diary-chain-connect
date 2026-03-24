@@ -67,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       
       await context.read<AuthProvider>().register(data);
       if (mounted) {
-        ToastService.show(context, 'Registration Successful! Welcome to Nestlé.');
+        ToastService.show(context, 'Registration Successful! Welcome to Nestlé Farmer App.');
         Navigator.pop(context);
       }
     } catch (e) {

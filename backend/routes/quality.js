@@ -1,12 +1,11 @@
 const express = require('express');
-const pool = require('../db');
+const supabase = require('../db');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
 // POST /api/quality-tests
 router.post('/', authenticate, async (req, res) => {
-  const conn = await pool.getConnection();
   try {
     const { collectionId, snf, fat, water } = req.body;
     if (!collectionId || snf == null || fat == null || water == null) {
@@ -14,58 +13,58 @@ router.post('/', authenticate, async (req, res) => {
     }
 
     // Determine pass/fail
-    let result = 'Pass';
-    let reason = null;
-    if (fat < 3.5) { result = 'Fail'; reason = 'Low FAT'; }
-    else if (snf < 8.5) { result = 'Fail'; reason = 'Low SNF'; }
-    else if (water > 0.5) { result = 'Fail'; reason = 'Excess Water'; }
-
-    await conn.beginTransaction();
+    let resultValue = 'Pass';
+    let reasonValue = null;
+    if (fat < 3.5) { resultValue = 'Fail'; reasonValue = 'Low FAT'; }
+    else if (snf < 8.5) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
+    else if (water > 0.5) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
 
     // Insert quality test
-    const [qResult] = await conn.query(
-      'INSERT INTO quality_tests (collection_id, fat, snf, water, result, reason) VALUES (?, ?, ?, ?, ?, ?)',
-      [collectionId, fat, snf, water, result, reason]
-    );
+    const { data: qtRows, error: qtErr } = await supabase
+       .from('quality_tests')
+       .insert({ collection_id: collectionId, fat, snf, water, result: resultValue, reason: reasonValue })
+       .select('id')
+       .single();
+    
+    if (qtErr) throw qtErr;
+    const newId = qtRows.id;
 
-    // Update collection quality result
-    await conn.query(
-      'UPDATE milk_collections SET quality_result = ?, failure_reason = ? WHERE id = ?',
-      [result, reason, collectionId]
-    );
+    // Update collection
+    await supabase
+       .from('milk_collections')
+       .update({ quality_result: resultValue, failure_reason: reasonValue })
+       .eq('id', collectionId);
 
-    // Create notification for farmer
-    const [colRows] = await conn.query(
-      'SELECT mc.farmer_id, mc.date, f.user_id FROM milk_collections mc JOIN farmers f ON mc.farmer_id = f.id WHERE mc.id = ?',
-      [collectionId]
-    );
-    if (colRows.length > 0) {
-      const { user_id, date } = colRows[0];
-      const title = result === 'Pass' ? 'Quality Test Passed' : 'Quality Test Failed';
-      const message = result === 'Pass'
+    // Notification
+    const { data: col, error: cErr } = await supabase
+      .from('milk_collections')
+      .select('farmer_id, date, farmers (user_id)')
+      .eq('id', collectionId)
+      .maybeSingle();
+
+    if (col && !cErr) {
+       const user_id = col.farmers?.user_id;
+       const date = col.date;
+       const title = resultValue === 'Pass' ? 'Quality Test Passed' : 'Quality Test Failed';
+       const message = resultValue === 'Pass'
         ? `Your milk collection on ${date} passed quality testing.`
-        : `Your milk collection on ${date} failed quality testing. Reason: ${reason}`;
-      await conn.query(
-        'INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)',
-        [user_id, title, message, 'quality_result']
-      );
+        : `Your milk collection on ${date} failed quality testing. Reason: ${reasonValue}`;
+       
+       if (user_id) {
+         await supabase.from('notifications').insert({ user_id, title, message, type: 'quality_result' });
+       }
     }
 
-    await conn.commit();
-
     res.status(201).json({
-      id: qResult.insertId,
+      id: newId,
       collectionId,
       snf, fat, water,
-      result, reason,
+      result: resultValue, reason: reasonValue,
       testedAt: new Date().toISOString(),
     });
   } catch (err) {
-    await conn.rollback();
     console.error('Quality test error:', err);
     res.status(500).json({ error: 'Server error' });
-  } finally {
-    conn.release();
   }
 });
 

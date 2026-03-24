@@ -1,5 +1,5 @@
 const express = require('express');
-const pool = require('../db');
+const supabase = require('../db');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
@@ -7,35 +7,54 @@ const router = express.Router();
 // GET /api/dispatches
 router.get('/', authenticate, async (req, res) => {
   try {
-    let sql = `
-      SELECT d.id, d.chilling_center_id AS chillingCenterId, cc.name AS chillingCenterName,
-             d.transporter_name AS transporterName, d.vehicle_number AS vehicleNumber,
-             d.driver_contact AS driverContact, d.dispatch_date AS dispatchDate,
-             d.status, d.rejection_reason AS rejectionReason, d.created_at AS createdAt
-      FROM dispatches d
-      LEFT JOIN chilling_centers cc ON d.chilling_center_id = cc.id
-    `;
-    const params = [];
+    let query = supabase
+      .from('dispatches')
+      .select(`
+        id, chilling_center_id, transporter_name, vehicle_number, driver_contact, 
+        dispatch_date, status, rejection_reason, created_at,
+        chilling_centers (name)
+      `);
+
     if (req.query.centerId) {
-      sql += ' WHERE d.chilling_center_id = ?';
-      params.push(req.query.centerId);
+      query = query.eq('chilling_center_id', req.query.centerId);
     }
-    sql += ' ORDER BY d.dispatch_date DESC';
+    
+    const { data: dispatches, error } = await query.order('dispatch_date', { ascending: false });
+    
+    if (error) throw error;
 
-    const [dispatches] = await pool.query(sql, params);
-
-    // Fetch items + totalQuantity for each dispatch
     for (const d of dispatches) {
-      const [items] = await pool.query(`
-        SELECT di.id, di.dispatch_id AS dispatchId, di.collection_id AS collectionId,
-               f.name AS farmerName, mc.quantity, mc.quality_result AS qualityResult
-        FROM dispatch_items di
-        JOIN milk_collections mc ON di.collection_id = mc.id
-        JOIN farmers f ON mc.farmer_id = f.id
-        WHERE di.dispatch_id = ?
-      `, [d.id]);
-      d.items = items;
-      d.totalQuantity = items.reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
+       // Fetch items for each dispatch
+       const { data: items, error: iErr } = await supabase
+         .from('dispatch_items')
+         .select(`
+            id, dispatch_id, collection_id, 
+            milk_collections!inner (
+               quantity, quality_result,
+               farmers (name)
+            )
+         `)
+         .eq('dispatch_id', d.id);
+       
+       if (iErr) throw iErr;
+
+       d.chillingCenterName = d.chilling_centers?.name;
+       d.dispatchDate = d.dispatch_date;
+       d.transporterName = d.transporter_name;
+       d.vehicleNumber = d.vehicle_number;
+       d.driverContact = d.driver_contact;
+       d.rejectionReason = d.rejection_reason;
+       d.createdAt = d.created_at;
+
+       d.items = items.map(item => ({
+          id: item.id,
+          dispatchId: item.dispatch_id,
+          collectionId: item.collection_id,
+          quantity: item.milk_collections?.quantity,
+          qualityResult: item.milk_collections?.quality_result,
+          farmerName: item.milk_collections?.farmers?.name
+       }));
+       d.totalQuantity = d.items.reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
     }
 
     res.json(dispatches);
@@ -47,93 +66,80 @@ router.get('/', authenticate, async (req, res) => {
 
 // POST /api/dispatches
 router.post('/', authenticate, async (req, res) => {
-  const conn = await pool.getConnection();
   try {
     const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items } = req.body;
     if (!chillingCenterId || !transporterName || !vehicleNumber || !driverContact || !dispatchDate || !items?.length) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    await conn.beginTransaction();
-
-    const [dResult] = await conn.query(
-      'INSERT INTO dispatches (chilling_center_id, transporter_name, vehicle_number, driver_contact, dispatch_date) VALUES (?, ?, ?, ?, ?)',
-      [chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate]
-    );
-    const dispatchId = dResult.insertId;
+    const { data: dResult, error: dErr } = await supabase
+       .from('dispatches')
+       .insert({ chilling_center_id: chillingCenterId, transporter_name: transporterName, vehicle_number: vehicleNumber, driver_contact: driverContact, dispatch_date: dispatchDate })
+       .select('id')
+       .single();
+    
+    if (dErr) throw dErr;
+    const dispatchId = dResult.id;
 
     for (const item of items) {
-      await conn.query(
-        'INSERT INTO dispatch_items (dispatch_id, collection_id) VALUES (?, ?)',
-        [dispatchId, item.collectionId]
-      );
-      await conn.query(
-        'UPDATE milk_collections SET dispatch_status = ? WHERE id = ?',
-        ['Dispatched', item.collectionId]
-      );
+       await supabase.from('dispatch_items').insert({ dispatch_id: dispatchId, collection_id: item.collectionId });
+       await supabase.from('milk_collections').update({ dispatch_status: 'Dispatched' }).eq('id', item.collectionId);
     }
 
-    await conn.commit();
+    // Return created dispatch info
+    const { data: dispatch, error: fetchErr } = await supabase
+       .from('dispatches')
+       .select(`
+         id, chilling_center_id, transporter_name, vehicle_number, driver_contact, 
+         dispatch_date, status, created_at,
+         chilling_centers (name)
+       `)
+       .eq('id', dispatchId)
+       .single();
+    
+    if (fetchErr) throw fetchErr;
 
-    // Return created dispatch
-    const [rows] = await conn.query(`
-      SELECT d.id, d.chilling_center_id AS chillingCenterId, cc.name AS chillingCenterName,
-             d.transporter_name AS transporterName, d.vehicle_number AS vehicleNumber,
-             d.driver_contact AS driverContact, d.dispatch_date AS dispatchDate,
-             d.status, d.created_at AS createdAt
-      FROM dispatches d
-      LEFT JOIN chilling_centers cc ON d.chilling_center_id = cc.id
-      WHERE d.id = ?
-    `, [dispatchId]);
-
-    const dispatch = rows[0];
-    dispatch.items = items.map((item, i) => ({ id: i + 1, dispatchId, collectionId: item.collectionId }));
-    dispatch.totalQuantity = 0;
-
-    res.status(201).json(dispatch);
+    res.status(201).json({
+       id: dispatch.id,
+       chillingCenterId: dispatch.chilling_center_id,
+       chillingCenterName: dispatch.chilling_centers?.name,
+       transporterName: dispatch.transporter_name,
+       vehicleNumber: dispatch.vehicle_number,
+       driverContact: dispatch.driver_contact,
+       dispatchDate: dispatch.dispatch_date,
+       status: dispatch.status,
+       createdAt: dispatch.created_at,
+       items: items.map((item, i) => ({ id: i + 1, dispatchId, collectionId: item.collectionId })),
+       totalQuantity: 0
+    });
   } catch (err) {
-    await conn.rollback();
     console.error('Create dispatch error:', err);
     res.status(500).json({ error: 'Server error' });
-  } finally {
-    conn.release();
   }
 });
 
 // PATCH /api/dispatches/:id/status
 router.patch('/:id/status', authenticate, async (req, res) => {
-  const conn = await pool.getConnection();
   try {
     const { status, reason } = req.body;
     if (!['Approved', 'Rejected'].includes(status)) {
       return res.status(400).json({ error: 'Status must be Approved or Rejected' });
     }
 
-    await conn.beginTransaction();
+    await supabase.from('dispatches').update({ status, rejection_reason: reason || null }).eq('id', req.params.id);
 
-    await conn.query(
-      'UPDATE dispatches SET status = ?, rejection_reason = ? WHERE id = ?',
-      [status, reason || null, req.params.id]
-    );
-
-    // Update all collection items in this dispatch
-    const newCollectionStatus = status; // 'Approved' or 'Rejected'
-    const [items] = await conn.query('SELECT collection_id FROM dispatch_items WHERE dispatch_id = ?', [req.params.id]);
-    for (const item of items) {
-      await conn.query(
-        'UPDATE milk_collections SET dispatch_status = ? WHERE id = ?',
-        [newCollectionStatus, item.collection_id]
-      );
+    // Update items in collection
+    const { data: items, error: iErr } = await supabase.from('dispatch_items').select('collection_id').eq('dispatch_id', req.params.id);
+    if (!iErr && items) {
+       for (const item of items) {
+          await supabase.from('milk_collections').update({ dispatch_status: status }).eq('id', item.collection_id);
+       }
     }
 
-    await conn.commit();
     res.json({ success: true });
   } catch (err) {
-    await conn.rollback();
     console.error('Update dispatch status error:', err);
     res.status(500).json({ error: 'Server error' });
-  } finally {
-    conn.release();
   }
 });
 

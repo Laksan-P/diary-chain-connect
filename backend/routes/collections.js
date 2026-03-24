@@ -1,5 +1,5 @@
 const express = require('express');
-const pool = require('../db');
+const supabase = require('../db');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
@@ -7,30 +7,43 @@ const router = express.Router();
 // GET /api/collections — optionally filter by centerId or farmerId
 router.get('/', authenticate, async (req, res) => {
   try {
-    let sql = `
-      SELECT
-        mc.id, mc.farmer_id AS farmerId, f.name AS farmerName, f.farmer_id AS farmerCode,
-        mc.chilling_center_id AS chillingCenterId,
-        mc.date, mc.time, mc.temperature, mc.quantity, mc.milk_type AS milkType,
-        mc.quality_result AS qualityResult, mc.failure_reason AS failureReason,
-        mc.dispatch_status AS dispatchStatus, mc.created_at AS createdAt
-      FROM milk_collections mc
-      LEFT JOIN farmers f ON mc.farmer_id = f.id
-    `;
-    const params = [];
+    let query = supabase
+      .from('milk_collections')
+      .select(`
+        id, farmer_id, chilling_center_id, date, time, temperature, quantity, milk_type,
+        quality_result, failure_reason, dispatch_status, created_at,
+        farmers (name, farmer_id)
+      `);
 
     if (req.query.centerId) {
-      sql += ' WHERE mc.chilling_center_id = ?';
-      params.push(req.query.centerId);
+      query = query.eq('chilling_center_id', req.query.centerId);
     } else if (req.query.farmerId) {
-      sql += ' WHERE mc.farmer_id = ?';
-      params.push(req.query.farmerId);
+      query = query.eq('farmer_id', req.query.farmerId);
     }
 
-    sql += ' ORDER BY mc.date DESC, mc.time DESC';
+    const { data, error } = await query.order('date', { ascending: false }).order('time', { ascending: false });
+    
+    if (error) throw error;
 
-    const [rows] = await pool.query(sql, params);
-    res.json(rows);
+    // Flatten for consistent API format
+    const flattened = data.map(item => ({
+      id: item.id,
+      farmerId: item.farmer_id,
+      farmerName: item.farmers?.name,
+      farmerCode: item.farmers?.farmer_id,
+      chillingCenterId: item.chilling_center_id,
+      date: item.date,
+      time: item.time,
+      temperature: item.temperature,
+      quantity: item.quantity,
+      milkType: item.milk_type,
+      qualityResult: item.quality_result,
+      failureReason: item.failure_reason,
+      dispatchStatus: item.dispatch_status,
+      createdAt: item.created_at
+    }));
+
+    res.json(flattened);
   } catch (err) {
     console.error('Get collections error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -45,24 +58,43 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const [result] = await pool.query(
-      'INSERT INTO milk_collections (farmer_id, chilling_center_id, date, time, temperature, quantity, milk_type) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [farmerId, chillingCenterId, date, time, temperature, quantity, milkType || 'Cow']
-    );
+    const { data: insertRows, error: insertErr } = await supabase
+      .from('milk_collections')
+      .insert({ farmer_id: farmerId, chilling_center_id: chillingCenterId, date, time, temperature, quantity, milk_type: milkType || 'Cow' })
+      .select('id')
+      .single();
+    
+    if (insertErr) throw insertErr;
+    const newId = insertRows.id;
 
-    const [rows] = await pool.query(`
-      SELECT
-        mc.id, mc.farmer_id AS farmerId, f.name AS farmerName, f.farmer_id AS farmerCode,
-        mc.chilling_center_id AS chillingCenterId,
-        mc.date, mc.time, mc.temperature, mc.quantity, mc.milk_type AS milkType,
-        mc.quality_result AS qualityResult, mc.failure_reason AS failureReason,
-        mc.dispatch_status AS dispatchStatus, mc.created_at AS createdAt
-      FROM milk_collections mc
-      LEFT JOIN farmers f ON mc.farmer_id = f.id
-      WHERE mc.id = ?
-    `, [result.insertId]);
+    const { data: mc, error: fetchErr } = await supabase
+       .from('milk_collections')
+       .select(`
+          id, farmer_id, chilling_center_id, date, time, temperature, quantity, milk_type,
+          quality_result, failure_reason, dispatch_status, created_at,
+          farmers (name, farmer_id)
+       `)
+       .eq('id', newId)
+       .single();
 
-    res.status(201).json(rows[0]);
+    if (fetchErr) throw fetchErr;
+
+    res.status(201).json({
+      id: mc.id,
+      farmerId: mc.farmer_id,
+      farmerName: mc.farmers?.name,
+      farmerCode: mc.farmers?.farmer_id,
+      chillingCenterId: mc.chilling_center_id,
+      date: mc.date,
+      time: mc.time,
+      temperature: mc.temperature,
+      quantity: mc.quantity,
+      milkType: mc.milk_type,
+      qualityResult: mc.quality_result,
+      failureReason: mc.failure_reason,
+      dispatchStatus: mc.dispatch_status,
+      createdAt: mc.created_at
+    });
   } catch (err) {
     console.error('Create collection error:', err);
     res.status(500).json({ error: 'Server error' });
