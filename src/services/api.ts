@@ -132,17 +132,17 @@ export const getFarmer = async (id: number): Promise<Farmer> => {
 
 // ============ COLLECTIONS ============
 
-/** GET /api/collections */
+/** GET /api/collections?action=list */
 export const getCollections = async (centerId?: number, farmerId?: number): Promise<MilkCollection[]> => {
-  let url = '/api/collections';
-  if (centerId) url += `?centerId=${centerId}`;
-  else if (farmerId) url += `?farmerId=${farmerId}`;
+  let url = '/api/collections?action=list';
+  if (centerId) url += `&centerId=${centerId}`;
+  else if (farmerId) url += `&farmerId=${farmerId}`;
   return apiFetch<MilkCollection[]>(url);
 };
 
-/** POST /api/collections */
+/** POST /api/collections?action=create */
 export const createCollection = async (data: Partial<MilkCollection>): Promise<MilkCollection> => {
-  return apiFetch<MilkCollection>('/api/collections', {
+  return apiFetch<MilkCollection>('/api/collections?action=create', {
     method: 'POST',
     body: JSON.stringify(data),
   });

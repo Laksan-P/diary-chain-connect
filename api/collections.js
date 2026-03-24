@@ -16,8 +16,15 @@ export default async function handler(req, res) {
   const user = authenticate(req, res);
   if (!user) return;
 
-  // ────────── GET /api/collections ──────────
-  if (req.method === 'GET') {
+  const { action } = req.query;
+
+  // Debug logging
+  console.log("METHOD:", req.method);
+  console.log("ACTION:", action);
+  console.log("BODY:", getBody(req));
+
+  // ────────── GET /api/collections?action=list ──────────
+  if (action === 'list' && req.method === 'GET') {
     try {
       let query = supabase
         .from('milk_collections')
@@ -57,8 +64,8 @@ export default async function handler(req, res) {
     }
   }
 
-  // ────────── POST /api/collections ──────────
-  if (req.method === 'POST') {
+  // ────────── POST /api/collections?action=create ──────────
+  if (action === 'create' && req.method === 'POST') {
     try {
       const body = getBody(req);
       const { farmerId, chillingCenterId, date, time, temperature, quantity, milkType } = body;

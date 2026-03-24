@@ -69,7 +69,7 @@ class ApiService {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
     } else {
-      final body = jsonDecode(response.body);
+      final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
       throw Exception(
         body['error'] ?? 'Request failed: ${response.statusCode}',
       );
