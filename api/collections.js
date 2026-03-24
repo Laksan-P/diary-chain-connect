@@ -2,6 +2,14 @@ import supabase from './_lib/supabase.js';
 import { authenticate } from './_lib/auth.js';
 import { cors } from './_lib/cors.js';
 
+function getBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body); } catch { return {}; }
+  }
+  return req.body;
+}
+
 export default async function handler(req, res) {
   if (cors(req, res)) return;
 
@@ -52,7 +60,8 @@ export default async function handler(req, res) {
   // ────────── POST /api/collections ──────────
   if (req.method === 'POST') {
     try {
-      const { farmerId, chillingCenterId, date, time, temperature, quantity, milkType } = req.body;
+      const body = getBody(req);
+      const { farmerId, chillingCenterId, date, time, temperature, quantity, milkType } = body;
       if (!farmerId || !chillingCenterId || !date || !time || temperature == null || !quantity) {
         return res.status(400).json({ error: 'Missing required fields' });
       }

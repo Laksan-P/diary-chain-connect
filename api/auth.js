@@ -3,15 +3,35 @@ import { authenticate, signToken } from './_lib/auth.js';
 import { cors } from './_lib/cors.js';
 import bcrypt from 'bcryptjs';
 
+/**
+ * Safely parse request body.
+ * Vercel usually auto-parses JSON, but if Content-Type is missing
+ * or body arrives as a string, this handles it gracefully.
+ */
+function getBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body); } catch { return {}; }
+  }
+  return req.body;
+}
+
 export default async function handler(req, res) {
   if (cors(req, res)) return;
 
   const { action } = req.query;
 
+  // Debug logging — visible in Vercel function logs
+  console.log('[AUTH] METHOD:', req.method, '| ACTION:', action);
+
   // ────────── POST /api/auth?action=login ──────────
   if (action === 'login' && req.method === 'POST') {
     try {
-      const { email, password } = req.body;
+      const body = getBody(req);
+      const { email, password } = body;
+
+      console.log('[AUTH:login] Email:', email ? email : '(missing)');
+
       if (!email || !password) {
         return res.status(400).json({ error: 'Email and password required' });
       }
@@ -22,11 +42,22 @@ export default async function handler(req, res) {
         .eq('email', email)
         .maybeSingle();
 
-      if (error) throw error;
-      if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+      if (error) {
+        console.error('[AUTH:login] Supabase query error:', error);
+        throw error;
+      }
+      if (!user) {
+        console.log('[AUTH:login] User not found for email:', email);
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      console.log('[AUTH:login] User found, id:', user.id, 'role:', user.role);
 
       const isMatch = await bcrypt.compare(password, user.password_hash);
-      if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
+      if (!isMatch) {
+        console.log('[AUTH:login] Password mismatch');
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
 
       const roleMap = { nestle: 'nestle_officer', chilling_center: 'chilling_center', farmer: 'farmer' };
       const payload = {
@@ -94,12 +125,14 @@ export default async function handler(req, res) {
 
       const token = signToken(payload);
 
+      console.log('[AUTH:login] Login successful for:', email);
+
       return res.status(200).json({
         token,
         user: { ...payload, farmerId, farmerCode, chillingCenterId, nestleOfficerId },
       });
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('[AUTH:login] Error:', err);
       return res.status(500).json({ error: 'Server error' });
     }
   }
@@ -107,7 +140,8 @@ export default async function handler(req, res) {
   // ────────── POST /api/auth?action=register-farmer ──────────
   if (action === 'register-farmer' && req.method === 'POST') {
     try {
-      const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password } = req.body;
+      const body = getBody(req);
+      const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password } = body;
       if (!email || !password || !name || !chillingCenterId) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -177,7 +211,7 @@ export default async function handler(req, res) {
         },
       });
     } catch (err) {
-      console.error('Register farmer error:', err);
+      console.error('[AUTH:register-farmer] Error:', err);
       return res.status(500).json({ error: 'Server error' });
     }
   }
@@ -188,7 +222,8 @@ export default async function handler(req, res) {
     if (!user) return;
 
     try {
-      const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password } = req.body;
+      const body = getBody(req);
+      const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password } = body;
       if (!email || !password || !name || !chillingCenterId) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -241,7 +276,7 @@ export default async function handler(req, res) {
         id: farmerRowId, farmerId: farmerCode, userId, name, address, phone, nic,
       });
     } catch (err) {
-      console.error('Register farmer by center error:', err);
+      console.error('[AUTH:register-farmer-by-center] Error:', err);
       return res.status(500).json({ error: 'Server error' });
     }
   }
@@ -249,7 +284,8 @@ export default async function handler(req, res) {
   // ────────── POST /api/auth?action=register-user ──────────
   if (action === 'register-user' && req.method === 'POST') {
     try {
-      const { name, email, password, role, bankName, accountNumber, branch, location, designation } = req.body;
+      const body = getBody(req);
+      const { name, email, password, role, bankName, accountNumber, branch, location, designation } = body;
       if (!email || !password || !name || !role) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -316,7 +352,7 @@ export default async function handler(req, res) {
         user: { ...payload, chillingCenterId, nestleOfficerId },
       });
     } catch (err) {
-      console.error('Register user error:', err);
+      console.error('[AUTH:register-user] Error:', err);
       return res.status(500).json({ error: 'Server error' });
     }
   }
@@ -364,7 +400,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json(user);
     } catch (err) {
-      console.error('Me error:', err);
+      console.error('[AUTH:me] Error:', err);
       return res.status(500).json({ error: 'Server error' });
     }
   }
@@ -386,10 +422,16 @@ export default async function handler(req, res) {
 
       return res.status(200).json(flattened);
     } catch (err) {
-      console.error('Get nestle officers error:', err);
+      console.error('[AUTH:nestle-officers] Error:', err);
       return res.status(500).json({ error: 'Server error' });
     }
   }
 
-  return res.status(400).json({ error: 'Invalid action' });
+  // Fallback — no matching action
+  console.log('[AUTH] No matching action. method:', req.method, 'action:', action);
+  return res.status(400).json({
+    error: 'Invalid action or method',
+    method: req.method,
+    action: action || null,
+  });
 }

@@ -2,6 +2,14 @@ import supabase from './_lib/supabase.js';
 import { authenticate } from './_lib/auth.js';
 import { cors } from './_lib/cors.js';
 
+function getBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body); } catch { return {}; }
+  }
+  return req.body;
+}
+
 export default async function handler(req, res) {
   if (cors(req, res)) return;
 
@@ -17,7 +25,8 @@ export default async function handler(req, res) {
   // ────────── POST /api/operations?action=quality-test ──────────
   if (action === 'quality-test' && req.method === 'POST') {
     try {
-      const { collectionId, snf, fat, water } = req.body;
+      const body = getBody(req);
+      const { collectionId, snf, fat, water } = body;
       if (!collectionId || snf == null || fat == null || water == null) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -132,7 +141,8 @@ export default async function handler(req, res) {
   // ────────── POST /api/operations?action=create-dispatch ──────────
   if (action === 'create-dispatch' && req.method === 'POST') {
     try {
-      const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items } = req.body;
+      const body = getBody(req);
+      const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items } = body;
       if (!chillingCenterId || !transporterName || !vehicleNumber || !driverContact || !dispatchDate || !items?.length) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -187,7 +197,8 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'id is required' });
 
     try {
-      const { status, reason } = req.body;
+      const body = getBody(req);
+      const { status, reason } = body;
       if (!['Approved', 'Rejected'].includes(status)) {
         return res.status(400).json({ error: 'Status must be Approved or Rejected' });
       }
@@ -238,7 +249,8 @@ export default async function handler(req, res) {
   // ────────── POST /api/operations?action=create-pricing-rule ──────────
   if (action === 'create-pricing-rule' && req.method === 'POST') {
     try {
-      const { basePricePerLiter, fatBonus, snfBonus, effectiveFrom } = req.body;
+      const body = getBody(req);
+      const { basePricePerLiter, fatBonus, snfBonus, effectiveFrom } = body;
       if (!basePricePerLiter || !fatBonus || !snfBonus || !effectiveFrom) {
         return res.status(400).json({ error: 'Missing required fields' });
       }

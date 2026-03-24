@@ -2,6 +2,14 @@ import supabase from './_lib/supabase.js';
 import { authenticate } from './_lib/auth.js';
 import { cors } from './_lib/cors.js';
 
+function getBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body); } catch { return {}; }
+  }
+  return req.body;
+}
+
 export default async function handler(req, res) {
   if (cors(req, res)) return;
 
@@ -86,7 +94,8 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'id is required' });
 
     try {
-      const { name, address, phone, nic, bankName, accountNumber, branch } = req.body;
+      const body = getBody(req);
+      const { name, address, phone, nic, bankName, accountNumber, branch } = body;
 
       const { data: f, error: fErr } = await supabase
         .from('farmers').select('user_id').eq('id', id).single();

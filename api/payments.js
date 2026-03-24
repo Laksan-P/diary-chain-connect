@@ -2,6 +2,14 @@ import supabase from './_lib/supabase.js';
 import { authenticate } from './_lib/auth.js';
 import { cors } from './_lib/cors.js';
 
+function getBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body); } catch { return {}; }
+  }
+  return req.body;
+}
+
 export default async function handler(req, res) {
   if (cors(req, res)) return;
 
@@ -50,7 +58,8 @@ export default async function handler(req, res) {
   // ────────── POST /api/payments?action=generate ──────────
   if (action === 'generate' && req.method === 'POST') {
     try {
-      const { collectionId } = req.body;
+      const body = getBody(req);
+      const { collectionId } = body;
       if (!collectionId) return res.status(400).json({ error: 'collectionId required' });
 
       const { data: col, error: colErr } = await supabase
@@ -114,7 +123,8 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'id is required' });
 
     try {
-      const { status } = req.body;
+      const body = getBody(req);
+      const { status } = body;
       if (status !== 'Paid') return res.status(400).json({ error: 'Status must be Paid' });
 
       await supabase
