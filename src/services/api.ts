@@ -1,7 +1,7 @@
 /**
- * API Service Layer — Connected to Express Backend
- * =================================================
- * All calls go to the Express backend via Vite proxy (/api → http://localhost:4000/api)
+ * API Service Layer — Connected to Vercel Serverless Backend
+ * ==========================================================
+ * All calls go to the Vercel serverless API functions via /api/...?action=...
  */
 
 import type {
@@ -10,7 +10,7 @@ import type {
   Notification, CenterPerformance,
 } from '@/types';
 
-const API_BASE_URL = ''; // Proxied via vite.config.ts
+const API_BASE_URL = ''; // Same origin on Vercel
 
 // ============ AUTH TOKEN MANAGEMENT ============
 let authToken: string | null = localStorage.getItem('auth_token');
@@ -60,9 +60,9 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
 // ============ AUTH ============
 
-/** POST /api/auth/login */
+/** POST /api/auth?action=login */
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
-  const data = await apiFetch<AuthResponse>('/api/auth/login', {
+  const data = await apiFetch<AuthResponse>('/api/auth?action=login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
@@ -71,9 +71,9 @@ export const login = async (email: string, password: string): Promise<AuthRespon
   return data;
 };
 
-/** POST /api/auth/register-farmer */
+/** POST /api/auth?action=register-farmer */
 export const registerFarmer = async (data: FarmerRegistration): Promise<AuthResponse> => {
-  const res = await apiFetch<AuthResponse>('/api/auth/register-farmer', {
+  const res = await apiFetch<AuthResponse>('/api/auth?action=register-farmer', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -82,9 +82,9 @@ export const registerFarmer = async (data: FarmerRegistration): Promise<AuthResp
   return res;
 };
 
-/** POST /api/auth/register-user */
+/** POST /api/auth?action=register-user */
 export const registerUser = async (data: { name: string; email: string; password: string; role: 'nestle' | 'chilling_center' }): Promise<AuthResponse> => {
-  const res = await apiFetch<AuthResponse>('/api/auth/register-user', {
+  const res = await apiFetch<AuthResponse>('/api/auth?action=register-user', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -93,41 +93,41 @@ export const registerUser = async (data: { name: string; email: string; password
   return res;
 };
 
-/** POST /api/auth/register-farmer-by-center */
+/** POST /api/auth?action=register-farmer-by-center */
 export const registerFarmerByCenter = async (data: FarmerRegistration): Promise<Farmer> => {
-  return apiFetch<Farmer>('/api/auth/register-farmer-by-center', {
+  return apiFetch<Farmer>('/api/auth?action=register-farmer-by-center', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 };
 
-/** GET /api/auth/me */
+/** GET /api/auth?action=me */
 export const getMe = async (): Promise<User> => {
-  return apiFetch<User>('/api/auth/me');
+  return apiFetch<User>('/api/auth?action=me');
 };
 
-/** GET /api/auth/nestle-officers */
+/** GET /api/auth?action=nestle-officers */
 export const getNestleOfficers = async (): Promise<any[]> => {
-  return apiFetch<any[]>('/api/auth/nestle-officers');
+  return apiFetch<any[]>('/api/auth?action=nestle-officers');
 };
 
 // ============ CHILLING CENTERS ============
 
-/** GET /api/chilling-centers */
+/** GET /api/chilling-centers?action=list */
 export const getChillingCenters = async (): Promise<ChillingCenter[]> => {
-  return apiFetch<ChillingCenter[]>('/api/chilling-centers');
+  return apiFetch<ChillingCenter[]>('/api/chilling-centers?action=list');
 };
 
 // ============ FARMERS ============
 
-/** GET /api/farmers */
+/** GET /api/farmers?action=list */
 export const getFarmers = async (): Promise<Farmer[]> => {
-  return apiFetch<Farmer[]>('/api/farmers');
+  return apiFetch<Farmer[]>('/api/farmers?action=list');
 };
 
-/** GET /api/farmers/:id */
+/** GET /api/farmers?action=get&id=X */
 export const getFarmer = async (id: number): Promise<Farmer> => {
-  return apiFetch<Farmer>(`/api/farmers/${id}`);
+  return apiFetch<Farmer>(`/api/farmers?action=get&id=${id}`);
 };
 
 // ============ COLLECTIONS ============
@@ -150,9 +150,9 @@ export const createCollection = async (data: Partial<MilkCollection>): Promise<M
 
 // ============ QUALITY TESTS ============
 
-/** POST /api/quality-tests */
+/** POST /api/operations?action=quality-test */
 export const submitQualityTest = async (data: { collectionId: number; snf: number; fat: number; water: number }): Promise<QualityTest> => {
-  return apiFetch<QualityTest>('/api/quality-tests', {
+  return apiFetch<QualityTest>('/api/operations?action=quality-test', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -160,24 +160,24 @@ export const submitQualityTest = async (data: { collectionId: number; snf: numbe
 
 // ============ DISPATCHES ============
 
-/** GET /api/dispatches */
+/** GET /api/operations?action=dispatches */
 export const getDispatches = async (centerId?: number): Promise<Dispatch[]> => {
-  let url = '/api/dispatches';
-  if (centerId) url += `?centerId=${centerId}`;
+  let url = '/api/operations?action=dispatches';
+  if (centerId) url += `&centerId=${centerId}`;
   return apiFetch<Dispatch[]>(url);
 };
 
-/** POST /api/dispatches */
+/** POST /api/operations?action=create-dispatch */
 export const createDispatch = async (data: Partial<Dispatch>): Promise<Dispatch> => {
-  return apiFetch<Dispatch>('/api/dispatches', {
+  return apiFetch<Dispatch>('/api/operations?action=create-dispatch', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 };
 
-/** PATCH /api/dispatches/:id/status */
+/** PATCH /api/operations?action=dispatch-status&id=X */
 export const updateDispatchStatus = async (id: number, status: 'Approved' | 'Rejected', reason?: string): Promise<void> => {
-  await apiFetch<{ success: boolean }>(`/api/dispatches/${id}/status`, {
+  await apiFetch<{ success: boolean }>(`/api/operations?action=dispatch-status&id=${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ status, reason }),
   });
@@ -185,14 +185,14 @@ export const updateDispatchStatus = async (id: number, status: 'Approved' | 'Rej
 
 // ============ PRICING RULES ============
 
-/** GET /api/pricing-rules */
+/** GET /api/operations?action=pricing-rules */
 export const getPricingRules = async (): Promise<PricingRule[]> => {
-  return apiFetch<PricingRule[]>('/api/pricing-rules');
+  return apiFetch<PricingRule[]>('/api/operations?action=pricing-rules');
 };
 
-/** POST /api/pricing-rules */
+/** POST /api/operations?action=create-pricing-rule */
 export const createPricingRule = async (data: Partial<PricingRule>): Promise<PricingRule> => {
-  return apiFetch<PricingRule>('/api/pricing-rules', {
+  return apiFetch<PricingRule>('/api/operations?action=create-pricing-rule', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -200,24 +200,24 @@ export const createPricingRule = async (data: Partial<PricingRule>): Promise<Pri
 
 // ============ PAYMENTS ============
 
-/** GET /api/payments */
+/** GET /api/payments?action=list */
 export const getPayments = async (farmerId?: number): Promise<Payment[]> => {
-  let url = '/api/payments';
-  if (farmerId) url += `?farmerId=${farmerId}`;
+  let url = '/api/payments?action=list';
+  if (farmerId) url += `&farmerId=${farmerId}`;
   return apiFetch<Payment[]>(url);
 };
 
-/** POST /api/payments/generate */
+/** POST /api/payments?action=generate */
 export const generatePayment = async (collectionId: number): Promise<Payment> => {
-  return apiFetch<Payment>('/api/payments/generate', {
+  return apiFetch<Payment>('/api/payments?action=generate', {
     method: 'POST',
     body: JSON.stringify({ collectionId }),
   });
 };
 
-/** PATCH /api/payments/:id/status */
+/** PATCH /api/payments?action=update-status&id=X */
 export const updatePaymentStatus = async (id: number, status: 'Paid'): Promise<void> => {
-  await apiFetch<{ success: boolean }>(`/api/payments/${id}/status`, {
+  await apiFetch<{ success: boolean }>(`/api/payments?action=update-status&id=${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
@@ -225,16 +225,16 @@ export const updatePaymentStatus = async (id: number, status: 'Paid'): Promise<v
 
 // ============ ANALYTICS ============
 
-/** GET /api/chilling-centers/performance */
+/** GET /api/chilling-centers?action=performance */
 export const getCenterPerformance = async (): Promise<CenterPerformance[]> => {
-  return apiFetch<CenterPerformance[]>('/api/chilling-centers/performance');
+  return apiFetch<CenterPerformance[]>('/api/chilling-centers?action=performance');
 };
 
 // ============ NOTIFICATIONS ============
 
-/** GET /api/notifications */
+/** GET /api/notifications?action=list */
 export const getNotifications = async (): Promise<Notification[]> => {
-  return apiFetch<Notification[]>('/api/notifications');
+  return apiFetch<Notification[]>('/api/notifications?action=list');
 };
 
 // ============ LOGOUT ============

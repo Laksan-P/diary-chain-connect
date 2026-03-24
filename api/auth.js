@@ -20,60 +20,59 @@ export default async function handler(req, res) {
   if (cors(req, res)) return;
 
   const { action } = req.query;
+  const body = getBody(req);
 
   // Debug logging — visible in Vercel function logs
-  console.log('[AUTH] METHOD:', req.method, '| ACTION:', action);
+  console.log("METHOD:", req.method);
+  console.log("ACTION:", action);
+  console.log("BODY:", body);
 
   // ────────── POST /api/auth?action=login ──────────
   if (action === 'login' && req.method === 'POST') {
     try {
-      const body = getBody(req);
       const { email, password } = body;
-
-      console.log('[AUTH:login] Email:', email ? email : '(missing)');
 
       if (!email || !password) {
         return res.status(400).json({ error: 'Email and password required' });
       }
 
-      const { data: user, error } = await supabase
+      const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('email', email)
         .maybeSingle();
 
+      console.log('DB USER:', data, error);
+
       if (error) {
         console.error('[AUTH:login] Supabase query error:', error);
         throw error;
       }
-      if (!user) {
-        console.log('[AUTH:login] User not found for email:', email);
-        return res.status(401).json({ error: 'Invalid credentials' });
+      if (!data) {
+        return res.status(401).json({ error: 'User not found' });
       }
 
-      console.log('[AUTH:login] User found, id:', user.id, 'role:', user.role);
-
-      const isMatch = await bcrypt.compare(password, user.password_hash);
+      const isMatch = await bcrypt.compare(password, data.password_hash);
       if (!isMatch) {
         console.log('[AUTH:login] Password mismatch');
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: 'Wrong password' });
       }
 
       const roleMap = { nestle: 'nestle_officer', chilling_center: 'chilling_center', farmer: 'farmer' };
       const payload = {
-        id: user.id,
-        email: user.email,
-        role: roleMap[user.role] || user.role,
-        name: user.name,
+        id: data.id,
+        email: data.email,
+        role: roleMap[data.role] || data.role,
+        name: data.name,
       };
 
       let farmerId = null;
       let farmerCode = null;
-      if (user.role === 'farmer') {
+      if (data.role === 'farmer') {
         const { data: fRows, error: fErr } = await supabase
           .from('farmers')
           .select('id, farmer_id, address, phone, nic')
-          .eq('user_id', user.id)
+          .eq('user_id', data.id)
           .maybeSingle();
 
         if (fErr) throw fErr;
@@ -100,11 +99,11 @@ export default async function handler(req, res) {
       }
 
       let chillingCenterId = null;
-      if (user.role === 'chilling_center') {
+      if (data.role === 'chilling_center') {
         const { data: cc, error: ccErr } = await supabase
           .from('chilling_centers')
           .select('id')
-          .eq('user_id', user.id)
+          .eq('user_id', data.id)
           .maybeSingle();
         if (ccErr) throw ccErr;
         if (!cc) return res.status(401).json({ error: 'Chilling Center profile no longer exists' });
@@ -112,11 +111,11 @@ export default async function handler(req, res) {
       }
 
       let nestleOfficerId = null;
-      if (user.role === 'nestle') {
+      if (data.role === 'nestle') {
         const { data: off, error: offErr } = await supabase
           .from('nestle_officers')
           .select('id')
-          .eq('user_id', user.id)
+          .eq('user_id', data.id)
           .maybeSingle();
         if (offErr) throw offErr;
         if (!off) return res.status(401).json({ error: 'Nestle Officer profile no longer exists' });
@@ -132,8 +131,8 @@ export default async function handler(req, res) {
         user: { ...payload, farmerId, farmerCode, chillingCenterId, nestleOfficerId },
       });
     } catch (err) {
-      console.error('[AUTH:login] Error:', err);
-      return res.status(500).json({ error: 'Server error' });
+      console.error('LOGIN ERROR:', err);
+      return res.status(500).json({ error: err.message });
     }
   }
 

@@ -72,7 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final auth = context.read<AuthProvider>();
       final farmerId = auth.user?['farmerId'];
       
-      await _api.patch('/farmers/$farmerId', {
+      await _api.patch('/farmers?action=update&id=$farmerId', {
         'name': _nameController.text.trim(),
         'address': _addressController.text.trim(),
         'phone': _phoneController.text.trim(),

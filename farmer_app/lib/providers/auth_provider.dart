@@ -21,7 +21,7 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final res = await _api.get('/auth/me');
+      final res = await _api.get('/auth?action=me');
       _user = res;
     } catch (e) {
       _user = null;
@@ -34,14 +34,14 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> login(String email, String password) async {
-    final res = await _api.post('/auth/login', {'email': email, 'password': password});
+    final res = await _api.post('/auth?action=login', {'email': email, 'password': password});
     await _storage.write(key: 'auth_token', value: res['token']);
     _user = res['user'];
     notifyListeners();
   }
 
   Future<void> register(Map<String, dynamic> data) async {
-    final res = await _api.post('/auth/register-farmer', data);
+    final res = await _api.post('/auth?action=register-farmer', data);
     await _storage.write(key: 'auth_token', value: res['token']);
     _user = res['user'];
     notifyListeners();

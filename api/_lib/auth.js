@@ -1,4 +1,6 @@
 import jwt from 'jsonwebtoken';
+const sign = jwt.sign;
+const verify = jwt.verify;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
@@ -11,7 +13,7 @@ export function verifyToken(req) {
   if (!header || !header.startsWith('Bearer ')) return null;
   const token = header.split(' ')[1];
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return verify(token, JWT_SECRET);
   } catch {
     return null;
   }
@@ -34,5 +36,5 @@ export function authenticate(req, res) {
  * Sign a JWT token.
  */
 export function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+  return sign(payload, JWT_SECRET, { expiresIn: '7d' });
 }

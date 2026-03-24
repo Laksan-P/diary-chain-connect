@@ -43,8 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final results = await Future.wait([
         _api.get('/collections?farmerId=${user['farmerId']}'),
-        _api.get('/payments?farmerId=${user['farmerId']}'),
-        _api.get('/notifications'),
+        _api.get('/payments?action=list&farmerId=${user['farmerId']}'),
+        _api.get('/notifications?action=list'),
       ]);
       setState(() {
         _collections = results[0];

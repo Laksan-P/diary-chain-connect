@@ -46,7 +46,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _fetchCenters() async {
     try {
-      final res = await _api.get('/chilling-centers');
+      final res = await _api.get('/chilling-centers?action=list');
       setState(() => _centers = res);
     } catch (e) {
       // Handle error
