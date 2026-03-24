@@ -1,6 +1,6 @@
-import supabase from '../../_lib/supabase.js';
-import { authenticate } from '../../_lib/auth.js';
-import { cors } from '../../_lib/cors.js';
+import supabase from './_lib/supabase.js';
+import { authenticate } from './_lib/auth.js';
+import { cors } from './_lib/cors.js';
 
 export default async function handler(req, res) {
   if (cors(req, res)) return;
@@ -8,6 +8,7 @@ export default async function handler(req, res) {
   const user = authenticate(req, res);
   if (!user) return;
 
+  // ────────── GET /api/collections ──────────
   if (req.method === 'GET') {
     try {
       let query = supabase
@@ -31,19 +32,13 @@ export default async function handler(req, res) {
       if (error) throw error;
 
       const flattened = data.map((item) => ({
-        id: item.id,
-        farmerId: item.farmer_id,
-        farmerName: item.farmers?.name,
-        farmerCode: item.farmers?.farmer_id,
+        id: item.id, farmerId: item.farmer_id,
+        farmerName: item.farmers?.name, farmerCode: item.farmers?.farmer_id,
         chillingCenterId: item.chilling_center_id,
-        date: item.date,
-        time: item.time,
-        temperature: item.temperature,
-        quantity: item.quantity,
-        milkType: item.milk_type,
-        qualityResult: item.quality_result,
-        failureReason: item.failure_reason,
-        dispatchStatus: item.dispatch_status,
+        date: item.date, time: item.time,
+        temperature: item.temperature, quantity: item.quantity,
+        milkType: item.milk_type, qualityResult: item.quality_result,
+        failureReason: item.failure_reason, dispatchStatus: item.dispatch_status,
         createdAt: item.created_at,
       }));
 
@@ -54,6 +49,7 @@ export default async function handler(req, res) {
     }
   }
 
+  // ────────── POST /api/collections ──────────
   if (req.method === 'POST') {
     try {
       const { farmerId, chillingCenterId, date, time, temperature, quantity, milkType } = req.body;
@@ -64,13 +60,8 @@ export default async function handler(req, res) {
       const { data: insertRows, error: insertErr } = await supabase
         .from('milk_collections')
         .insert({
-          farmer_id: farmerId,
-          chilling_center_id: chillingCenterId,
-          date,
-          time,
-          temperature,
-          quantity,
-          milk_type: milkType || 'Cow',
+          farmer_id: farmerId, chilling_center_id: chillingCenterId,
+          date, time, temperature, quantity, milk_type: milkType || 'Cow',
         })
         .select('id')
         .single();
@@ -91,19 +82,13 @@ export default async function handler(req, res) {
       if (fetchErr) throw fetchErr;
 
       return res.status(201).json({
-        id: mc.id,
-        farmerId: mc.farmer_id,
-        farmerName: mc.farmers?.name,
-        farmerCode: mc.farmers?.farmer_id,
+        id: mc.id, farmerId: mc.farmer_id,
+        farmerName: mc.farmers?.name, farmerCode: mc.farmers?.farmer_id,
         chillingCenterId: mc.chilling_center_id,
-        date: mc.date,
-        time: mc.time,
-        temperature: mc.temperature,
-        quantity: mc.quantity,
-        milkType: mc.milk_type,
-        qualityResult: mc.quality_result,
-        failureReason: mc.failure_reason,
-        dispatchStatus: mc.dispatch_status,
+        date: mc.date, time: mc.time,
+        temperature: mc.temperature, quantity: mc.quantity,
+        milkType: mc.milk_type, qualityResult: mc.quality_result,
+        failureReason: mc.failure_reason, dispatchStatus: mc.dispatch_status,
         createdAt: mc.created_at,
       });
     } catch (err) {
