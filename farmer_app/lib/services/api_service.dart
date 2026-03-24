@@ -1,21 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io' show Platform;
 
 class ApiService {
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:4000/api';
-    } else if (Platform.isAndroid) {
-      // Use 10.0.2.2 to connect to host's localhost from Android Emulator
-      // Change back to ngrok if testing on a REAL phone over cellular/other network
-      return 'https://submedially-nonperforming-clarine.ngrok-free.dev/api';
-    } else {
-      return 'http://localhost:4000/api'; // iOS simulator or Desktop
-    }
-  }
+  return 'https://diary-chain-connect.vercel.app/api';
+}
 
   final storage = const FlutterSecureStorage();
 
@@ -27,7 +17,6 @@ class ApiService {
     String? token = await getToken();
     return {
       'Content-Type': 'application/json',
-      'ngrok-skip-browser-warning': 'true',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
