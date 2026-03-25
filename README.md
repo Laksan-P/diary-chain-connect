@@ -1,73 +1,131 @@
-# Welcome to your Lovable project
+## Dairy Chain Connect System
 
-## Project info
+Overview
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Dairy Chain Connect is a full-stack dairy supply chain management system designed to streamline operations between farmers, chilling centers, and Nestlé.
 
-## How can I edit this code?
+The system consists of:
 
-There are several ways of editing your application.
+* Web Dashboard (for Nestlé & Chilling Centers)
+* Mobile Application (for Farmers – Android APK)
+* Cloud Backend (Vercel Serverless API)
+* Database (Supabase PostgreSQL)
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+Live System Access
 
-Changes made via Lovable will be committed automatically to this repo.
+## Web Application (Dashboard)
 
-**Use your preferred IDE**
+🔗 https://diary-chain-connect.vercel.app/
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Accessible on:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+* Laptop / Desktop
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Dashboard Login Credentials
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Use the following credentials to access the system:
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Nestlé Officer
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+* **Email:** [nestle@nestle.com]
+* **Password:** password
 
-**Edit a file directly in GitHub**
+## Chilling Center
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+* **Email:** [center@dairy.com]
+* **Password:** 123456
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Mobile Application (Farmer App)
 
-## What technologies are used for this project?
+### Download APK
 
-This project is built with:
+Short Link - [https://bit.ly/4sAziiG]
+Back Up Link - [https://drive.google.com/file/d/1bY3BYNvsmgXaYvkIWokC2xuGWBwrQYXm/view?usp=sharing]
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
+### How to Install
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+1. Download the APK file
+2. Open it on your Android device
+3. Enable **"Install Unknown Apps"** if prompted
+4. If it ask to scan the app, Then click on the without scan to open the app
+5. Install and open the app
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
+### Farmer Login
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Use a registered farmer account or create a new one via the app.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+---
+
+## System Features
+
+### Farmer App
+
+* Register & Login
+* View Profile
+---
+
+### Chilling Center Dashboard
+
+* Login
+* View Dashboard
+* Register Farmer
+* Record Milk Collection
+* Perform Quality Testing
+* Collection History
+
+---
+
+### Nestlé Dashboard
+
+* Login
+* View Dashboard
+
+---
+
+## System Architecture
+
+Frontend (React + Flutter)
+⬇
+Vercel Serverless API
+⬇
+Supabase PostgreSQL Database
+
+---
+
+## Technologies Used
+
+* **Frontend:** React (Vite), Flutter
+* **Backend:** Node.js (Serverless on Vercel)
+* **Database:** Supabase (PostgreSQL)
+* **Authentication:** JWT
+* **Hosting:** Vercel
+
+---
+
+## Notes for Evaluators
+
+* The system is fully deployed and operational
+* Android APK is provided for mobile testing
+* Database access is secured and not publicly exposed
+
+---
+
+## ✅ Status
+
+✔ Fully Functional
+✔ Deployed
+✔ Mobile + Web Integrated
+
+---
+
+Thank you for reviewing this project...
