@@ -212,10 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFintechDashboard(user, AppPreferences prefs) {
     final locale = prefs.locale.languageCode;
-    final totalQty = _collections.fold(
-      0.0,
-      (s, c) => s + (double.tryParse(c['quantity'].toString()) ?? 0.0),
-    );
+    final totalQty = 0.0;
 
     return SafeArea(
       bottom: false,
@@ -226,6 +223,8 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _buildHeader(user, totalQty, prefs),
           const SizedBox(height: 32),
+          // Hide Recent Collections for Sprint 1
+          /*
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
@@ -255,6 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     .toList(),
               ),
             ),
+          */
           const SizedBox(height: 120),
         ],
       ),
@@ -353,11 +353,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               const SizedBox(width: 12),
+              /*
               _headerAction(
                 context,
                 LucideIcons.bell,
                 onTap: _showNotifications,
               ),
+              */
             ],
           ),
           const SizedBox(height: 48),
@@ -388,7 +390,7 @@ class _HomeScreenState extends State<HomeScreen> {
             duration: const Duration(milliseconds: 300),
             child: Text(
               _isBalanceVisible
-                  ? 'Rs. ${totalQty.toStringAsFixed(2)}'
+                  ? 'Rs. 00.00'
                   : '••••••',
               key: ValueKey(_isBalanceVisible),
               style: const TextStyle(
@@ -522,50 +524,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPassbookView(String locale) {
-    return Column(
-      children: [
-        _buildSimpleHeader(Translations.get('passbook', locale)),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
-            itemCount: _collections.length,
-            itemBuilder: (context, i) {
-              return _staggered(
-                i,
-                _fintechCollectionCard(_collections[i], locale),
-              );
-            },
-          ),
-        ),
-      ],
-    );
+    return const Scaffold(backgroundColor: Colors.white, body: SizedBox.shrink());
   }
 
   Widget _buildPaymentsView(String locale) {
-    final totalPayments = _payments.fold(
-      0.0,
-      (s, p) => s + (double.tryParse(p['amount'].toString()) ?? 0.0),
-    );
-
-    return Column(
-      children: [
-        _buildSimpleHeader(Translations.get('payments', locale)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: _buildSwapSummaryCard(totalPayments, locale),
-        ),
-        const SizedBox(height: 32),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
-            itemCount: _payments.length,
-            itemBuilder: (context, i) {
-              return _staggered(i, _fintechPaymentCard(_payments[i]));
-            },
-          ),
-        ),
-      ],
-    );
+    return const Scaffold(backgroundColor: Colors.white, body: SizedBox.shrink());
   }
 
   Widget _buildSwapSummaryCard(double total, String locale) {
@@ -802,9 +765,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(32),
-        child: Column(
+        child: const Column(
           children: [
-            const Text(
+            Text(
               'Notifications',
               style: TextStyle(
                 fontSize: 22,
@@ -812,47 +775,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Expanded(
-              child: _notifications.isEmpty
-                  ? const Center(child: Text('No new notifications'))
-                  : ListView.builder(
-                      itemCount: _notifications.length,
-                      itemBuilder: (context, i) {
-                        final n = _notifications[i];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const CircleAvatar(
-                              backgroundColor: Colors.white,
-                              child: Icon(LucideIcons.info, size: 18),
-                            ),
-                            title: Text(
-                              n['title'],
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Text(n['message']),
-                            trailing: Text(
-                              DateFormat(
-                                'HH:mm',
-                              ).format(DateTime.parse(n['createdAt'])),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey.shade400,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+              child: Center(child: Text('No notifications')),
             ),
           ],
         ),
