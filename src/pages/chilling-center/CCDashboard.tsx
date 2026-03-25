@@ -15,7 +15,7 @@ const CCDashboard: React.FC = () => {
   useEffect(() => {
     Promise.all([getCollections(1), getFarmers()]).then(([cols, farmers]) => {
       setCollections(cols);
-      setFarmerCount(farmers.filter(f => f.chillingCenterId === 1).length);
+      setFarmerCount(farmers.length);
       setLoading(false);
     });
   }, []);
@@ -43,7 +43,7 @@ const CCDashboard: React.FC = () => {
         <StatCard title="Registered Farmers" value={farmerCount} icon={Users} variant="default" trend={{ value: 12, label: 'this month' }} />
         <StatCard title="Total Collection" value={formatQuantity(totalQty)} icon={Milk} variant="success" trend={{ value: 8, label: 'vs last week' }} />
         <StatCard title="Quality Pass Rate" value={`${passRate}%`} icon={Beaker} variant={passRate >= 90 ? 'success' : 'warning'} />
-        <StatCard title="Dispatches" value={collections.filter(c => c.dispatchStatus === 'Dispatched').length} icon={Truck} variant="default" />
+        <StatCard title="Dispatches" value={0} icon={Truck} variant="default" />
       </div>
 
       <div>
