@@ -353,13 +353,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               const SizedBox(width: 12),
-              /*
               _headerAction(
                 context,
                 LucideIcons.bell,
                 onTap: _showNotifications,
               ),
-              */
             ],
           ),
           const SizedBox(height: 48),
@@ -524,11 +522,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPassbookView(String locale) {
-    return const Scaffold(backgroundColor: Colors.white, body: SizedBox.shrink());
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: const SizedBox.shrink(),
+    );
   }
 
   Widget _buildPaymentsView(String locale) {
-    return const Scaffold(backgroundColor: Colors.white, body: SizedBox.shrink());
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: const SizedBox.shrink(),
+    );
   }
 
   Widget _buildSwapSummaryCard(double total, String locale) {
@@ -758,14 +762,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showNotifications() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
+      backgroundColor: isDark ? AppTheme.surfaceDark : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(32),
-        child: const Column(
+        child: Column(
           children: [
             Text(
               'Notifications',
@@ -773,11 +779,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 letterSpacing: -0.5,
+                color: isDark ? Colors.white : Colors.black87,
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             Expanded(
-              child: Center(child: Text('No notifications')),
+              child: Center(
+                child: Text(
+                  'No notifications',
+                  style: TextStyle(color: Colors.grey.shade400),
+                ),
+              ),
             ),
           ],
         ),
