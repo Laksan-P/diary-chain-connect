@@ -150,6 +150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted && !silent) {
         ToastService.show(context, 'Profile updated successfully');
+        setState(() => _isEditing = false);
       }
     } catch (e) {
       // Always show duplicate errors, even during silent saves
@@ -684,7 +685,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (v == null || v.isEmpty) {
           return Translations.get('required_field', locale);
         }
-        if (icon == LucideIcons.phone && v.length < 10) return 'Too short';
+        if (icon == LucideIcons.phone && (v.length < 9 || !RegExp(r'^[0-9]+$').hasMatch(v))) {
+          return 'Invalid phone number';
+        }
+        if (icon == LucideIcons.creditCard && !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) {
+          return 'Invalid NIC format';
+        }
         return null;
       },
     );

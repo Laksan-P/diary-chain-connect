@@ -110,6 +110,12 @@ export default async function handler(req, res) {
       const body = getBody(req);
       const { name, address, phone, nic, bank_name, account_number, branch } = body;
 
+      // Validate required fields
+      if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+      if (!phone || !phone.trim()) return res.status(400).json({ error: 'Phone is required' });
+      if (!nic || !nic.trim()) return res.status(400).json({ error: 'NIC is required' });
+      if (!address || !address.trim()) return res.status(400).json({ error: 'Address is required' });
+
       const { data: f, error: fErr } = await supabase
         .from('farmers').select('user_id').eq('id', id).single();
       if (fErr || !f) return res.status(404).json({ error: 'Farmer not found' });
