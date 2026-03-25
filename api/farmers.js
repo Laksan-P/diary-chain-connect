@@ -72,6 +72,14 @@ export default async function handler(req, res) {
       if (error) throw error;
       if (!f) return res.status(404).json({ error: 'Farmer not found' });
 
+      const { data: ba } = await supabase
+        .from('bank_accounts')
+        .select('bank_name, account_number, branch')
+        .eq('farmer_id', f.id)
+        .maybeSingle();
+
+      const bank = ba || {};
+
       const totalQuantity = (f.milk_collections || []).reduce(
         (sum, mc) => sum + parseFloat(mc.quantity || 0), 0
       );
@@ -81,6 +89,11 @@ export default async function handler(req, res) {
         name: f.name, address: f.address, phone: f.phone, nic: f.nic,
         chillingCenterId: f.chilling_center_id,
         chillingCenterName: f.chilling_centers?.name,
+        bank_name: bank.bank_name || '',
+        bankName: bank.bank_name || '',
+        account_number: bank.account_number || '',
+        accountNumber: bank.account_number || '',
+        branch: bank.branch || '',
         totalQuantity, createdAt: f.created_at,
       });
     } catch (err) {
@@ -95,7 +108,7 @@ export default async function handler(req, res) {
 
     try {
       const body = getBody(req);
-      const { name, address, phone, nic, bankName, accountNumber, branch } = body;
+      const { name, address, phone, nic, bank_name, account_number, branch } = body;
 
       const { data: f, error: fErr } = await supabase
         .from('farmers').select('user_id').eq('id', id).single();
@@ -108,19 +121,23 @@ export default async function handler(req, res) {
       await supabase.from('farmers').update({ name, address, phone, nic }).eq('id', id);
       await supabase.from('users').update({ name }).eq('id', f.user_id);
 
-      if (bankName !== undefined || accountNumber !== undefined) {
-        const { data: exba } = await supabase
-          .from('bank_accounts').select('id').eq('farmer_id', id).maybeSingle();
-        if (exba) {
-          await supabase.from('bank_accounts').update({
-            bank_name: bankName || '', account_number: accountNumber || '', branch: branch || '',
-          }).eq('farmer_id', id);
-        } else {
-          await supabase.from('bank_accounts').insert({
-            farmer_id: parseInt(id), bank_name: bankName || '',
-            account_number: accountNumber || '', branch: branch || '',
-          });
-        }
+      // Handle bank accounts table update/insert
+      const { data: exba } = await supabase
+        .from('bank_accounts').select('id').eq('farmer_id', id).maybeSingle();
+      
+      if (exba) {
+        await supabase.from('bank_accounts').update({
+          bank_name: bank_name || '', 
+          account_number: account_number || '', 
+          branch: branch || '',
+        }).eq('farmer_id', id);
+      } else {
+        await supabase.from('bank_accounts').insert({
+          farmer_id: parseInt(id), 
+          bank_name: bank_name || '', 
+          account_number: account_number || '', 
+          branch: branch || '',
+        });
       }
 
       return res.status(200).json({ success: true, message: 'Profile updated' });
