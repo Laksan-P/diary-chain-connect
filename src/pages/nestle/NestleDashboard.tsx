@@ -37,7 +37,7 @@ const NestleDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Farmers" value={stats.farmers} icon={Users} trend={{ value: 15, label: 'growth' }} />
         <StatCard title="Total Milk Collected" value={formatQuantity(stats.totalQty)} icon={Milk} variant="success" trend={{ value: 8, label: 'this month' }} />
-        <StatCard title="Active Dispatches" value={stats.dispatches} icon={Truck} variant="warning" />
+        <StatCard title="Active Dispatches" value={0} icon={Truck} variant="warning" />
         <StatCard title="Nestlé Officers" value={stats.nestleOfficers} icon={Users} trend={{ value: 0, label: 'team' }} />
       </div>
     </div>
