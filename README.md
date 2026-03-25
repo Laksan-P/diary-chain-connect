@@ -37,7 +37,7 @@ Use the following credentials to access the system:
 ## Chilling Center
 
 * **Email:** [cc@nestle.com]
-* **Password:** 123456
+* **Password:** password
 
 ---
 
