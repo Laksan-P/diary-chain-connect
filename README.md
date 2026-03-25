@@ -31,12 +31,12 @@ Use the following credentials to access the system:
 
 ## Nestlé Officer
 
-* **Email:** [nestle@nestle.com]
+* **Email:** nestle@nestle.com
 * **Password:** password
 
 ## Chilling Center
 
-* **Email:** [cc@nestle.com]
+* **Email:** cc@nestle.com
 * **Password:** password
 
 ---
@@ -71,7 +71,7 @@ Use a registered farmer account or create a new one via the app.
 ### Farmer App
 
 * Register & Login
-* View Profile
+* View Profile and Edit Profile (including Bank Details)
 ---
 
 ### Chilling Center Dashboard
