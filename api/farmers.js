@@ -118,6 +118,24 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Permission denied' });
       }
 
+      // Check for duplicate NIC (exclude current farmer)
+      if (nic && nic.trim() !== '') {
+        const { data: existingNic } = await supabase
+          .from('farmers').select('id').eq('nic', nic).neq('id', id).maybeSingle();
+        if (existingNic) {
+          return res.status(409).json({ error: 'NIC already registered by another farmer' });
+        }
+      }
+
+      // Check for duplicate phone (exclude current farmer)
+      if (phone && phone.trim() !== '') {
+        const { data: existingPhone } = await supabase
+          .from('farmers').select('id').eq('phone', phone).neq('id', id).maybeSingle();
+        if (existingPhone) {
+          return res.status(409).json({ error: 'Phone number already registered by another farmer' });
+        }
+      }
+
       await supabase.from('farmers').update({ name, address, phone, nic }).eq('id', id);
       await supabase.from('users').update({ name }).eq('id', f.user_id);
 

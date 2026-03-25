@@ -137,14 +137,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'branch': _branchController.text.trim(),
       });
 
-      await auth.checkAuth(); // Refresh user data
+      // Update local user data directly without triggering full app reload
+      if (auth.user != null) {
+        auth.user!['name'] = _nameController.text.trim();
+        auth.user!['address'] = _addressController.text.trim();
+        auth.user!['phone'] = _phoneController.text.trim();
+        auth.user!['nic'] = _nicController.text.trim();
+        auth.user!['bankName'] = _bankNameController.text.trim();
+        auth.user!['accountNumber'] = _accountNumberController.text.trim();
+        auth.user!['branch'] = _branchController.text.trim();
+      }
 
       if (mounted && !silent) {
         ToastService.show(context, 'Profile updated successfully');
       }
     } catch (e) {
-      if (mounted && !silent) {
-        ToastService.show(context, e.toString(), isError: true);
+      // Always show duplicate errors, even during silent saves
+      if (mounted) {
+        final errorMsg = e.toString();
+        if (errorMsg.contains('NIC already') || errorMsg.contains('Phone number already') || !silent) {
+          ToastService.show(context, errorMsg.replaceAll('Exception: ', ''), isError: true);
+        }
       }
     } finally {
       if (mounted && !silent) setState(() => _isLoading = false);
