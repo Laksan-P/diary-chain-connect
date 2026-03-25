@@ -12,9 +12,9 @@ const NestleDashboard: React.FC = () => {
 
   useEffect(() => {
     Promise.all([
-      getFarmers(), 
-      getCollections(), 
-      getDispatches(), 
+      getFarmers(),
+      getCollections(),
+      getDispatches(),
       getPayments(),
       getNestleOfficers()
     ]).then(([farmers, cols, dispatches, payments, officers]) => {
