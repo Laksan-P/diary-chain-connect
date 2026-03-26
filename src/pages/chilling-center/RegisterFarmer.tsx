@@ -51,9 +51,27 @@ const RegisterFarmer: React.FC = () => {
       <motion.form onSubmit={handleSubmit} className="glass-card p-6 space-y-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2"><Label>Full Name</Label><Input value={form.name} onChange={e => update('name', e.target.value)} placeholder="e.g. Sunil Perera" required /></div>
-          <div className="space-y-2"><Label>NIC</Label><Input value={form.nic} onChange={e => update('nic', e.target.value)} placeholder="e.g. 199012345678" required /></div>
+          <div className="space-y-2">
+            <Label>NIC</Label>
+            <Input 
+              value={form.nic} 
+              onChange={e => update('nic', e.target.value.toUpperCase())} 
+              maxLength={12} 
+              placeholder="e.g. 199012345678" 
+              required 
+            />
+          </div>
           <div className="space-y-2 md:col-span-2"><Label>Address</Label><Input value={form.address} onChange={e => update('address', e.target.value)} placeholder="e.g. No 24, Flower Road, Colombo" required /></div>
-          <div className="space-y-2"><Label>Phone</Label><Input value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="e.g. 0771234567" required /></div>
+          <div className="space-y-2">
+            <Label>Phone</Label>
+            <Input 
+              value={form.phone} 
+              onChange={e => update('phone', e.target.value.replace(/\D/g, ''))} 
+              maxLength={10} 
+              placeholder="e.g. 0771234567" 
+              required 
+            />
+          </div>
           <div className="space-y-2">
             <Label>Chilling Center</Label>
             <Select value={form.chillingCenterId} onValueChange={v => update('chillingCenterId', v)}>

@@ -195,20 +195,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _field(String key, String label, IconData icon, String locale, {TextInputType? type, bool obscure = false, String? hint}) => Padding(
-    padding: const EdgeInsets.only(bottom: 16),
-    child: TextFormField(
-      controller: _controllers[key],
-      decoration: AppTheme.inputDecoration(label, icon, hint: hint, context: context),
-      keyboardType: type,
-      obscureText: obscure,
-      validator: (v) {
-        if (v == null || v.isEmpty) return Translations.get('required_field', locale);
-        if (key == 'email' && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return 'Invalid email';
-        if (key == 'phone' && (v.length < 9 || !RegExp(r'^[0-9]+$').hasMatch(v))) return 'Invalid phone number';
-        if (key == 'nic' && !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) return 'Invalid NIC pattern';
-        return null;
-      },
-    ),
-  );
+  Widget _field(String key, String label, IconData icon, String locale, {TextInputType? type, bool obscure = false, String? hint}) {
+    int? maxLength;
+    List<TextInputFormatter>? formatters;
+    TextInputType? keyboardType = type;
+
+    if (key == 'phone') {
+      maxLength = 10;
+      formatters = [FilteringTextInputFormatter.digitsOnly];
+      keyboardType = TextInputType.phone;
+    } else if (key == 'nic') {
+      maxLength = 12;
+      formatters = [FilteringTextInputFormatter.allow(RegExp(r'[0-9vVxX]'))];
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: _controllers[key],
+        decoration: AppTheme.inputDecoration(label, icon, hint: hint, context: context).copyWith(
+          counterText: '', // Remove character count for cleaner UI
+        ),
+        keyboardType: keyboardType,
+        obscureText: obscure,
+        maxLength: maxLength,
+        inputFormatters: formatters,
+        validator: (v) {
+          if (v == null || v.isEmpty) return Translations.get('required_field', locale);
+          if (key == 'email' && !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return 'Invalid email';
+          if (key == 'phone') {
+            if (v.length != 10) return 'Phone number must be 10 digits';
+            if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) return 'Invalid phone number';
+          }
+          if (key == 'nic' && !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) return 'Invalid NIC (e.g. 123456789V or 12-digit)';
+          return null;
+        },
+      ),
+    );
+  }
 }

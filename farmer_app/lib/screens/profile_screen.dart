@@ -677,19 +677,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _field(TextEditingController controller, String label, IconData icon) {
     final prefs = Provider.of<AppPreferences>(context, listen: false);
     final locale = prefs.locale.languageCode;
+
+    int? maxLength;
+    List<TextInputFormatter>? formatters;
+    TextInputType keyboardType = TextInputType.text;
+
+    if (icon == LucideIcons.phone) {
+      maxLength = 10;
+      formatters = [FilteringTextInputFormatter.digitsOnly];
+      keyboardType = TextInputType.phone;
+    } else if (icon == LucideIcons.creditCard) {
+      maxLength = 12;
+      formatters = [FilteringTextInputFormatter.allow(RegExp(r'[0-9vVxX]'))];
+    }
+
     return TextFormField(
       controller: controller,
       onChanged: (_) => _onFieldChanged(),
-      decoration: AppTheme.inputDecoration(label, icon, context: context),
+      decoration: AppTheme.inputDecoration(label, icon, context: context).copyWith(
+        counterText: '',
+      ),
+      maxLength: maxLength,
+      inputFormatters: formatters,
+      keyboardType: keyboardType,
       validator: (v) {
         if (v == null || v.isEmpty) {
           return Translations.get('required_field', locale);
         }
-        if (icon == LucideIcons.phone && (v.length < 9 || !RegExp(r'^[0-9]+$').hasMatch(v))) {
-          return 'Invalid phone number';
+        if (icon == LucideIcons.phone) {
+          if (v.length != 10) return 'Phone must be 10 digits';
+          if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) return 'Invalid phone number';
         }
         if (icon == LucideIcons.creditCard && !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) {
-          return 'Invalid NIC format';
+          return 'Invalid NIC (e.g. 123456789V or 12-digit)';
         }
         return null;
       },
