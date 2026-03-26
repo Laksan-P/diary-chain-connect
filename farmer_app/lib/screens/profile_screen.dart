@@ -23,7 +23,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isEditing = false;
   bool _isLoading = false;
-  Timer? _debounce;
 
   late TextEditingController _nameController;
   late TextEditingController _addressController;
@@ -98,7 +97,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _nameController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
@@ -165,14 +163,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _onFieldChanged() {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 1500), () {
-      if (_isEditing && _formKey.currentState!.validate()) {
-        _updateProfile(silent: true);
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -258,7 +248,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextButton(
-                  onPressed: () => setState(() => _isEditing = false),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    _initControllers(); // Revert changes
+                    setState(() => _isEditing = false);
+                  },
                   child: Text(
                     Translations.get('cancel', locale),
                     style: TextStyle(
@@ -340,6 +334,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               GestureDetector(
                 onTap: () {
                   if (_isEditing) {
+                    _initControllers(); // Revert changes
                     setState(() => _isEditing = false);
                   } else {
                     widget.onBack?.call();
@@ -693,7 +688,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return TextFormField(
       controller: controller,
-      onChanged: (_) => _onFieldChanged(),
       decoration: AppTheme.inputDecoration(label, icon, context: context).copyWith(
         counterText: '',
       ),
@@ -719,7 +713,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _optionalField(TextEditingController controller, String label, IconData icon) {
     return TextFormField(
       controller: controller,
-      onChanged: (_) => _onFieldChanged(),
       decoration: AppTheme.inputDecoration(label, icon, context: context),
     );
   }
