@@ -45,8 +45,9 @@ Use the following credentials to access the system:
 
 ### Download APK
 
-Short Link - [https://bit.ly/4sAziiG]
-Back Up Link - [https://drive.google.com/file/d/1bY3BYNvsmgXaYvkIWokC2xuGWBwrQYXm/view?usp=sharing]
+Short Link - https://bit.ly/4c5momS
+Short Link - https://appurl.io/Hes0nYM38y
+Back Up Link - https://drive.google.com/file/d/1O7CmCV54LFbprmAod8M7BeM9DUSsq6Uw/view?usp=sharing
 
 ---
 
