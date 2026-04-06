@@ -9,9 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 import { getCollections, createDispatch, getDispatches } from '@/services/api';
 import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
+import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, Dispatch } from '@/types';
 
 const DispatchPage: React.FC = () => {
+  const { user } = useAuth();
+  const centerId = user?.chillingCenterId || 1;
   const [collections, setCollections] = useState<MilkCollection[]>([]);
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
@@ -19,10 +22,14 @@ const DispatchPage: React.FC = () => {
   const { toast } = useToast();
   const [form, setForm] = useState({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: new Date().toISOString().split('T')[0] });
 
+  const loadData = () => {
+    getCollections(centerId).then(c => setCollections(c.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending')));
+    getDispatches(centerId).then(setDispatches);
+  };
+
   useEffect(() => {
-    getCollections(1).then(c => setCollections(c.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending')));
-    getDispatches().then(setDispatches);
-  }, []);
+    loadData();
+  }, [user]);
 
   const toggleSelect = (id: number) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
@@ -32,15 +39,16 @@ const DispatchPage: React.FC = () => {
     setLoading(true);
     try {
       await createDispatch({
-        chillingCenterId: 1,
+        chillingCenterId: centerId,
         ...form,
         items: selected.map(id => ({ id: 0, dispatchId: 0, collectionId: id })),
       });
       toast({ title: 'Dispatch Created', description: `${selected.length} collections dispatched` });
       setSelected([]);
       setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate });
+      loadData();
     } catch {
-      toast({ title: 'Error', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Database configuration missing for dispatches. Please run the SQL schema script.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -69,9 +77,9 @@ const DispatchPage: React.FC = () => {
 
       <motion.form onSubmit={handleSubmit} className="glass-card p-6 space-y-5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="space-y-2"><Label>Transporter Name</Label><Input value={form.transporterName} onChange={e => setForm(f => ({ ...f, transporterName: e.target.value }))} placeholder="e.g. Lanka Logistics" required /></div>
-          <div className="space-y-2"><Label>Vehicle Number</Label><Input value={form.vehicleNumber} onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value }))} placeholder="e.g. WP AB-1234" required /></div>
-          <div className="space-y-2"><Label>Driver Contact</Label><Input value={form.driverContact} onChange={e => setForm(f => ({ ...f, driverContact: e.target.value }))} placeholder="e.g. 0771234567" required /></div>
+          <div className="space-y-2"><Label>Transporter Name</Label><Input value={form.transporterName} maxLength={50} onChange={e => setForm(f => ({ ...f, transporterName: e.target.value }))} placeholder="e.g. Lanka Logistics" required /></div>
+          <div className="space-y-2"><Label>Vehicle Number</Label><Input value={form.vehicleNumber} maxLength={15} onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value.toUpperCase() }))} placeholder="e.g. WP LV-1234" required /></div>
+          <div className="space-y-2"><Label>Driver Contact</Label><Input value={form.driverContact} type="tel" maxLength={10} onChange={e => { const val = e.target.value.replace(/\D/g, ''); if (val.length <= 10) setForm(f => ({ ...f, driverContact: val })); }} placeholder="e.g. 0771234567" required /></div>
           <div className="space-y-2"><Label>Dispatch Date</Label><Input type="date" value={form.dispatchDate} onChange={e => setForm(f => ({ ...f, dispatchDate: e.target.value }))} required /></div>
         </div>
 
