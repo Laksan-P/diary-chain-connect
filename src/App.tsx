@@ -44,6 +44,7 @@ const App = () => (
               <Route path="collection" element={<MilkCollectionPage />} />
               <Route path="quality" element={<QualityTestingPage />} />
               <Route path="history" element={<CollectionHistory />} />
+              <Route path="dispatch" element={<DispatchPage />} />
             </Route>
 
             {/* Nestlé */}

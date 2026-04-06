@@ -13,6 +13,7 @@ const navItems = [
   { title: 'Milk Collection', path: '/chilling-center/collection', icon: Beaker },
   { title: 'Quality Testing', path: '/chilling-center/quality', icon: Beaker },
   { title: 'Collection History', path: '/chilling-center/history', icon: History },
+  { title: 'Milk Dispatch', path: '/chilling-center/dispatch', icon: Truck },
 ];
 
 const ChillingCenterLayout: React.FC = () => {

@@ -27,7 +27,7 @@ const CollectionHistory: React.FC = () => {
     { key: 'temperature', header: 'Temp (°C)', render: (r: MilkCollection) => `${r.temperature}°C` },
     { key: 'qualityResult', header: 'Quality', render: (r: MilkCollection) => r.qualityResult ? <StatusBadge status={r.qualityResult} /> : '—' },
     { key: 'failureReason', header: 'Reason', render: (r: MilkCollection) => r.failureReason || '—' },
-    { key: 'dispatchStatus', header: 'Dispatch', render: () => '—' },
+    { key: 'dispatchStatus', header: 'Dispatch', render: (r: MilkCollection) => r.dispatchStatus ? <StatusBadge status={r.dispatchStatus} /> : <span className="text-muted-foreground">Pending</span> },
   ];
 
   return (

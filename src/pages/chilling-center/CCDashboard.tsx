@@ -3,22 +3,27 @@ import { Milk, Users, Beaker, Truck } from 'lucide-react';
 import StatCard from '@/components/StatCard';
 import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
-import { getCollections, getFarmers } from '@/services/api';
+import { getCollections, getFarmers, getDispatches } from '@/services/api';
 import type { MilkCollection } from '@/types';
 import { formatDate, formatQuantity, parseNumber } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CCDashboard: React.FC = () => {
+  const { user } = useAuth();
   const [collections, setCollections] = useState<MilkCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [farmerCount, setFarmerCount] = useState(0);
+  const [dispatchCount, setDispatchCount] = useState(0);
 
   useEffect(() => {
-    Promise.all([getCollections(1), getFarmers()]).then(([cols, farmers]) => {
+    const centerId = user?.chillingCenterId || 1;
+    Promise.all([getCollections(centerId), getFarmers(), getDispatches(centerId)]).then(([cols, farmers, dispatches]) => {
       setCollections(cols);
       setFarmerCount(farmers.length);
+      setDispatchCount(dispatches.length);
       setLoading(false);
     });
-  }, []);
+  }, [user]);
 
   const totalQty = collections.reduce((s, c) => s + parseNumber(c.quantity), 0);
   const passRate = collections.length ? Math.round((collections.filter(c => c.qualityResult === 'Pass').length / collections.length) * 100) : 0;
@@ -29,7 +34,7 @@ const CCDashboard: React.FC = () => {
     { key: 'date', header: 'Date', render: (r: MilkCollection) => formatDate(r.date) },
     { key: 'quantity', header: 'Qty (L)', render: (r: MilkCollection) => formatQuantity(r.quantity) },
     { key: 'qualityResult', header: 'Quality', render: (r: MilkCollection) => r.qualityResult ? <StatusBadge status={r.qualityResult} /> : <span className="text-muted-foreground">—</span> },
-    { key: 'dispatchStatus', header: 'Status', render: () => <span className="text-muted-foreground">—</span> },
+    { key: 'dispatchStatus', header: 'Status', render: (r: MilkCollection) => r.dispatchStatus ? <StatusBadge status={r.dispatchStatus} /> : <span className="text-muted-foreground">Pending</span> },
   ];
 
   return (
@@ -43,7 +48,7 @@ const CCDashboard: React.FC = () => {
         <StatCard title="Registered Farmers" value={farmerCount} icon={Users} variant="default" trend={{ value: 12, label: 'this month' }} />
         <StatCard title="Total Collection" value={formatQuantity(totalQty)} icon={Milk} variant="success" trend={{ value: 8, label: 'vs last week' }} />
         <StatCard title="Quality Pass Rate" value={`${passRate}%`} icon={Beaker} variant={passRate >= 90 ? 'success' : 'warning'} />
-        <StatCard title="Dispatches" value={0} icon={Truck} variant="default" />
+        <StatCard title="Dispatches" value={dispatchCount} icon={Truck} variant="default" />
       </div>
 
       <div>
