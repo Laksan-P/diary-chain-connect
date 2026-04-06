@@ -114,6 +114,7 @@ export default async function handler(req, res) {
           .eq('dispatch_id', d.id);
         if (iErr) throw iErr;
 
+        d.chillingCenterId = d.chilling_center_id;
         d.chillingCenterName = d.chilling_centers?.name;
         d.dispatchDate = d.dispatch_date;
         d.transporterName = d.transporter_name;
