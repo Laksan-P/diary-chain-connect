@@ -75,7 +75,7 @@ const QualityTestingPage: React.FC = () => {
           </Select>
         </div>
         <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-2"><Label>SNF %</Label><Input type="number" step="0.01" placeholder="e.g. 8.5" value={form.snf} onChange={e => update('snf', e.target.value)} required /></div>
+          <div className="space-y-2"><Label>SNF % (Solid-Not-Fat)</Label><Input type="number" step="0.01" placeholder="e.g. 8.5" value={form.snf} onChange={e => update('snf', e.target.value)} required /></div>
           <div className="space-y-2"><Label>FAT %</Label><Input type="number" step="0.01" placeholder="e.g. 3.5" value={form.fat} onChange={e => update('fat', e.target.value)} required /></div>
           <div className="space-y-2"><Label>Water %</Label><Input type="number" step="0.01" placeholder="e.g. 0.3" value={form.water} onChange={e => update('water', e.target.value)} required /></div>
         </div>
