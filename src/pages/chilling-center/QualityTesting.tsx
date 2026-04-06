@@ -85,19 +85,128 @@ const QualityTestingPage: React.FC = () => {
       </motion.form>
 
       {result && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 mt-4">
-          <h3 className="font-display font-semibold text-foreground mb-3">Test Result</h3>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 mt-4 border-primary/20 bg-primary/5">
+          <h3 className="font-display font-semibold text-foreground mb-3 flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            Last Test Result
+          </h3>
           <div className="flex items-center gap-3">
             <StatusBadge status={result.result} />
-            {result.reason && <span className="text-sm text-muted-foreground">Reason: {result.reason}</span>}
+            {result.reason && (
+              <span className="text-sm font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-2 py-1 rounded-md">
+                Reason: {result.reason}
+              </span>
+            )}
           </div>
-          <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
-            <div><span className="text-muted-foreground">SNF:</span> <span className="font-medium">{result.snf}%</span></div>
-            <div><span className="text-muted-foreground">FAT:</span> <span className="font-medium">{result.fat}%</span></div>
-            <div><span className="text-muted-foreground">Water:</span> <span className="font-medium">{result.water}%</span></div>
+          <div className="grid grid-cols-3 gap-4 mt-6 text-sm">
+            <div className="bg-background/50 p-3 rounded-lg border border-border/50">
+              <span className="text-muted-foreground block mb-1">SNF:</span> 
+              <span className="font-bold text-lg">{result.snf}%</span>
+            </div>
+            <div className="bg-background/50 p-3 rounded-lg border border-border/50">
+              <span className="text-muted-foreground block mb-1">FAT:</span> 
+              <span className="font-bold text-lg">{result.fat}%</span>
+            </div>
+            <div className="bg-background/50 p-3 rounded-lg border border-border/50">
+              <span className="text-muted-foreground block mb-1">Water:</span> 
+              <span className="font-bold text-lg">{result.water}%</span>
+            </div>
           </div>
         </motion.div>
       )}
+
+      <div className="mt-12 space-y-6">
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-border/60"></div>
+          </div>
+          <div className="relative flex justify-start">
+            <span className="pr-3 bg-background text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              Quality Standards Reference
+            </span>
+          </div>
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="glass-card overflow-hidden border-border/40 shadow-xl shadow-foreground/5"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="bg-muted/40 border-b border-border/40">
+                  <th className="px-6 py-4 font-bold text-foreground/80 uppercase tracking-tight text-xs">Parameter</th>
+                  <th className="px-6 py-4 font-bold text-foreground/80 uppercase tracking-tight text-xs text-center border-x border-border/20">Normal Range</th>
+                  <th className="px-6 py-4 font-bold text-foreground/80 uppercase tracking-tight text-xs text-center">Fail Condition</th>
+                  <th className="px-6 py-4 font-bold text-rose-500/80 uppercase tracking-tight text-xs text-right">Reason for Rejection</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                <tr className="group hover:bg-muted/20 transition-all duration-300">
+                  <td className="px-6 py-5">
+                    <div className="font-bold text-foreground group-hover:text-primary transition-colors">FAT %</div>
+                    <div className="text-[10px] text-muted-foreground font-medium">Milk Fat Percentage</div>
+                  </td>
+                  <td className="px-6 py-5 text-center border-x border-border/20">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      ≥ 3.5%
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-center font-mono font-medium text-rose-500 bg-rose-500/5">
+                    &lt; 3.5%
+                  </td>
+                  <td className="px-6 py-5 text-right font-bold text-rose-600 dark:text-rose-400">
+                    Low FAT
+                  </td>
+                </tr>
+                <tr className="group hover:bg-muted/20 transition-all duration-300">
+                  <td className="px-6 py-5">
+                    <div className="font-bold text-foreground group-hover:text-primary transition-colors">SNF %</div>
+                    <div className="text-[10px] text-muted-foreground font-medium">Solid-Not-Fat Content</div>
+                  </td>
+                  <td className="px-6 py-5 text-center border-x border-border/20">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      ≥ 8.5%
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-center font-mono font-medium text-rose-500 bg-rose-500/5">
+                    &lt; 8.5%
+                  </td>
+                  <td className="px-6 py-5 text-right font-bold text-rose-600 dark:text-rose-400">
+                    Low SNF
+                  </td>
+                </tr>
+                <tr className="group hover:bg-muted/20 transition-all duration-300">
+                  <td className="px-6 py-5">
+                    <div className="font-bold text-foreground group-hover:text-primary transition-colors">Water %</div>
+                    <div className="text-[10px] text-muted-foreground font-medium">Added Water Percentage</div>
+                  </td>
+                  <td className="px-6 py-5 text-center border-x border-border/20">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      ≤ 0.5%
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-center font-mono font-medium text-rose-500 bg-rose-500/5">
+                    &gt; 0.5%
+                  </td>
+                  <td className="px-6 py-5 text-right font-bold text-rose-600 dark:text-rose-400">
+                    Excess Water
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+        
+        <div className="flex items-start gap-2 px-1">
+          <div className="w-1 h-1 rounded-full bg-muted-foreground mt-1.5" />
+          <p className="text-[10px] leading-relaxed text-muted-foreground/80 font-medium italic">
+            Quality control measures are automatically enforced. Collections failing to meet these minimum standards will be rejected to maintain supply chain integrity.
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
