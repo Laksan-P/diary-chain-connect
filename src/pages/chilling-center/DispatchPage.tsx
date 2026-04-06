@@ -104,7 +104,7 @@ const DispatchPage: React.FC = () => {
 
       <div>
         <h3 className="text-lg font-display font-semibold text-foreground mb-3">Dispatch History</h3>
-        <DataTable columns={dispatchColumns} data={dispatches.filter(d => d.chillingCenterId === 1)} />
+        <DataTable columns={dispatchColumns} data={dispatches.filter(d => d.chillingCenterId === centerId)} />
       </div>
     </div>
   );
