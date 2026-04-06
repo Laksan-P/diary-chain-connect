@@ -150,12 +150,18 @@ const QualityTestingPage: React.FC = () => {
                     <div className="text-[10px] text-muted-foreground font-medium">Milk Fat Percentage</div>
                   </td>
                   <td className="px-6 py-5 text-center border-x border-border/20">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      ≥ 3.5%
-                    </span>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold">Lower Bound</span>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        ≥ 3.5%
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-6 py-5 text-center font-mono font-medium text-rose-500 bg-rose-500/5">
-                    &lt; 3.5%
+                  <td className="px-6 py-5 text-center bg-rose-500/5">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] uppercase tracking-tighter text-rose-500/70 font-bold">Reject Below</span>
+                      <span className="font-mono font-bold text-rose-500">&lt; 3.5%</span>
+                    </div>
                   </td>
                   <td className="px-6 py-5 text-right font-bold text-rose-600 dark:text-rose-400">
                     Low FAT
@@ -167,12 +173,18 @@ const QualityTestingPage: React.FC = () => {
                     <div className="text-[10px] text-muted-foreground font-medium">Solid-Not-Fat Content</div>
                   </td>
                   <td className="px-6 py-5 text-center border-x border-border/20">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      ≥ 8.5%
-                    </span>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold">Lower Bound</span>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        ≥ 8.5%
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-6 py-5 text-center font-mono font-medium text-rose-500 bg-rose-500/5">
-                    &lt; 8.5%
+                  <td className="px-6 py-5 text-center bg-rose-500/5">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] uppercase tracking-tighter text-rose-500/70 font-bold">Reject Below</span>
+                      <span className="font-mono font-bold text-rose-500">&lt; 8.5%</span>
+                    </div>
                   </td>
                   <td className="px-6 py-5 text-right font-bold text-rose-600 dark:text-rose-400">
                     Low SNF
@@ -184,12 +196,18 @@ const QualityTestingPage: React.FC = () => {
                     <div className="text-[10px] text-muted-foreground font-medium">Added Water Percentage</div>
                   </td>
                   <td className="px-6 py-5 text-center border-x border-border/20">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      ≤ 0.5%
-                    </span>
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] uppercase tracking-tighter text-muted-foreground font-bold">Upper Bound</span>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        ≤ 0.5%
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-6 py-5 text-center font-mono font-medium text-rose-500 bg-rose-500/5">
-                    &gt; 0.5%
+                  <td className="px-6 py-5 text-center bg-rose-500/5">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] uppercase tracking-tighter text-rose-500/70 font-bold">Reject Above</span>
+                      <span className="font-mono font-bold text-rose-500">&gt; 0.5%</span>
+                    </div>
                   </td>
                   <td className="px-6 py-5 text-right font-bold text-rose-600 dark:text-rose-400">
                     Excess Water
