@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Milk, Users, Truck } from 'lucide-react';
+import { Milk, Users, Truck, Building2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import StatCard from '@/components/StatCard';
-import { getFarmers, getCollections, getDispatches, getPayments, getNestleOfficers } from '@/services/api';
+import { getFarmers, getCollections, getDispatches, getPayments, getNestleOfficers, getChillingCenters } from '@/services/api';
 import { formatCurrency, formatQuantity, parseNumber } from '@/lib/utils';
 
 import { useAuth } from '@/contexts/AuthContext';
 
 const NestleDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({ farmers: 0, totalQty: 0, dispatches: 0, totalPayments: 0, nestleOfficers: 0 });
+  const [stats, setStats] = useState({ farmers: 0, totalQty: 0, dispatches: 0, totalPayments: 0, nestleOfficers: 0, chillingCenters: 0 });
 
   useEffect(() => {
     getFarmers().then(f => setStats(s => ({ ...s, farmers: f.length }))).catch(console.error);
@@ -21,6 +21,8 @@ const NestleDashboard: React.FC = () => {
     getDispatches().then(d => setStats(s => ({ ...s, dispatches: d.length }))).catch(console.error);
     
     getNestleOfficers().then(o => setStats(s => ({ ...s, nestleOfficers: o.length }))).catch(console.error);
+
+    getChillingCenters().then(c => setStats(s => ({ ...s, chillingCenters: c.length }))).catch(console.error);
   }, []);
 
   return (
@@ -29,8 +31,9 @@ const NestleDashboard: React.FC = () => {
         <h2 className="text-2xl font-display font-bold text-foreground">Welcome, {user?.name}!</h2>
         <p className="text-muted-foreground">Nestlé Dairy Supply Chain Overview</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard title="Total Farmers" value={stats.farmers} icon={Users} trend={{ value: 15, label: 'growth' }} />
+        <StatCard title="Total Chilling Centers" value={stats.chillingCenters} icon={Building2} variant="default" trend={{ value: stats.chillingCenters > 0 ? 1 : 0, label: 'centers' }} />
         <StatCard title="Total Milk Collected" value={formatQuantity(stats.totalQty)} icon={Milk} variant="success" trend={{ value: 8, label: 'this month' }} />
         <StatCard title="Active Dispatches" value={stats.dispatches} icon={Truck} variant="warning" />
         <StatCard title="Nestlé Officers" value={stats.nestleOfficers} icon={Users} trend={{ value: 0, label: 'team' }} />
