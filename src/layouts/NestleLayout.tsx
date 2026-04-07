@@ -1,21 +1,20 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Milk, Users, Truck, DollarSign, BarChart3, LogOut, Menu, Settings } from 'lucide-react';
+import { Milk, Users, Truck, DollarSign, BarChart3, LogOut, Menu, Settings, Building2 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
   { title: 'Dashboard', path: '/nestle', icon: BarChart3 },
-  // Sprint 1: Hide other features for now
-  /*
+  { title: 'Milk History', path: '/nestle/history', icon: Milk },
+  { title: 'Chilling Centers', path: '/nestle/centers', icon: Building2 },
   { title: 'Farmers', path: '/nestle/farmers', icon: Users },
   { title: 'Dispatches', path: '/nestle/dispatches', icon: Truck },
   { title: 'Pricing Rules', path: '/nestle/pricing', icon: Settings },
   { title: 'Payments', path: '/nestle/payments', icon: DollarSign },
   { title: 'Analytics', path: '/nestle/analytics', icon: BarChart3 },
-  */
 ];
 
 const NestleLayout: React.FC = () => {

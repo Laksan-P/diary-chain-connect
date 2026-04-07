@@ -6,6 +6,7 @@ export interface User {
   role: UserRole;
   name: string;
   chillingCenterId?: number;
+  chillingCenterName?: string;
   farmerId?: number;
 }
 
@@ -52,6 +53,7 @@ export interface MilkCollection {
   farmerName?: string;
   farmerCode?: string;
   chillingCenterId: number;
+  chillingCenterName?: string;
   date: string;
   time: string;
   temperature: number;

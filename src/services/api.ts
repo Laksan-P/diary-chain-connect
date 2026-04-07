@@ -118,6 +118,14 @@ export const getChillingCenters = async (): Promise<ChillingCenter[]> => {
   return apiFetch<ChillingCenter[]>('/api/chilling-centers?action=list');
 };
 
+/** POST /api/chilling-centers?action=create */
+export const createChillingCenter = async (data: { name: string; location: string }): Promise<ChillingCenter> => {
+  return apiFetch<ChillingCenter>('/api/chilling-centers?action=create', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
 // ============ FARMERS ============
 
 /** GET /api/farmers?action=list */

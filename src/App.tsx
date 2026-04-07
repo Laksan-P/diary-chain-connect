@@ -21,6 +21,8 @@ import DispatchMonitoring from "./pages/nestle/DispatchMonitoring";
 import PricingRules from "./pages/nestle/PricingRules";
 import PaymentsPage from "./pages/nestle/PaymentsPage";
 import AnalyticsPage from "./pages/nestle/AnalyticsPage";
+import NestleMilkHistory from "./pages/nestle/NestleMilkHistory";
+import ChillingCentersView from "./pages/nestle/ChillingCentersView";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +52,8 @@ const App = () => (
             {/* Nestlé */}
             <Route path="/nestle" element={<ProtectedRoute allowedRoles={['nestle_officer']}><NestleLayout /></ProtectedRoute>}>
               <Route index element={<NestleDashboard />} />
+              <Route path="history" element={<NestleMilkHistory />} />
+              <Route path="centers" element={<ChillingCentersView />} />
               <Route path="farmers" element={<FarmersView />} />
               <Route path="dispatches" element={<DispatchMonitoring />} />
               <Route path="pricing" element={<PricingRules />} />

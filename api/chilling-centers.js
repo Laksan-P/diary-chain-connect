@@ -2,17 +2,45 @@ import supabase from './_lib/supabase.js';
 import { authenticate } from './_lib/auth.js';
 import { cors } from './_lib/cors.js';
 
+function getBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body); } catch { return {}; }
+  }
+  return req.body;
+}
+
 export default async function handler(req, res) {
   if (cors(req, res)) return;
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
   const { action } = req.query;
 
+  // ────────── POST /api/chilling-centers?action=create ──────────
+  if (action === 'create' && req.method === 'POST') {
+    const user = authenticate(req, res);
+    if (!user || user.role !== 'nestle_officer') return res.status(403).json({ error: 'Forbidden' });
+
+    try {
+      const body = getBody(req);
+      const { name, location } = body;
+      if (!name || !location) return res.status(400).json({ error: 'Name and location are required' });
+
+      const { data, error } = await supabase
+        .from('chilling_centers')
+        .insert({ name, location })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.status(201).json(data);
+    } catch (err) {
+      console.error('Create chilling center error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   // ────────── GET /api/chilling-centers?action=list ──────────
-  if (action === 'list') {
+  if (action === 'list' && req.method === 'GET') {
     try {
       const { data, error } = await supabase
         .from('chilling_centers')
@@ -27,7 +55,7 @@ export default async function handler(req, res) {
   }
 
   // ────────── GET /api/chilling-centers?action=performance ──────────
-  if (action === 'performance') {
+  if (action === 'performance' && req.method === 'GET') {
     const user = authenticate(req, res);
     if (!user) return;
 
