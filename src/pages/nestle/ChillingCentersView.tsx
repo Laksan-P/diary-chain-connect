@@ -86,15 +86,23 @@ const ChillingCentersView: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Center Name</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. North Province Center" required />
+              <Input value={form.name} maxLength={50} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. North Province Center" required />
             </div>
             <div className="space-y-2">
               <Label>Location</Label>
-              <Input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Jaffna" required />
+              <Input value={form.location} maxLength={50} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Jaffna" required />
             </div>
             <div className="space-y-2">
               <Label>Contact Details (Optional)</Label>
-              <Input value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} placeholder="e.g. 0771234567" />
+              <Input 
+                value={form.contact} 
+                maxLength={10} 
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, ''); // Numbers only
+                  setForm(f => ({ ...f, contact: val })); 
+                }} 
+                placeholder="e.g. 0771234567" 
+              />
             </div>
           </div>
           <Button type="submit" disabled={submitting}>{submitting ? 'Registering...' : 'Complete Registration'}</Button>
