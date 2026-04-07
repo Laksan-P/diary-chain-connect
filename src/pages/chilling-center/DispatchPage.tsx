@@ -20,7 +20,14 @@ const DispatchPage: React.FC = () => {
   const [selected, setSelected] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const [form, setForm] = useState({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: new Date().toISOString().split('T')[0] });
+  const [form, setForm] = useState({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: new Date().toISOString().slice(0, 16), tankerCapacity: '' });
+
+  const selectedTotal = selected.reduce((sum, id) => {
+    const col = collections.find(c => c.id === id);
+    return sum + (col ? Number(col.quantity) : 0);
+  }, 0);
+  const capacityNum = Number(form.tankerCapacity) || 0;
+  const isOverCapacity = capacityNum > 0 && selectedTotal > capacityNum;
 
   const loadData = () => {
     getCollections(centerId).then(c => setCollections(c.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending')));
@@ -45,7 +52,7 @@ const DispatchPage: React.FC = () => {
       });
       toast({ title: 'Dispatch Created', description: `${selected.length} collections dispatched` });
       setSelected([]);
-      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate });
+      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
       loadData();
     } catch {
       toast({ title: 'Error', description: 'Database configuration missing for dispatches. Please run the SQL schema script.', variant: 'destructive' });
@@ -58,7 +65,7 @@ const DispatchPage: React.FC = () => {
     { key: 'id', header: 'ID', render: (r: Dispatch) => `#${r.id}` },
     { key: 'transporterName', header: 'Transporter' },
     { key: 'vehicleNumber', header: 'Vehicle' },
-    { key: 'dispatchDate', header: 'Date' },
+    { key: 'dispatchDate', header: 'Date & Time', render: (r: Dispatch) => new Date(r.dispatchDate).toLocaleString() },
     { key: 'totalQuantity', header: 'Qty (L)', render: (r: Dispatch) => `${r.totalQuantity} L` },
     { key: 'status', header: 'Status', render: (r: Dispatch) => <StatusBadge status={r.status} /> },
   ];
@@ -76,11 +83,12 @@ const DispatchPage: React.FC = () => {
       </div>
 
       <motion.form onSubmit={handleSubmit} className="glass-card p-6 space-y-5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <div className="space-y-2"><Label>Transporter Name</Label><Input value={form.transporterName} maxLength={50} onChange={e => setForm(f => ({ ...f, transporterName: e.target.value }))} placeholder="e.g. Lanka Logistics" required /></div>
           <div className="space-y-2"><Label>Vehicle Number</Label><Input value={form.vehicleNumber} maxLength={15} onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value.toUpperCase() }))} placeholder="e.g. WP LV-1234" required /></div>
           <div className="space-y-2"><Label>Driver Contact</Label><Input value={form.driverContact} type="tel" maxLength={10} onChange={e => { const val = e.target.value.replace(/\D/g, ''); if (val.length <= 10) setForm(f => ({ ...f, driverContact: val })); }} placeholder="e.g. 0771234567" required /></div>
-          <div className="space-y-2"><Label>Dispatch Date</Label><Input type="date" value={form.dispatchDate} onChange={e => setForm(f => ({ ...f, dispatchDate: e.target.value }))} required /></div>
+          <div className="space-y-2"><Label>Date & Time</Label><Input type="datetime-local" value={form.dispatchDate} onChange={e => setForm(f => ({ ...f, dispatchDate: e.target.value }))} required /></div>
+          <div className="space-y-2"><Label>Tanker Capacity (L)</Label><Input type="number" min="0" value={form.tankerCapacity} onChange={e => setForm(f => ({ ...f, tankerCapacity: e.target.value }))} placeholder="e.g. 5000" required /></div>
         </div>
 
         {collections.length > 0 && (
@@ -97,7 +105,27 @@ const DispatchPage: React.FC = () => {
           </div>
         )}
 
-        <Button type="submit" className="btn-press" disabled={loading || selected.length === 0}>
+        {capacityNum > 0 && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className={`p-4 rounded-lg border ${isOverCapacity ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950/50 dark:border-red-900 dark:text-red-300' : 'bg-primary/5 border-primary/20 text-foreground'}`}>
+            <div className="flex justify-between items-center mb-3">
+              <span className="font-semibold text-sm tracking-wide uppercase">Tanker Capacity Status</span>
+              <span className="font-bold">{selectedTotal} L / {capacityNum} L</span>
+            </div>
+            <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
+              <div 
+                className={`h-full ${isOverCapacity ? 'bg-red-500' : 'bg-primary'} transition-all duration-300 ease-out`} 
+                style={{ width: `${Math.min(100, (selectedTotal / capacityNum) * 100)}%` }} 
+              />
+            </div>
+            {isOverCapacity && (
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs mt-3 font-semibold flex items-center gap-1">
+                ⚠️ Tanker limit exceeded! Please deselect some collections.
+              </motion.p>
+            )}
+          </motion.div>
+        )}
+
+        <Button type="submit" className="btn-press mt-2" disabled={loading || selected.length === 0 || isOverCapacity}>
           {loading ? 'Creating...' : `Dispatch ${selected.length} Collection(s)`}
         </Button>
       </motion.form>
