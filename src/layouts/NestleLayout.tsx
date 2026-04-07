@@ -14,7 +14,6 @@ const navItems = [
   { title: 'Dispatches', path: '/nestle/dispatches', icon: Truck },
   { title: 'Pricing Rules', path: '/nestle/pricing', icon: Settings },
   { title: 'Payments', path: '/nestle/payments', icon: DollarSign },
-  { title: 'Analytics', path: '/nestle/analytics', icon: BarChart3 },
 ];
 
 const NestleLayout: React.FC = () => {
