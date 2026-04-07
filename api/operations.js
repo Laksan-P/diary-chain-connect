@@ -98,7 +98,7 @@ export default async function handler(req, res) {
         query = query.eq('chilling_center_id', req.query.centerId);
       }
 
-      const { data: dispatches, error } = await query.order('dispatch_date', { ascending: false });
+      const { data: dispatches, error } = await query.order('id', { ascending: false });
       if (error) throw error;
 
       for (const d of dispatches) {
