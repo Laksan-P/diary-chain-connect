@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           ProfileScreen(onBack: _handleBack),
           NotificationsScreen(
-            userId: user?['id']?.toString() ?? '',
+            userId: user['id']?.toString() ?? '',
             locale: locale,
             onBack: _handleBack,
           ),
