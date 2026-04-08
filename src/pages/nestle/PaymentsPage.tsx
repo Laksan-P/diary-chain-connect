@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { DollarSign, FileText, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DataTable from '@/components/DataTable';
@@ -131,74 +132,101 @@ const PaymentsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <DollarSign className="w-6 h-6 text-primary" />
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shadow-sm">
+            <DollarSign className="w-7 h-7 text-primary" />
           </div>
           <div>
-            <h2 className="text-2xl font-display font-bold text-foreground">Payment Management</h2>
+            <h2 className="text-2xl font-display font-bold text-foreground tracking-tight">Payment Management</h2>
             <p className="text-muted-foreground text-sm">Calculate earnings and manage payouts to farmers</p>
           </div>
         </div>
-        <Button variant="outline" className="h-10 px-4" onClick={loadData} disabled={loading}>
+        <Button variant="outline" className="h-10 px-4 border-primary/20 hover:bg-primary/5 hover:text-primary transition-all active:scale-95" onClick={loadData} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh Data
         </Button>
       </div>
 
-      <Tabs defaultValue="summaries" className="space-y-4">
-        <TabsList className="bg-muted/50 p-1">
-          <TabsTrigger value="summaries" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" /> Farmer Summary
-          </TabsTrigger>
-          <TabsTrigger value="pending" className="flex items-center gap-2 relative">
-            <AlertCircle className="w-4 h-4" /> Pending Process
-            {unpaidCollections.length > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white font-bold">
-                {unpaidCollections.length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <History className="w-4 h-4" /> Transaction History
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="summaries" className="space-y-5">
+        <div className="bg-muted/30 p-1.5 rounded-xl inline-flex border border-border/50">
+          <TabsList className="bg-transparent gap-1">
+            <TabsTrigger 
+              value="summaries" 
+              className="flex items-center gap-2 px-4 py-2 rounded-lg data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
+            >
+              <FileText className="w-4 h-4" /> 
+              <span className="font-semibold text-sm">Farmer Summary</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="pending" 
+              className="flex items-center gap-2 px-4 py-2 rounded-lg data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all relative"
+            >
+              <AlertCircle className="w-4 h-4" /> 
+              <span className="font-semibold text-sm">Pending Process</span>
+              {unpaidCollections.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-white font-bold ring-2 ring-background animate-pulse">
+                  {unpaidCollections.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="history" 
+              className="flex items-center gap-2 px-4 py-2 rounded-lg data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
+            >
+              <History className="w-4 h-4" /> 
+              <span className="font-semibold text-sm">Transaction History</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="summaries" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="glass-card p-6 border-l-4 border-l-primary">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Payouts</p>
-              <h4 className="text-2xl font-display font-bold text-foreground">
+        <TabsContent value="summaries" className="space-y-6 focus-visible:outline-none outline-none">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
+                <FileText className="w-3 h-3" /> Total Procurement Value
+              </p>
+              <h4 className="text-3xl font-display font-black text-foreground">
                 {formatCurrency(Object.values(farmerSummaries).reduce((s, f) => s + f.totalAmount, 0))}
               </h4>
-            </div>
-            <div className="glass-card p-6 border-l-4 border-l-amber-500">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Outstanding</p>
-              <h4 className="text-2xl font-display font-bold text-amber-600">
+              <p className="text-[10px] text-muted-foreground mt-2 font-medium">Accumulated value of all supplies</p>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-6 border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-shadow">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
+                <AlertCircle className="w-3 h-3 text-amber-500" /> Outstanding Payments
+              </p>
+              <h4 className="text-3xl font-display font-black text-amber-600">
                 {formatCurrency(Object.values(farmerSummaries).reduce((s, f) => s + f.pendingAmount, 0))}
               </h4>
-            </div>
-            <div className="glass-card p-6 border-l-4 border-l-emerald-500">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Successfully Paid</p>
-              <h4 className="text-2xl font-display font-bold text-emerald-600">
+              <p className="text-[10px] text-muted-foreground mt-2 font-medium">Allocated but not yet disbursed</p>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-6 border-l-4 border-l-emerald-500 shadow-sm hover:shadow-md transition-shadow">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Disbursed Amount
+              </p>
+              <h4 className="text-3xl font-display font-black text-emerald-600">
                 {formatCurrency(Object.values(farmerSummaries).reduce((s, f) => s + f.paidAmount, 0))}
               </h4>
-            </div>
+              <p className="text-[10px] text-muted-foreground mt-2 font-medium">Successfully credited to farmers</p>
+            </motion.div>
           </div>
           <DataTable columns={summaryColumns} data={summaryData} loading={loading} emptyMessage="No payment summaries available" />
         </TabsContent>
 
-        <TabsContent value="pending" className="space-y-4">
-          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-primary" />
-            <p className="text-sm text-primary-foreground font-medium">
-              You have {unpaidCollections.length} approved milk collections waiting to be processed for payment.
+        <TabsContent value="pending" className="space-y-6 focus-visible:outline-none outline-none">
+          <div className="bg-primary/10 border border-primary/20 rounded-xl p-5 flex items-center gap-4 shadow-sm">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+              <AlertCircle className="w-5 h-5 text-primary" />
+            </div>
+            <p className="text-sm text-primary font-bold">
+              Verification Required: {unpaidCollections.length} approved milk collections are currently waiting for payment processing.
             </p>
           </div>
           <DataTable columns={collectionColumns} data={unpaidCollections} loading={loading} emptyMessage="No pending collections to process" />
         </TabsContent>
 
-        <TabsContent value="history">
+        <TabsContent value="history" className="focus-visible:outline-none outline-none">
           <DataTable columns={paymentColumns} data={payments} loading={loading} emptyMessage="No transaction history found" />
         </TabsContent>
       </Tabs>
