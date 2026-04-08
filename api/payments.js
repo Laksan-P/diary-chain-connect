@@ -21,40 +21,45 @@ export default async function handler(req, res) {
   // 1. Identification & 2. Cycle Check & 3. Grouping & 4. Pricing & 5. Summary Generation
   if (action === 'cycle-summary' && req.method === 'GET') {
     try {
-      // Step 2: Check bi-weekly cycle (Condition: 1st-5th OR 15th-20th of month)
+      // Step 1: Identify only approved milk collections
+      const { data: collections, error: colErr } = await supabase
+        .from('milk_collections')
+        .select(`id, farmer_id, quantity, quality_result, dispatch_status, date, created_at`)
+        .eq('dispatch_status', 'Approved');
+
+      if (colErr) throw colErr;
+
+      // Filter out those already paid
+      const { data: existingPayments } = await supabase.from('payments').select('collection_id');
+      const paidIds = new Set(existingPayments?.map(p => p.collection_id) || []);
+      const unpaid = (collections || []).filter(c => !paidIds.has(c.id));
+
+      if (unpaid.length === 0) {
+        return res.status(200).json({ cycleReached: true, summary: [], message: 'No pending payments.' });
+      }
+
+      // Step 2: Check bi-weekly cycle (Condition: Any collection older than 14 days?)
       const now = new Date();
-      const day = now.getDate();
-      const isCycleReached = (day >= 1 && day <= 5) || (day >= 15 && day <= 20) || req.query.skipCycle === 'true';
+      const oldestCollection = unpaid.reduce((prev, curr) => {
+        const d = new Date(curr.date);
+        return d < prev ? d : prev;
+      }, new Date());
+
+      const daysDifference = Math.floor((now - oldestCollection) / (1000 * 60 * 60 * 24));
+      const skipCycle = req.query.skipCycle === 'true';
+      const isCycleReached = daysDifference >= 14 || skipCycle;
 
       if (!isCycleReached) {
         return res.status(200).json({ 
           cycleReached: false, 
-          nextCycleDate: day < 15 ? '15th' : '1st of next month',
-          message: 'Payment cycle not reached yet. System is waiting until the next cycle date.' 
+          daysUntilCycle: 14 - daysDifference,
+          message: `Cycle not reached. Next scheduled processing in ${14 - daysDifference} days (based on 14-day bi-weekly cycle).` 
         });
       }
 
-      // Step 1: Identify only approved milk collections
-      console.log('Fetching approved collections...');
-      const { data: collections, error: colErr } = await supabase
-        .from('milk_collections')
-        .select(`
-          id, farmer_id, quantity, quality_result, dispatch_status, date
-        `)
-        .eq('dispatch_status', 'Approved');
-
-      if (colErr) {
-        console.error('Error fetching collections:', colErr);
-        throw colErr;
-      }
-      
-      if (!collections || collections.length === 0) {
-        return res.status(200).json({ cycleReached: true, summary: [], message: 'No approved collections.' });
-      }
-
-      // Fetch farmer names for these collections
-      const farmerIds = [...new Set(collections.map(c => c.farmer_id))];
-      const { data: farmers, error: fErr } = await supabase
+      // Fetch farmer details for the unpaid collections
+      const farmerIds = [...new Set(unpaid.map(c => c.farmer_id))];
+      const { data: farmers } = await supabase
         .from('farmers')
         .select('id, name, farmer_id')
         .in('id', farmerIds);
@@ -63,25 +68,6 @@ export default async function handler(req, res) {
         acc[f.id] = f;
         return acc;
       }, {});
-
-      // Filter out those already paid
-      console.log('Checking existing payments...');
-      const { data: existingPayments, error: payErr } = await supabase.from('payments').select('collection_id');
-      if (payErr) {
-        console.error('Error fetching existing payments:', payErr);
-        throw payErr;
-      }
-      const paidIds = new Set(existingPayments?.map(p => p.collection_id) || []);
-      const unpaid = collections.filter(c => !paidIds.has(c.id));
-      console.log(`${unpaid.length} collections are unpaid.`);
-
-      if (unpaid.length === 0) {
-        return res.status(200).json({ 
-          cycleReached: true, 
-          summary: [],
-          message: 'No unpaid approved collections found.' 
-        });
-      }
 
       // Step 3: Group collections by farmer
       console.log('Grouping by farmer...');

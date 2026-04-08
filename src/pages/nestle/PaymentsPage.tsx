@@ -46,8 +46,14 @@ const PaymentsPage: React.FC = () => {
       const data = await getPaymentCycleSummary(skip);
       setCycleData(data);
       if (data.cycleReached) {
-        toast({ title: 'System: Step 5 Complete', description: 'Payment summary generated successfully.' });
+        toast({ title: 'Payment Cycle Active', description: 'Collections identified and summary generated.' });
         setActiveTab('review');
+      } else if (!skip) {
+        toast({ 
+          title: 'Schedule Checked', 
+          description: `Current date ${new Date().toLocaleDateString()} is not a payment date (1st or 15th).`,
+          variant: 'default'
+        });
       }
     } catch (e: any) {
       toast({ title: 'Flow Error', description: e.message, variant: 'destructive' });
@@ -213,7 +219,7 @@ const PaymentsPage: React.FC = () => {
                           onClick={() => loadCycle(true)}
                           disabled={loading}
                         >
-                          {loading ? 'Working...' : 'Force Skip (Developer)'}
+                          {loading ? 'Working...' : 'Force Skip'}
                         </Button>
                       </div>
                       <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest text-center">
@@ -227,8 +233,8 @@ const PaymentsPage: React.FC = () => {
                        </h4>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="bg-muted/30 p-4 rounded-xl">
-                             <p className="text-xs font-bold mb-1">📅 Bi-Weekly Schedule</p>
-                             <p className="text-[11px] text-muted-foreground leading-relaxed">System automatically detects payment dates (1st & 15th). On these days, your "Continue" button will appear automatically.</p>
+                             <p className="text-xs font-bold mb-1">📅 Bi-Weekly Cycle</p>
+                             <p className="text-[11px] text-muted-foreground leading-relaxed">System works on a rolling 14-day procurement cycle. Approved milk is processed automatically once it has been in the system for 2 weeks.</p>
                           </div>
                           <div className="bg-muted/30 p-4 rounded-xl">
                              <p className="text-xs font-bold mb-1">⚖️ Quality & Pricing</p>
