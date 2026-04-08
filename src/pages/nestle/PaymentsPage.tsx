@@ -63,7 +63,10 @@ const PaymentsPage: React.FC = () => {
     } catch (e) { console.error(e); }
   };
 
-  useEffect(() => { loadHistory(); }, []);
+  useEffect(() => { 
+    loadCycle(); // Auto-check on load
+    loadHistory(); 
+  }, []);
 
   const handleProcessBatch = async () => {
     setLoading(true);
@@ -196,16 +199,42 @@ const PaymentsPage: React.FC = () => {
                     </div>
                     
                     <div className="space-y-4">
-                      <Button 
-                        className="w-full h-14 btn-press text-lg font-bold bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20" 
-                        onClick={() => loadCycle(true)}
-                        disabled={loading}
-                      >
-                        {loading ? 'Processing Settlements...' : 'Manual Skip: Start Payment Cycle'}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline"
+                          className="flex-1 h-14 border-2 font-bold hover:bg-muted" 
+                          onClick={() => loadCycle()}
+                          disabled={loading}
+                        >
+                          {loading ? 'Checking...' : 'Check Current Status'}
+                        </Button>
+                        <Button 
+                          className="flex-1 h-14 btn-press font-bold bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20" 
+                          onClick={() => loadCycle(true)}
+                          disabled={loading}
+                        >
+                          {loading ? 'Working...' : 'Force Skip (Developer)'}
+                        </Button>
+                      </div>
                       <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest text-center">
-                        Force System to identify collections and generate summary
+                        Use "Check Status" for real schedule or "Force" for testing
                       </p>
+                    </div>
+
+                    <div className="mt-8 pt-8 border-t w-full text-left">
+                       <h4 className="text-sm font-black uppercase text-primary mb-3 flex items-center gap-2">
+                         <FileText className="w-4 h-4" /> User Guide: How this works
+                       </h4>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-muted/30 p-4 rounded-xl">
+                             <p className="text-xs font-bold mb-1">📅 Bi-Weekly Schedule</p>
+                             <p className="text-[11px] text-muted-foreground leading-relaxed">System automatically detects payment dates (1st & 15th). On these days, your "Continue" button will appear automatically.</p>
+                          </div>
+                          <div className="bg-muted/30 p-4 rounded-xl">
+                             <p className="text-xs font-bold mb-1">⚖️ Quality & Pricing</p>
+                             <p className="text-[11px] text-muted-foreground leading-relaxed">Only "Approved" milk from chilling centers is included. Calculations use your active Pricing Strategy recorded in the system.</p>
+                          </div>
+                       </div>
                     </div>
                   </motion.div>
                 ) : (
