@@ -18,141 +18,163 @@ export default async function handler(req, res) {
 
   const { action, id } = req.query;
 
-  // ────────── GET /api/payments?action=list ──────────
-  if (action === 'list' && req.method === 'GET') {
+  // 1. Identification & 2. Cycle Check & 3. Grouping & 4. Pricing & 5. Summary Generation
+  if (action === 'cycle-summary' && req.method === 'GET') {
     try {
-      let query = supabase
-        .from('payments')
-        .select(`
-          id, farmer_id, collection_id, quantity, base_pay, fat_bonus, snf_bonus, amount, status, paid_at, created_at,
-          farmers (name, farmer_id),
-          milk_collections (date, quality_result, dispatch_status)
-        `);
+      // Step 2: Check bi-weekly cycle (Condition: 1st-5th OR 15th-20th of month)
+      const now = new Date();
+      const day = now.getDate();
+      const isCycleReached = (day >= 1 && day <= 5) || (day >= 15 && day <= 20) || req.query.skipCycle === 'true';
 
-      if (req.query.farmerId) {
-        query = query.eq('farmer_id', req.query.farmerId);
-      }
-
-      const { data: payments, error } = await query.order('created_at', { ascending: false });
-      if (error) throw error;
-
-      const flattened = payments.map((p) => ({
-        id: p.id, farmerId: p.farmer_id,
-        farmerName: p.farmers?.name, farmerCode: p.farmers?.farmer_id,
-        collectionId: p.collection_id, quantity: p.quantity,
-        basePay: p.base_pay, fatBonus: p.fat_bonus, snfBonus: p.snf_bonus,
-        amount: p.amount, status: p.status, paidAt: p.paid_at,
-        createdAt: p.created_at,
-        collectionDate: p.milk_collections?.date,
-        qualityResult: p.milk_collections?.quality_result,
-        dispatchStatus: p.milk_collections?.dispatch_status,
-      }));
-
-      return res.status(200).json(flattened);
-    } catch (err) {
-      console.error('Get payments error:', err);
-      return res.status(500).json({ error: 'Server error' });
-    }
-  }
-
-  // ────────── POST /api/payments?action=generate ──────────
-  if (action === 'generate' && req.method === 'POST') {
-    try {
-      const body = getBody(req);
-      const { collectionId } = body;
-      if (!collectionId) return res.status(400).json({ error: 'collectionId required' });
-
-      const { data: col, error: colErr } = await supabase
-        .from('milk_collections')
-        .select('*, farmers(name, farmer_id)')
-        .eq('id', collectionId)
-        .maybeSingle();
-
-      if (colErr || !col) return res.status(404).json({ error: 'Collection not found' });
-      if (col.dispatch_status !== 'Approved')
-        return res.status(400).json({ error: 'Only approved collections can be paid' });
-
-      const { data: exPay } = await supabase
-        .from('payments').select('id').eq('collection_id', collectionId).maybeSingle();
-      if (exPay) return res.status(409).json({ error: 'Payment already exists' });
-
-      const { data: rule } = await supabase
-        .from('pricing_rules').select('*').eq('is_active', true)
-        .order('effective_from', { ascending: false }).limit(1).maybeSingle();
-      if (!rule) return res.status(400).json({ error: 'No active pricing rule' });
-
-      const { data: qt } = await supabase
-        .from('quality_tests').select('fat, snf').eq('collection_id', collectionId).maybeSingle();
-      const quality = qt || { fat: 0, snf: 0 };
-
-      const quantity = parseFloat(col.quantity);
-      const basePay = quantity * parseFloat(rule.base_price_per_liter);
-      const fatBonus = quantity * parseFloat(rule.fat_bonus) * (parseFloat(quality.fat) / 100);
-      const snfBonus = quantity * parseFloat(rule.snf_bonus) * (parseFloat(quality.snf) / 100);
-      const totalAmount = basePay + fatBonus + snfBonus;
-
-      const { data: pay, error: pErr } = await supabase
-        .from('payments')
-        .insert({
-          farmer_id: col.farmer_id, collection_id: collectionId, quantity,
-          base_pay: basePay.toFixed(2), fat_bonus: fatBonus.toFixed(2),
-          snf_bonus: snfBonus.toFixed(2), amount: totalAmount.toFixed(2),
-        })
-        .select('id')
-        .single();
-      if (pErr) throw pErr;
-
-      return res.status(201).json({
-        id: pay.id, farmerId: col.farmer_id,
-        farmerName: col.farmers?.name, farmerCode: col.farmers?.farmer_id,
-        collectionId, quantity,
-        basePay: parseFloat(basePay.toFixed(2)),
-        fatBonus: parseFloat(fatBonus.toFixed(2)),
-        snfBonus: parseFloat(snfBonus.toFixed(2)),
-        amount: parseFloat(totalAmount.toFixed(2)),
-        status: 'Pending', createdAt: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error('Generate payment error:', err);
-      return res.status(500).json({ error: 'Server error' });
-    }
-  }
-
-  // ────────── PATCH /api/payments?action=update-status&id=X ──────────
-  if (action === 'update-status' && req.method === 'PATCH') {
-    if (!id) return res.status(400).json({ error: 'id is required' });
-
-    try {
-      const body = getBody(req);
-      const { status } = body;
-      if (status !== 'Paid') return res.status(400).json({ error: 'Status must be Paid' });
-
-      await supabase
-        .from('payments')
-        .update({ status: 'Paid', paid_at: new Date().toISOString() })
-        .eq('id', id);
-
-      const { data: p } = await supabase
-        .from('payments')
-        .select('amount, farmers!inner(user_id)')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (p && p.farmers?.user_id) {
-        const userId = p.farmers.user_id;
-        const amount = p.amount;
-        await supabase.from('notifications').insert({
-          user_id: userId, title: 'Payment Completed',
-          message: `Payment of Rs. ${parseFloat(amount).toLocaleString()} has been credited.`,
-          type: 'payment',
+      if (!isCycleReached) {
+        return res.status(200).json({ 
+          cycleReached: false, 
+          nextCycleDate: day < 15 ? '15th' : '1st of next month',
+          message: 'Payment cycle not reached yet. System is waiting until the next cycle date.' 
         });
       }
 
-      return res.status(200).json({ success: true });
+      // Step 1: Identify only approved milk collections
+      const { data: collections, error } = await supabase
+        .from('milk_collections')
+        .select(`
+          id, farmer_id, quantity, quality_result, dispatch_status, date,
+          farmers (name, farmer_id)
+        `)
+        .eq('dispatch_status', 'Approved');
+
+      if (error) throw error;
+
+      // Filter out those already paid (by checking if a payment record exists)
+      const { data: existingPayments } = await supabase.from('payments').select('collection_id');
+      const paidIds = new Set(existingPayments?.map(p => p.collection_id) || []);
+      const unpaid = collections.filter(c => !paidIds.has(c.id));
+
+      // Step 3: Group collections by farmer & Calculate total quantity
+      const farmerGroups = unpaid.reduce((acc, c) => {
+        const fid = c.farmer_id;
+        if (!acc[fid]) {
+          acc[fid] = { 
+            farmerId: fid, 
+            farmerName: c.farmers?.name, 
+            farmerCode: c.farmers?.farmer_id,
+            collections: [], 
+            totalQty: 0 
+          };
+        }
+        acc[fid].collections.push(c.id);
+        acc[fid].totalQty += parseFloat(c.quantity);
+        return acc;
+      }, {});
+
+      // Step 4: Apply pricing rules
+      const { data: rule } = await supabase
+        .from('pricing_rules').select('*').eq('is_active', true)
+        .order('effective_from', { ascending: false }).limit(1).maybeSingle();
+      
+      const basePrice = rule ? parseFloat(rule.base_price_per_liter) : 0;
+
+      // Step 5: Generate payment summary
+      const summary = Object.values(farmerGroups).map(f => ({
+        ...f,
+        unitPrice: basePrice,
+        totalPayment: (f.totalQty * basePrice).toFixed(2),
+        status: 'Pending'
+      }));
+
+      return res.status(200).json({ 
+        cycleReached: true, 
+        summary 
+      });
     } catch (err) {
-      console.error('Update payment status error:', err);
-      return res.status(500).json({ error: 'Server error' });
+      console.error(err);
+      return res.status(500).json({ error: 'Failed to generate summary' });
     }
+  }
+
+  // 7. Approve & 8. Process & 9. Update Status & 10. Record & 11. Notify
+  if (action === 'process-batch' && req.method === 'POST') {
+    try {
+      const { summaryItems } = getBody(req); // List of grouped farmer data
+      if (!summaryItems || !Array.isArray(summaryItems)) return res.status(400).json({ error: 'summaryItems required' });
+
+      for (const item of summaryItems) {
+        const { farmerId, collections, totalPayment, totalQty } = item;
+
+        // Step 10: Record payment details (Create individual payments for tracking)
+        // Note: For simplicity, creating one combined record or 1:1. 
+        // Flow says "Group collections by farmer" -> "Record payment details".
+        // We'll create one payment entry for the batch of collections.
+        const { data: payRecord, error: pErr } = await supabase
+          .from('payments')
+          .insert({
+            farmer_id: farmerId,
+            collection_id: collections[0], // Linking to primary collection
+            quantity: totalQty,
+            amount: totalPayment,
+            base_pay: totalPayment,
+            status: 'Pending' // Will mark as Paid instantly in step 8
+          })
+          .select('id')
+          .single();
+        
+        if (pErr) throw pErr;
+
+        // Step 8: Process & Step 9: Update status to Paid
+        await supabase
+          .from('payments')
+          .update({ status: 'Paid', paid_at: new Date().toISOString() })
+          .eq('id', payRecord.id);
+
+        // Update all associated collections status (Simulated with dispatch_status or ideally a payment_status)
+        await supabase
+          .from('milk_collections')
+          .update({ dispatch_status: 'Paid' })
+          .in('id', collections);
+
+        // Step 11: Trigger notification to farmer
+        const { data: farmerData } = await supabase.from('farmers').select('user_id').eq('id', farmerId).single();
+        if (farmerData?.user_id) {
+          await supabase.from('notifications').insert({
+            user_id: farmerData.user_id,
+            title: 'Payment Received',
+            message: `Payment of Rs. ${totalPayment} for ${totalQty}L of milk has been processed.`,
+            type: 'payment'
+          });
+        }
+      }
+
+      return res.status(200).json({ success: true, message: 'Batch processed successfully' });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Failed to process batch' });
+    }
+  }
+
+  // Keep list for history
+  if (action === 'list' && req.method === 'GET') {
+    try {
+      const { data: payments } = await supabase
+        .from('payments')
+        .select(`
+          id, farmer_id, collection_id, quantity, base_pay, amount, status, paid_at, created_at,
+          farmers (name, farmer_id)
+        `)
+        .order('created_at', { ascending: false });
+      
+      const flattened = payments.map(p => ({
+        id: p.id,
+        farmerName: p.farmers?.name,
+        farmerCode: p.farmers?.farmer_id,
+        amount: p.amount,
+        quantity: p.quantity,
+        status: p.status,
+        paidAt: p.paid_at,
+        createdAt: p.created_at
+      }));
+
+      return res.status(200).json(flattened);
+    } catch (err) { return res.status(500).json({ error: 'Server error' }); }
   }
 
   return res.status(400).json({ error: 'Invalid action' });
