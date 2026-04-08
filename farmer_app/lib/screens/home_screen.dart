@@ -137,12 +137,18 @@ class _HomeScreenState extends State<HomeScreen> {
     if (index == 1 && _hasNewCollections) {
       // Passbook tab visited
       _lastSeenCollectionCount = _collections.length;
-      _storage.write(key: 'seen_collection_count', value: _collections.length.toString());
+      _storage.write(
+        key: 'seen_collection_count',
+        value: _collections.length.toString(),
+      );
       setState(() => _hasNewCollections = false);
     } else if (index == 2 && _hasNewPayments) {
       // Payments tab visited
       _lastSeenPaymentCount = _payments.length;
-      _storage.write(key: 'seen_payment_count', value: _payments.length.toString());
+      _storage.write(
+        key: 'seen_payment_count',
+        value: _payments.length.toString(),
+      );
       setState(() => _hasNewPayments = false);
     }
   }
@@ -331,7 +337,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final inactiveColor = isDark
         ? Colors.white.withValues(alpha: 0.3)
         : Colors.grey.shade600;
-    final badgeColor = isDark ? const Color(0xFFFFB000) : const Color(0xFF1B264F);
+    final badgeColor = isDark
+        ? const Color(0xFFFFB000)
+        : const Color(0xFF1B264F);
 
     return GestureDetector(
       onTap: () => _onTabTapped(index),
