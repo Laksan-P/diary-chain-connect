@@ -210,7 +210,13 @@ const PaymentsPage: React.FC = () => {
                       <AlertCircle className="w-8 h-8 text-amber-500" />
                       <div>
                         <p className="font-black text-sm uppercase tracking-tighter">Scheduled Period Active</p>
-                        <p className="text-xs opacity-80 mt-1 text-center">Waiting for next formal payment date.</p>
+                        {cycleData?.daysUntilCycle !== undefined ? (
+                          <div className="mt-2 py-1 px-3 bg-amber-100/50 rounded-full border border-amber-200 inline-block text-[10px] font-black uppercase text-amber-700">
+                             Next Payment Cycle in: <span className="text-sm ml-1 text-primary">{cycleData.daysUntilCycle} Days</span>
+                          </div>
+                        ) : (
+                          <p className="text-xs opacity-80 mt-1 text-center">Waiting for next formal payment date.</p>
+                        )}
                       </div>
                     </div>
                     
@@ -218,7 +224,7 @@ const PaymentsPage: React.FC = () => {
                       <div className="flex gap-2">
                         <Button 
                           variant="outline"
-                          className="flex-1 h-14 border-2 font-bold hover:bg-muted" 
+                          className="flex-1 h-14 border-2 border-primary/20 text-primary font-bold hover:bg-primary hover:text-white transition-all duration-300 shadow-sm" 
                           onClick={() => loadCycle()}
                           disabled={loading}
                         >
