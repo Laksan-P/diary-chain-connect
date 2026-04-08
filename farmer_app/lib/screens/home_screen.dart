@@ -36,9 +36,16 @@ class _HomeScreenState extends State<HomeScreen> {
   AuthProvider? _auth;
   bool _isBalanceVisible = true;
 
+  // Badge tracking: stores the count the user last saw
+  int _lastSeenCollectionCount = 0;
+  int _lastSeenPaymentCount = 0;
+  bool _hasNewCollections = false;
+  bool _hasNewPayments = false;
+
   @override
   void initState() {
     super.initState();
+    _loadSeenCounts();
     _loadCachedData().then((_) => _fetchData());
     _startAutoRefresh();
   }
@@ -104,9 +111,39 @@ class _HomeScreenState extends State<HomeScreen> {
         _notifications = results[0];
         _collections = results[1];
         _payments = results[2];
+        _updateBadges();
       });
     } catch (e) {
       debugPrint("Silent refresh failed: $e");
+    }
+  }
+
+  // ── Badge Management ──
+  Future<void> _loadSeenCounts() async {
+    try {
+      final cCount = await _storage.read(key: 'seen_collection_count');
+      final pCount = await _storage.read(key: 'seen_payment_count');
+      _lastSeenCollectionCount = int.tryParse(cCount ?? '0') ?? 0;
+      _lastSeenPaymentCount = int.tryParse(pCount ?? '0') ?? 0;
+    } catch (_) {}
+  }
+
+  void _updateBadges() {
+    _hasNewCollections = _collections.length > _lastSeenCollectionCount;
+    _hasNewPayments = _payments.length > _lastSeenPaymentCount;
+  }
+
+  void _clearBadgeForTab(int index) {
+    if (index == 1 && _hasNewCollections) {
+      // Passbook tab visited
+      _lastSeenCollectionCount = _collections.length;
+      _storage.write(key: 'seen_collection_count', value: _collections.length.toString());
+      setState(() => _hasNewCollections = false);
+    } else if (index == 2 && _hasNewPayments) {
+      // Payments tab visited
+      _lastSeenPaymentCount = _payments.length;
+      _storage.write(key: 'seen_payment_count', value: _payments.length.toString());
+      setState(() => _hasNewPayments = false);
     }
   }
 
@@ -127,6 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _collections = results[0];
         _payments = results[1];
         _notifications = results[2];
+        _updateBadges();
       });
 
       // Save to cache for instant loading next time
@@ -198,6 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onTabTapped(int index) {
     if (_currentIndex == index) return;
     HapticFeedback.lightImpact();
+    _clearBadgeForTab(index);
     setState(() {
       _currentIndex = index;
       _history.add(index);
@@ -244,6 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Icons.home_outlined,
               Icons.home_rounded,
               Translations.get('home', locale),
+              showBadge: _notifications.any((n) => n['isRead'] == false),
             ),
           ),
           Expanded(
@@ -252,6 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Icons.credit_card_outlined,
               Icons.credit_card_rounded,
               Translations.get('passbook', locale),
+              showBadge: _hasNewCollections,
             ),
           ),
           Expanded(
@@ -260,6 +301,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Icons.account_balance_wallet_outlined,
               Icons.account_balance_wallet_rounded,
               Translations.get('payments', locale),
+              showBadge: _hasNewPayments,
             ),
           ),
           Expanded(
@@ -279,16 +321,17 @@ class _HomeScreenState extends State<HomeScreen> {
     int index,
     IconData outlineIcon,
     IconData solidIcon,
-    String label,
-  ) {
+    String label, {
+    bool showBadge = false,
+  }) {
     bool isActive = _currentIndex == index;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Improved contrast for light theme
     final activeColor = isDark ? Colors.white : AppTheme.primary;
     final inactiveColor = isDark
         ? Colors.white.withValues(alpha: 0.3)
         : Colors.grey.shade600;
+    final badgeColor = isDark ? const Color(0xFFFFB000) : const Color(0xFF1B264F);
 
     return GestureDetector(
       onTap: () => _onTabTapped(index),
@@ -300,15 +343,44 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedScale(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutBack,
-              scale: isActive ? 1.2 : 1.0,
-              child: Icon(
-                isActive ? solidIcon : outlineIcon,
-                color: isActive ? activeColor : inactiveColor,
-                size: 26,
-              ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedScale(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutBack,
+                  scale: isActive ? 1.2 : 1.0,
+                  child: Icon(
+                    isActive ? solidIcon : outlineIcon,
+                    color: isActive ? activeColor : inactiveColor,
+                    size: 26,
+                  ),
+                ),
+                if (showBadge)
+                  Positioned(
+                    right: -4,
+                    top: -3,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: badgeColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDark ? AppTheme.surfaceDark : Colors.white,
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: badgeColor.withValues(alpha: 0.4),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 6),
             Padding(

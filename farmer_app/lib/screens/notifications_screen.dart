@@ -74,21 +74,65 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  /// Convert legacy hardcoded English strings to translation key format
+  String _migrateLegacy(String raw) {
+    // Title mappings
+    if (raw == 'Quality Test Passed') return 'quality_test_passed_title';
+    if (raw == 'Quality Test Failed') return 'quality_test_failed_title';
+    if (raw == 'Milk Dispatched') return 'milk_dispatched_title';
+    if (raw == 'Dispatch Approved') return 'dispatch_approved_title';
+    if (raw == 'Dispatch Rejected') return 'dispatch_rejected_title';
+
+    // Message: "Your milk collection on YYYY-MM-DD passed quality testing."
+    final passMatch = RegExp(r'^Your milk collection on (\S+) passed quality testing\.$').firstMatch(raw);
+    if (passMatch != null) {
+      return 'quality_test_passed_msg|date:${passMatch.group(1)}';
+    }
+
+    // Message: "Your milk collection on YYYY-MM-DD failed quality testing. Reason: XXX"
+    final failMatch = RegExp(r'^Your milk collection on (\S+) failed quality testing\. Reason: (.+)$').firstMatch(raw);
+    if (failMatch != null) {
+      return 'quality_test_failed_msg|date:${failMatch.group(1)},reason:${failMatch.group(2)}';
+    }
+
+    // Message: "Your milk collection on YYYY-MM-DD has been dispatched to Nestlé."
+    final dispatchMatch = RegExp(r'^Your milk collection on (\S+) has been dispatched').firstMatch(raw);
+    if (dispatchMatch != null) {
+      return 'milk_dispatched_msg|date:${dispatchMatch.group(1)}';
+    }
+
+    // Message: "Your milk collection on YYYY-MM-DD was approved by Nestlé."
+    final approveMatch = RegExp(r'^Your milk collection on (\S+) was approved').firstMatch(raw);
+    if (approveMatch != null) {
+      return 'dispatch_approved_msg|date:${approveMatch.group(1)}';
+    }
+
+    // Message: "Your milk collection on YYYY-MM-DD was rejected by Nestlé. Reason: XXX"
+    final rejectMatch = RegExp(r'^Your milk collection on (\S+) was rejected.*Reason: (.+)$').firstMatch(raw);
+    if (rejectMatch != null) {
+      return 'dispatch_rejected_msg|date:${rejectMatch.group(1)},reason:${rejectMatch.group(2)}';
+    }
+
+    return raw; // No match — return original
+  }
+
   String _translate(String? raw) {
     if (raw == null) return '';
-    if (raw.contains('|')) {
-      final parts = raw.split('|');
+    // First convert any legacy English strings to key format
+    final migrated = _migrateLegacy(raw);
+    if (migrated.contains('|')) {
+      final parts = migrated.split('|');
       final key = parts[0];
       final paramsList = parts[1].split(',');
       final Map<String, String> params = {};
       for (var p in paramsList) {
         final kv = p.split(':');
-        if (kv.length == 2) params[kv[0]] = kv[1];
+        if (kv.length >= 2) params[kv[0]] = kv.sublist(1).join(':');
       }
       return Translations.get(key, widget.locale, params: params);
     }
     // If it doesn't have |, it might still be a key (like the title)
-    return Translations.get(raw, widget.locale);
+    return Translations.get(migrated, widget.locale);
   }
 
   @override
