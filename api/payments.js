@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       const unpaid = (collections || []).filter(c => !paidIds.has(c.id));
 
       if (unpaid.length === 0) {
-        return res.status(200).json({ cycleReached: true, summary: [], message: 'No pending payments.' });
+        return res.status(200).json({ cycleReached: false, summary: [], message: 'No unpaid approved collections found at this time.' });
       }
 
       // Step 2: Check bi-weekly cycle (Condition: Any collection older than 14 days?)

@@ -45,21 +45,31 @@ const PaymentsPage: React.FC = () => {
     try {
       const data = await getPaymentCycleSummary(skip);
       setCycleData(data);
-      if (data.cycleReached) {
+      if (data.cycleReached && data.summary?.length > 0) {
         toast({ title: 'Payment Cycle Active', description: 'Collections identified and summary generated.' });
         setActiveTab('review');
+      } else if (data.cycleReached && data.summary?.length === 0) {
+        toast({ title: 'No Data', description: 'No approved unpaid collections found in the system.' });
+        setActiveTab('cycle');
       } else if (!skip) {
         toast({ 
           title: 'Schedule Checked', 
-          description: `Current date ${new Date().toLocaleDateString()} is not a payment date (1st or 15th).`,
+          description: data.message || `Next payment scheduled in ${data.daysUntilCycle} days.`,
           variant: 'default'
         });
+        setActiveTab('cycle');
       }
     } catch (e: any) {
       toast({ title: 'Flow Error', description: e.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRecalculate = () => {
+    setCycleData(null);
+    setActiveTab('cycle');
+    toast({ title: 'System Reset', description: 'Returning to initiation phase.' });
   };
 
   const loadHistory = async () => {
@@ -278,7 +288,7 @@ const PaymentsPage: React.FC = () => {
               <p className="text-muted-foreground text-sm">Please verify the calculated settlement amounts for all farmers.</p>
             </div>
             <div className="flex gap-2">
-              <Button size="lg" variant="outline" className="h-14 font-bold rounded-2xl border-2" onClick={() => setCycleData(null)}>Recalculate Summary</Button>
+              <Button size="lg" variant="outline" className="h-14 font-bold rounded-2xl border-2" onClick={handleRecalculate}>Recalculate Summary</Button>
               <Button 
                 size="lg" 
                 className="h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-100 px-8 btn-press" 
