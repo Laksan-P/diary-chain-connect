@@ -239,6 +239,12 @@ export default async function handler(req, res) {
 
       await supabase.from('dispatches').update({ status, rejection_reason: reason || null }).eq('id', id);
 
+      // Fetch dispatch items for this dispatch
+      const { data: items } = await supabase
+        .from('dispatch_items')
+        .select('id, collection_id')
+        .eq('dispatch_id', id);
+
       if (items && items.length > 0) {
         const collectionIds = items.map(item => item.collection_id);
         
@@ -265,7 +271,7 @@ export default async function handler(req, res) {
                 user_id: userId,
                 title: titleKey,
                 message: `${msgKey}|${params}`,
-                type: 'quality_result', // Use quality_result for guaranteed DB acceptance
+                type: 'quality_result',
                 is_read: false
               });
             }
