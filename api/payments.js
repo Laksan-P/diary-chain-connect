@@ -35,44 +35,86 @@ export default async function handler(req, res) {
       }
 
       // Step 1: Identify only approved milk collections
-      const { data: collections, error } = await supabase
+      console.log('Fetching approved collections...');
+      const { data: collections, error: colErr } = await supabase
         .from('milk_collections')
         .select(`
-          id, farmer_id, quantity, quality_result, dispatch_status, date,
-          farmers (name, farmer_id)
+          id, farmer_id, quantity, quality_result, dispatch_status, date
         `)
         .eq('dispatch_status', 'Approved');
 
-      if (error) throw error;
+      if (colErr) {
+        console.error('Error fetching collections:', colErr);
+        throw colErr;
+      }
+      
+      if (!collections || collections.length === 0) {
+        return res.status(200).json({ cycleReached: true, summary: [], message: 'No approved collections.' });
+      }
 
-      // Filter out those already paid (by checking if a payment record exists)
-      const { data: existingPayments } = await supabase.from('payments').select('collection_id');
+      // Fetch farmer names for these collections
+      const farmerIds = [...new Set(collections.map(c => c.farmer_id))];
+      const { data: farmers, error: fErr } = await supabase
+        .from('farmers')
+        .select('id, name, farmer_id')
+        .in('id', farmerIds);
+
+      const farmerMap = (farmers || []).reduce((acc, f) => {
+        acc[f.id] = f;
+        return acc;
+      }, {});
+
+      // Filter out those already paid
+      console.log('Checking existing payments...');
+      const { data: existingPayments, error: payErr } = await supabase.from('payments').select('collection_id');
+      if (payErr) {
+        console.error('Error fetching existing payments:', payErr);
+        throw payErr;
+      }
       const paidIds = new Set(existingPayments?.map(p => p.collection_id) || []);
       const unpaid = collections.filter(c => !paidIds.has(c.id));
+      console.log(`${unpaid.length} collections are unpaid.`);
 
-      // Step 3: Group collections by farmer & Calculate total quantity
+      if (unpaid.length === 0) {
+        return res.status(200).json({ 
+          cycleReached: true, 
+          summary: [],
+          message: 'No unpaid approved collections found.' 
+        });
+      }
+
+      // Step 3: Group collections by farmer
+      console.log('Grouping by farmer...');
       const farmerGroups = unpaid.reduce((acc, c) => {
         const fid = c.farmer_id;
+        const fData = farmerMap[fid] || {};
         if (!acc[fid]) {
           acc[fid] = { 
             farmerId: fid, 
-            farmerName: c.farmers?.name, 
-            farmerCode: c.farmers?.farmer_id,
+            farmerName: fData.name || 'Unknown', 
+            farmerCode: fData.farmer_id || 'N/A',
             collections: [], 
             totalQty: 0 
           };
         }
         acc[fid].collections.push(c.id);
-        acc[fid].totalQty += parseFloat(c.quantity);
+        acc[fid].totalQty += parseFloat(c.quantity || 0);
         return acc;
       }, {});
 
       // Step 4: Apply pricing rules
-      const { data: rule } = await supabase
+      console.log('Fetching active pricing rule...');
+      const { data: rule, error: ruleErr } = await supabase
         .from('pricing_rules').select('*').eq('is_active', true)
         .order('effective_from', { ascending: false }).limit(1).maybeSingle();
       
+      if (ruleErr) {
+        console.error('Error fetching pricing rule:', ruleErr);
+        throw ruleErr;
+      }
+      
       const basePrice = rule ? parseFloat(rule.base_price_per_liter) : 0;
+      console.log(`Using base price: Rs. ${basePrice}`);
 
       // Step 5: Generate payment summary
       const summary = Object.values(farmerGroups).map(f => ({

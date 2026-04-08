@@ -29,7 +29,10 @@ import { StatusBadge } from '@/components/StatusBadge';
 
 const getCycleSummary = async (skip = false) => {
   const res = await fetch(`/api/payments?action=cycle-summary${skip ? '&skipCycle=true' : ''}`);
-  if (!res.ok) throw new Error('Failed to fetch summary');
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.error || 'Failed to fetch summary');
+  }
   return res.json();
 };
 
