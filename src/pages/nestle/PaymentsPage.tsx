@@ -115,14 +115,9 @@ const PaymentsPage: React.FC = () => {
           <div>
             <h2 className="text-3xl font-display font-black text-foreground tracking-tight">Payment Settlement</h2>
             <p className="text-muted-foreground text-sm flex items-center gap-1.5 uppercase tracking-wide font-bold">
-              <RefreshCw className="w-3 h-3 text-primary animate-pulse" /> Activity Diagram Flow Sync
+              <RefreshCw className="w-3 h-3 text-primary animate-pulse" /> Finalized Procurement Settlements
             </p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-           <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-full text-[10px] font-bold text-muted-foreground border uppercase tracking-wider">
-             <Landmark className="w-3 h-3" /> Nestlé Corporate Bank API Linked
-           </div>
         </div>
       </div>
 
@@ -132,22 +127,22 @@ const PaymentsPage: React.FC = () => {
             <TabsTrigger value="cycle" className="px-6 py-3 gap-3 text-sm rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all group">
               <Calculator className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary" /> 
               <div className="text-left">
-                <p className="leading-none text-[10px] font-bold uppercase opacity-50">Step 1-5</p>
-                <p className="leading-tight font-bold">System Flow</p>
+                <p className="leading-tight font-bold">Initiate Payment</p>
+                <p className="leading-none text-[10px] font-medium opacity-50 uppercase">Cycle Verification</p>
               </div>
             </TabsTrigger>
             <TabsTrigger value="review" disabled={!cycleData?.cycleReached} className="px-6 py-3 gap-3 text-sm rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all group">
               <ShieldCheck className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary" /> 
               <div className="text-left">
-                <p className="leading-none text-[10px] font-bold uppercase opacity-50">Step 6-7</p>
-                <p className="leading-tight font-bold">Nestlé Review</p>
+                <p className="leading-tight font-bold">Review & Approve</p>
+                <p className="leading-none text-[10px] font-medium opacity-50 uppercase">Verify Summary</p>
               </div>
             </TabsTrigger>
             <TabsTrigger value="history" className="px-6 py-3 gap-3 text-sm rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all group">
               <CreditCard className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary" /> 
               <div className="text-left">
-                <p className="leading-none text-[10px] font-bold uppercase opacity-50">Step 8-11</p>
-                <p className="leading-tight font-bold">Recorded Details</p>
+                <p className="leading-tight font-bold">Payment History</p>
+                <p className="leading-none text-[10px] font-medium opacity-50 uppercase">Recorded Payouts</p>
               </div>
             </TabsTrigger>
           </TabsList>
@@ -155,11 +150,11 @@ const PaymentsPage: React.FC = () => {
 
         {/* STEP 1-5: SYSTEM AUTOMATED PROCESS */}
         <TabsContent value="cycle" className="focus-visible:outline-none outline-none">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="max-w-4xl mx-auto">
             <motion.div 
               initial={{ opacity: 0, y: 20 }} 
               animate={{ opacity: 1, y: 0 }} 
-              className="lg:col-span-3 glass-card p-10 flex flex-col items-center justify-center text-center space-y-8 relative overflow-hidden"
+              className="glass-card p-12 flex flex-col items-center justify-center text-center space-y-8 relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl" />
               
@@ -176,10 +171,10 @@ const PaymentsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-2 relative">
-                <h3 className="text-2xl font-display font-black">Bi-weekly Cycle Verification</h3>
-                <p className="text-muted-foreground text-sm max-w-md mx-auto">
-                  The system is currently monitoring the calendar to trigger the next settlement phase as per the Activity Diagram.
+              <div className="space-y-3 relative">
+                <h3 className="text-3xl font-display font-black">Bi-weekly Period Monitoring</h3>
+                <p className="text-muted-foreground text-base max-w-md mx-auto">
+                  The system is currently checking the calendar to identify the next settlement period for approved collections.
                 </p>
               </div>
               
@@ -195,8 +190,8 @@ const PaymentsPage: React.FC = () => {
                     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-900 shadow-sm flex flex-col items-center gap-3">
                       <AlertCircle className="w-8 h-8 text-amber-500" />
                       <div>
-                        <p className="font-black text-sm uppercase tracking-tighter">Bi-weekly Period Active</p>
-                        <p className="text-xs opacity-80 mt-1 text-center">System is currently waiting until the next payment date (1st or 15th).</p>
+                        <p className="font-black text-sm uppercase tracking-tighter">Scheduled Period Active</p>
+                        <p className="text-xs opacity-80 mt-1 text-center">Waiting for next formal payment date.</p>
                       </div>
                     </div>
                     
@@ -206,10 +201,10 @@ const PaymentsPage: React.FC = () => {
                         onClick={() => loadCycle(true)}
                         disabled={loading}
                       >
-                        {loading ? 'Processing Steps 1-5...' : 'Manual Skip: Start Payment Cycle'}
+                        {loading ? 'Processing Settlements...' : 'Manual Skip: Start Payment Cycle'}
                       </Button>
                       <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest text-center">
-                        Force System to identify collections and generate summary (Bypass Step 2)
+                        Force System to identify collections and generate summary
                       </p>
                     </div>
                   </motion.div>
@@ -223,58 +218,20 @@ const PaymentsPage: React.FC = () => {
                     <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-emerald-900 shadow-sm flex flex-col items-center gap-3 mb-6">
                       <CheckCircle2 className="w-8 h-8 text-emerald-500" />
                       <div>
-                        <p className="font-black text-sm uppercase tracking-tighter">Payment Cycle Reached</p>
-                        <p className="text-xs opacity-80 mt-1">Steps 1-5 Complete: Grouped & Summarized</p>
+                        <p className="font-black text-sm uppercase tracking-tighter">Collections identified</p>
+                        <p className="text-xs opacity-80 mt-1">Payments are ready for review and processing.</p>
                       </div>
                     </div>
                     <Button 
                       className="w-full h-14 btn-press bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-bold shadow-lg shadow-emerald-200" 
                       onClick={() => setActiveTab('review')}
                     >
-                      Enter Nestlé Review (Step 6) <ArrowRight className="w-5 h-5 ml-2" />
+                      Continue to Review <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
                   </motion.div>
                 )}
               </AnimatePresence>
             </motion.div>
-
-            <div className="lg:col-span-2 space-y-6">
-              <div className="glass-card p-8 border-none bg-muted/20">
-                <h4 className="font-black flex items-center gap-2 mb-6 text-xs uppercase tracking-widest text-muted-foreground border-b pb-4">
-                  <Calculator className="w-4 h-4" /> Activity Diagram Flow Sync
-                </h4>
-                <div className="space-y-6 relative">
-                  <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-border -z-10" />
-                  {[
-                    { label: 'Identify Approved Collections', step: 'Step 1' },
-                    { label: 'Check Bi-weekly Cycle', step: 'Step 2' },
-                    { label: 'Calculate Payment for Each Farmer', step: 'Step 3' },
-                    { label: 'Apply Pricing Rules', step: 'Step 4' },
-                    { label: 'Generate Payment Summary', step: 'Step 5' },
-                  ].map((s, i) => (
-                    <div key={i} className="flex items-start gap-4">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 border-2 transition-colors ${cycleData?.cycleReached && i < 5 ? 'bg-primary border-primary text-primary-foreground' : 'bg-background border-border text-muted-foreground'}`}>
-                        {cycleData?.cycleReached && i < 5 ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
-                      </div>
-                      <div className="pt-1">
-                        <p className={`text-xs font-black uppercase tracking-tighter leading-none ${cycleData?.cycleReached && i < 5 ? 'text-primary' : 'text-muted-foreground opacity-50'}`}>{s.step}</p>
-                        <p className={`text-sm font-bold mt-1 ${cycleData?.cycleReached && i < 5 ? 'text-foreground' : 'text-muted-foreground'}`}>{s.label}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="glass-card p-6 border-none bg-primary/5 flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <History className="w-5 h-5 text-primary" />
-                 </div>
-                 <div>
-                    <p className="text-xs font-black uppercase tracking-tighter text-primary">Bi-Weekly Rule</p>
-                    <p className="text-sm font-medium leading-snug">Payments are calculated every 1st and 15th based on approved quality tests.</p>
-                 </div>
-              </div>
-            </div>
           </div>
         </TabsContent>
 
@@ -282,19 +239,18 @@ const PaymentsPage: React.FC = () => {
         <TabsContent value="review" className="focus-visible:outline-none outline-none space-y-6">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/20 p-6 rounded-3xl border border-border/50">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Step 6: Officer Action</p>
               <h3 className="text-xl font-display font-black">Review & Approve Payment Summaries</h3>
-              <p className="text-muted-foreground text-sm">Please verify the calculated settlement amounts for all regrouped farmers.</p>
+              <p className="text-muted-foreground text-sm">Please verify the calculated settlement amounts for all farmers.</p>
             </div>
             <div className="flex gap-2">
-              <Button size="lg" variant="outline" className="h-14 font-bold rounded-2xl border-2" onClick={() => setCycleData(null)}>Reject & Recalculate</Button>
+              <Button size="lg" variant="outline" className="h-14 font-bold rounded-2xl border-2" onClick={() => setCycleData(null)}>Recalculate Summary</Button>
               <Button 
                 size="lg" 
                 className="h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-100 px-8 btn-press" 
                 onClick={handleProcessBatch} 
                 disabled={loading || !cycleData?.summary?.length}
               >
-                {loading ? 'Step 8: Processing...' : 'Step 7: Approve & Process Batch'}
+                {loading ? 'Processing...' : 'Verify & Disburse Payments'}
               </Button>
             </div>
           </motion.div>
@@ -306,11 +262,11 @@ const PaymentsPage: React.FC = () => {
         <TabsContent value="history" className="focus-visible:outline-none outline-none space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
              <div className="glass-card p-6 bg-emerald-50/50 border-emerald-100">
-                <p className="text-[10px] font-black uppercase text-emerald-700 tracking-widest mb-2 flex items-center gap-2"><Receipt className="w-3 h-3" /> Step 10: Recorded Trans</p>
+                <p className="text-[10px] font-black uppercase text-emerald-700 tracking-widest mb-2 flex items-center gap-2"><Receipt className="w-3 h-3" /> Recorded Payments</p>
                 <p className="text-2xl font-display font-black">{history.length}</p>
              </div>
              <div className="glass-card p-6 bg-primary/5 border-primary/10">
-                <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-2 flex items-center gap-2"><BellRing className="w-3 h-3" /> Step 11: Notifications</p>
+                <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-2 flex items-center gap-2"><BellRing className="w-3 h-3" /> Farmer Notifications</p>
                 <p className="text-2xl font-display font-black text-primary">SENT</p>
              </div>
           </div>
