@@ -46,10 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final farmerId = auth.user?['farmerId'];
       if (farmerId == null) return;
 
-      // 1) Fetch profile details
       final data = await _api.get('/farmers?action=get&id=$farmerId');
-      debugPrint("PROFILE DATA: $data");
-
       if (mounted) {
         setState(() {
           _nameController.text = data['name']?.toString() ?? '';
@@ -59,11 +56,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
 
-      // 2) Fetch bank details using the dedicated bank-account endpoint
       try {
         final bankData = await _api.get('/farmers?action=bank-account&id=$farmerId');
-        debugPrint("BANK DATA: $bankData");
-
         if (mounted && bankData != null) {
           setState(() {
             _bankNameController.text = (bankData['bankName'] ?? bankData['bank_name'] ?? '').toString();
@@ -73,7 +67,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       } catch (bankErr) {
         debugPrint("BANK FETCH ERROR: $bankErr");
-        // Bank details may not exist yet — that's okay
       }
     } catch (e) {
       if (mounted) ToastService.show(context, e.toString(), isError: true);
@@ -89,9 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _phoneController = TextEditingController(text: user['phone'] ?? '');
     _nicController = TextEditingController(text: user['nic'] ?? '');
     _bankNameController = TextEditingController(text: user['bankName'] ?? '');
-    _accountNumberController = TextEditingController(
-      text: user['accountNumber'] ?? '',
-    );
+    _accountNumberController = TextEditingController(text: user['accountNumber'] ?? '');
     _branchController = TextEditingController(text: user['branch'] ?? '');
   }
 
@@ -110,13 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _updateProfile({bool silent = false}) async {
     if (!silent) HapticFeedback.mediumImpact();
     if (!_formKey.currentState!.validate()) {
-      if (!silent) {
-        ToastService.show(
-          context,
-          'Please correct the validation errors',
-          isError: true,
-        );
-      }
+      if (!silent) ToastService.show(context, 'Please correct the validation errors', isError: true);
       return;
     }
 
@@ -135,7 +120,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'branch': _branchController.text.trim(),
       });
 
-      // Update local user data directly without triggering full app reload
       if (auth.user != null) {
         auth.user!['name'] = _nameController.text.trim();
         auth.user!['address'] = _addressController.text.trim();
@@ -151,7 +135,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _isEditing = false);
       }
     } catch (e) {
-      // Always show duplicate errors, even during silent saves
       if (mounted) {
         final errorMsg = e.toString();
         if (errorMsg.contains('NIC already') || errorMsg.contains('Phone number already') || !silent) {
@@ -163,103 +146,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final prefs = context.watch<AppPreferences>();
     final locale = prefs.locale.languageCode;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Safety guard: If user is logging out, don't render Profile UI
     if (user == null) return const Scaffold(body: SizedBox.shrink());
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 60, 24, 120),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 120),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildProfileHeader(user, locale),
+              _buildScrollableHeader(locale, isDark),
+              if (!_isEditing) ...[
+                const SizedBox(height: 32),
+                _buildAvatarHeader(user, isDark),
+              ],
               const SizedBox(height: 48),
 
               if (_isEditing) ...[
                 _sectionTitle(Translations.get('edit_profile', locale)),
                 const SizedBox(height: 24),
-                _field(
-                  _nameController,
-                  Translations.get('full_name', locale),
-                  LucideIcons.user,
-                ),
+                _field(_nameController, Translations.get('full_name', locale), LucideIcons.user),
                 const SizedBox(height: 16),
-                _field(
-                  _nicController,
-                  Translations.get('nic', locale),
-                  LucideIcons.creditCard,
-                ),
+                _field(_nicController, Translations.get('nic', locale), LucideIcons.creditCard),
                 const SizedBox(height: 16),
-                _field(
-                  _addressController,
-                  Translations.get('address', locale),
-                  LucideIcons.mapPin,
-                ),
+                _field(_addressController, Translations.get('address', locale), LucideIcons.mapPin),
                 const SizedBox(height: 16),
-                _field(
-                  _phoneController,
-                  Translations.get('phone', locale),
-                  LucideIcons.phone,
-                ),
+                _field(_phoneController, Translations.get('phone', locale), LucideIcons.phone),
                 const SizedBox(height: 32),
                 _sectionTitle(Translations.get('bank_details', locale)),
                 const SizedBox(height: 24),
-                _optionalField(
-                  _bankNameController,
-                  Translations.get('bank_name', locale),
-                  LucideIcons.landmark,
-                ),
+                _optionalField(_bankNameController, Translations.get('bank_name', locale), LucideIcons.landmark),
                 const SizedBox(height: 16),
-                _optionalField(
-                  _accountNumberController,
-                  Translations.get('account_number', locale),
-                  LucideIcons.hash,
-                ),
+                _optionalField(_accountNumberController, Translations.get('account_number', locale), LucideIcons.hash),
                 const SizedBox(height: 16),
-                _optionalField(
-                  _branchController,
-                  Translations.get('branch', locale),
-                  LucideIcons.gitBranch,
-                ),
+                _optionalField(_branchController, Translations.get('branch', locale), LucideIcons.gitBranch),
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _updateProfile,
                   style: AppTheme.primaryButton(context),
                   child: _isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
+                      ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : Text(Translations.get('update_profile', locale)),
                 ),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () {
                     HapticFeedback.lightImpact();
-                    _initControllers(); // Revert changes
+                    _initControllers();
                     setState(() => _isEditing = false);
                   },
-                  child: Text(
-                    Translations.get('cancel', locale),
-                    style: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: Text(Translations.get('cancel', locale), style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
                 ),
               ] else ...[
                 _sectionTitle(Translations.get('settings', locale)),
@@ -276,24 +221,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 _settingsTile(
                   Translations.get('language', locale),
-                  locale == 'en'
-                      ? 'English'
-                      : locale == 'si'
-                      ? 'සිංහල'
-                      : 'தமிழ்',
+                  locale == 'en' ? 'English' : locale == 'si' ? 'සිංහල' : 'தமிழ்',
                   LucideIcons.languages,
                   onTap: () => _showLanguagePicker(context, prefs),
                 ),
                 _settingsTile(
                   Translations.get('theme_mode', locale),
-                  prefs.themeMode == ThemeMode.system
-                      ? 'System'
-                      : prefs.themeMode == ThemeMode.dark
-                      ? 'Dark'
-                      : 'Light',
-                  prefs.themeMode == ThemeMode.dark
-                      ? LucideIcons.moon
-                      : LucideIcons.sun,
+                  prefs.themeMode == ThemeMode.system ? 'System' : prefs.themeMode == ThemeMode.dark ? 'Dark' : 'Light',
+                  prefs.themeMode == ThemeMode.dark ? LucideIcons.moon : LucideIcons.sun,
                   onTap: () => _showThemePicker(context, prefs),
                 ),
                 const SizedBox(height: 16),
@@ -302,18 +237,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.red,
                     padding: const EdgeInsets.symmetric(vertical: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                   ),
-                  child: Text(
-                    Translations.get('logout', locale),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                  child: Text(Translations.get('logout', locale), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5)),
                 ),
               ],
             ],
@@ -323,126 +249,92 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileHeader(dynamic user, String locale) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildScrollableHeader(String locale, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.only(top: 45, bottom: 12),
+      child: Row(
+        children: [
+          _buildCircleBackButton(isDark),
+          Expanded(
+            child: Text(
+              _isEditing ? Translations.get('edit_profile', locale) : Translations.get('profile', locale),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w900,
+                fontSize: 24,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48), // Spacer to balance the back button
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCircleBackButton(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+        shape: BoxShape.circle,
+      ),
+      child: IconButton(
+        icon: Icon(
+          Icons.arrow_back_ios_new_rounded,
+          color: isDark ? Colors.white : Colors.black87,
+          size: 14,
+        ),
+        onPressed: () {
+          if (_isEditing) {
+            _initControllers();
+            setState(() => _isEditing = false);
+          } else {
+            widget.onBack?.call();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildAvatarHeader(dynamic user, bool isDark) {
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  if (_isEditing) {
-                    _initControllers(); // Revert changes
-                    setState(() => _isEditing = false);
-                  } else {
-                    widget.onBack?.call();
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: (isDark ? Colors.white10 : Colors.grey.shade100),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    LucideIcons.chevronLeft,
-                    size: 20,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  _isEditing
-                      ? Translations.get('edit_profile', locale)
-                      : Translations.get('profile', locale),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -1,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 44),
-            ],
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1), width: 1.5),
+          ),
+          child: CircleAvatar(
+            radius: 54,
+            backgroundColor: (isDark ? AppTheme.primaryLight : AppTheme.primary).withValues(alpha: 0.05),
+            child: Icon(LucideIcons.user, size: 48, color: isDark ? AppTheme.primaryLight : AppTheme.primary),
           ),
         ),
-        if (!_isEditing) ...[
-          const SizedBox(height: 32),
-          Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
-                    width: 1.5,
-                  ),
-                ),
-                child: CircleAvatar(
-                  radius: 54,
-                  backgroundColor:
-                      (isDark ? AppTheme.primaryLight : AppTheme.primary)
-                          .withValues(alpha: 0.05),
-                  child: Icon(
-                    LucideIcons.user,
-                    size: 48,
-                    color: isDark ? AppTheme.primaryLight : AppTheme.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                user['name'] ?? 'Farmer Name',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                user['farmerCode'] ?? 'ID: ...',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade400,
-                ),
-              ),
-            ],
-          ),
-        ],
+        const SizedBox(height: 24),
+        Text(
+          user['name'] ?? 'Farmer Name',
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          user['farmerCode'] ?? 'ID: ...',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey.shade400),
+        ),
       ],
     );
   }
 
-  Widget _settingsTile(
-    String title,
-    String subtitle,
-    IconData icon, {
-    VoidCallback? onTap,
-    Widget? trailing,
-  }) {
+  Widget _settingsTile(String title, String subtitle, IconData icon, {VoidCallback? onTap, Widget? trailing}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? AppTheme.surfaceDark
-            : Colors.white,
+        color: isDark ? AppTheme.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(28),
         boxShadow: AppTheme.premiumShadow,
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white10
-              : Colors.grey.shade50,
-        ),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade50),
       ),
       child: Material(
         color: Colors.transparent,
@@ -459,53 +351,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color:
-                        (Theme.of(context).brightness == Brightness.dark
-                                ? AppTheme.primaryLight
-                                : AppTheme.primary)
-                            .withValues(alpha: 0.08),
+                    color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    icon,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? AppTheme.primaryLight
-                        : AppTheme.primary,
-                    size: 22,
-                  ),
+                  child: Icon(icon, color: isDark ? AppTheme.primaryLight : AppTheme.primary, size: 22),
                 ),
                 const SizedBox(width: 20),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
+                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: -0.3)),
                       if (subtitle.isNotEmpty) ...[
                         const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: Colors.grey.shade400,
-                            fontSize: 13,
-                          ),
-                        ),
+                        Text(subtitle, style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
                       ],
                     ],
                   ),
                 ),
-                trailing ??
-                    Icon(
-                      LucideIcons.chevronRight,
-                      size: 20,
-                      color: Colors.grey.shade300,
-                    ),
+                trailing ?? Icon(LucideIcons.chevronRight, size: 20, color: Colors.grey.shade300),
               ],
             ),
           ),
@@ -517,38 +381,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showThemePicker(BuildContext context, AppPreferences prefs) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Theme Mode',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
+              const Text('Theme Mode', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
-              _themeOption(
-                'System Default',
-                ThemeMode.system,
-                LucideIcons.smartphone,
-                prefs,
-              ),
-              _themeOption(
-                'Light Mode',
-                ThemeMode.light,
-                LucideIcons.sun,
-                prefs,
-              ),
-              _themeOption(
-                'Dark Mode',
-                ThemeMode.dark,
-                LucideIcons.moon,
-                prefs,
-              ),
+              _themeOption('System Default', ThemeMode.system, LucideIcons.smartphone, prefs),
+              _themeOption('Light Mode', ThemeMode.light, LucideIcons.sun, prefs),
+              _themeOption('Dark Mode', ThemeMode.dark, LucideIcons.moon, prefs),
             ],
           ),
         ),
@@ -556,43 +400,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _themeOption(
-    String label,
-    ThemeMode mode,
-    IconData icon,
-    AppPreferences prefs,
-  ) {
+  Widget _themeOption(String label, ThemeMode mode, IconData icon, AppPreferences prefs) {
     bool isSelected = prefs.themeMode == mode;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isSelected
-            ? (isDark ? AppTheme.primaryLight : AppTheme.primary).withValues(
-                alpha: 0.1,
-              )
-            : Colors.transparent,
+        color: isSelected ? (isDark ? AppTheme.primaryLight : AppTheme.primary).withValues(alpha: 0.1) : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
       ),
       child: ListTile(
-        leading: Icon(
-          icon,
-          color: isSelected
-              ? (isDark ? AppTheme.primaryLight : AppTheme.primary)
-              : Colors.grey,
-        ),
-        title: Text(
-          label,
-          style: TextStyle(
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-        trailing: isSelected
-            ? Icon(
-                LucideIcons.check,
-                color: isDark ? AppTheme.primaryLight : AppTheme.primary,
-              )
-            : null,
+        leading: Icon(icon, color: isSelected ? (isDark ? AppTheme.primaryLight : AppTheme.primary) : Colors.grey),
+        title: Text(label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+        trailing: isSelected ? Icon(LucideIcons.check, color: isDark ? AppTheme.primaryLight : AppTheme.primary) : null,
         onTap: () {
           HapticFeedback.lightImpact();
           prefs.setThemeMode(mode);
@@ -605,22 +425,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showLanguagePicker(BuildContext context, AppPreferences prefs) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                Translations.get('language', prefs.locale.languageCode),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              Text(Translations.get('language', prefs.locale.languageCode), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
               _langOption('English', 'en', prefs),
               _langOption('සිංහල', 'si', prefs),
@@ -634,32 +446,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _langOption(String label, String code, AppPreferences prefs) {
     bool isSelected = prefs.locale.languageCode == code;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isSelected
-            ? (Theme.of(context).brightness == Brightness.dark
-                      ? AppTheme.primaryLight
-                      : AppTheme.primary)
-                  .withValues(alpha: 0.05)
-            : Colors.transparent,
+        color: isSelected ? (isDark ? AppTheme.primaryLight : AppTheme.primary).withValues(alpha: 0.05) : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
       ),
       child: ListTile(
-        title: Text(
-          label,
-          style: TextStyle(
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-        trailing: isSelected
-            ? Icon(
-                LucideIcons.check,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? AppTheme.primaryLight
-                    : AppTheme.primary,
-              )
-            : null,
+        title: Text(label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+        trailing: isSelected ? Icon(LucideIcons.check, color: isDark ? AppTheme.primaryLight : AppTheme.primary) : null,
         onTap: () {
           HapticFeedback.lightImpact();
           prefs.setLocale(code);
@@ -672,7 +468,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _field(TextEditingController controller, String label, IconData icon) {
     final prefs = Provider.of<AppPreferences>(context, listen: false);
     final locale = prefs.locale.languageCode;
-
     int? maxLength;
     List<TextInputFormatter>? formatters;
     TextInputType keyboardType = TextInputType.text;
@@ -688,19 +483,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return TextFormField(
       controller: controller,
-      decoration: AppTheme.inputDecoration(label, icon, context: context).copyWith(
-        counterText: '',
-      ),
+      decoration: AppTheme.inputDecoration(label, icon, context: context).copyWith(counterText: ''),
       maxLength: maxLength,
       inputFormatters: formatters,
       keyboardType: keyboardType,
       validator: (v) {
-        if (v == null || v.isEmpty) {
-          return Translations.get('required_field', locale);
-        }
+        if (v == null || v.isEmpty) return Translations.get('required_field', locale);
         if (icon == LucideIcons.phone) {
-          if (v.length != 10) return 'Phone must be 10 digits';
-          if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) return 'Invalid phone number';
+          if (v.length != 10) {
+            return 'Phone must be 10 digits';
+          }
+          if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) {
+            return 'Invalid phone number';
+          }
         }
         if (icon == LucideIcons.creditCard && !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) {
           return 'Invalid NIC (e.g. 123456789V or 12-digit)';
@@ -717,16 +512,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-
   Widget _sectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w900,
-        color: Colors.grey,
-        letterSpacing: 1,
-      ),
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1),
     );
   }
 }

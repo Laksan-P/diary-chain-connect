@@ -8,6 +8,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'passbook_screen.dart';
 import 'profile_screen.dart';
+import 'notifications_screen.dart';
 
 import '../providers/preferences_provider.dart';
 import '../services/translations.dart';
@@ -80,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
             locale: locale,
             isLoading: _isLoading,
             onRefresh: _fetchData,
+            onBack: _handleBack,
             mode: 'supply',
           ),
           PassbookScreen(
@@ -88,9 +90,15 @@ class _HomeScreenState extends State<HomeScreen> {
             locale: locale,
             isLoading: _isLoading,
             onRefresh: _fetchData,
+            onBack: _handleBack,
             mode: 'payments',
           ),
           ProfileScreen(onBack: _handleBack),
+          NotificationsScreen(
+            userId: user?['id']?.toString() ?? '',
+            locale: locale,
+            onBack: _handleBack,
+          ),
         ],
       ),
       bottomNavigationBar: _buildIntegratedNavBar(locale),
@@ -114,6 +122,15 @@ class _HomeScreenState extends State<HomeScreen> {
         _currentIndex = _history.last;
       });
     }
+  }
+
+  void _showNotifications() {
+    HapticFeedback.mediumImpact();
+    if (_currentIndex == 4) return;
+    setState(() {
+      _currentIndex = 4;
+      _history.add(4);
+    });
   }
 
   Widget _buildIntegratedNavBar(String locale) {
@@ -227,61 +244,75 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFintechDashboard(user, AppPreferences prefs) {
     final locale = prefs.locale.languageCode;
-    final totalQty = 0.0;
+    final totalBalance = _payments.fold(0.0, (sum, p) {
+      return sum + (double.tryParse(p['amount'].toString()) ?? 0.0);
+    });
 
     return SafeArea(
       bottom: false,
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(user, totalQty, prefs),
-          const SizedBox(height: 32),
-          // Hide Recent Collections for Sprint 1
-          /*
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              Translations.get('recent_collections', locale),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_isLoading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(40),
-                child: CircularProgressIndicator(),
-              ),
-            )
-          else
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(user, totalBalance, prefs),
+            const SizedBox(height: 32),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: _collections
-                    .take(5)
-                    .map((c) => _fintechCollectionCard(c, locale))
-                    .toList(),
+              child: Text(
+                'Recent Activity',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : AppTheme.primary,
+                ),
               ),
             ),
-          */
-          const SizedBox(height: 120),
-        ],
+            const SizedBox(height: 16),
+            if (_isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_collections.isEmpty && _payments.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: Text(
+                    'No recent activity',
+                    style: TextStyle(color: Colors.grey.withValues(alpha: 0.5)),
+                  ),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  children: [
+                    ..._collections.take(3).map((c) => _fintechCollectionCard(c, locale)),
+                    ..._payments.take(2).map((p) => _fintechPaymentCard(p, locale)),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 120),
+          ],
+        ),
       ),
-    ));
+    );
   }
 
-  Widget _buildHeader(user, double totalQty, AppPreferences prefs) {
+  Widget _buildHeader(user, double balance, AppPreferences prefs) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final locale = prefs.locale.languageCode;
+    final currencyFormat = NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 2);
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      margin: const EdgeInsets.fromLTRB(16, 28, 16, 0),
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         gradient: AppTheme.getHeaderGradient(context),
@@ -372,6 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 context,
                 LucideIcons.bell,
                 onTap: _showNotifications,
+                showBadge: _notifications.any((n) => n['isRead'] == false),
               ),
             ],
           ),
@@ -403,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen> {
             duration: const Duration(milliseconds: 300),
             child: Text(
               _isBalanceVisible
-                  ? 'Rs. 00.00'
+                  ? currencyFormat.format(balance)
                   : '••••••',
               key: ValueKey(_isBalanceVisible),
               style: const TextStyle(
@@ -423,25 +455,53 @@ class _HomeScreenState extends State<HomeScreen> {
     BuildContext context,
     IconData icon, {
     required VoidCallback onTap,
+    bool showBadge = false,
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Icon(icon, size: 20, color: Colors.black),
+            child: Icon(icon, size: 20, color: Colors.black),
+          ),
+          if (showBadge)
+            Positioned(
+              right: -2,
+              top: -2,
+              child: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? const Color(0xFF1B264F)
+                      : const Color(0xFFFFB000), // Back to Premium Gold for Dark
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -689,15 +749,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _fintechPaymentCard(dynamic p) {
+  Widget _fintechPaymentCard(dynamic p, String locale) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(32),
         boxShadow: AppTheme.premiumShadow,
-        border: Border.all(color: Colors.grey.shade50),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade50,
+        ),
       ),
       child: Row(
         children: [
@@ -720,36 +783,22 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'Rs. ${p['amount']}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                     letterSpacing: -0.5,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Collection #${p['collectionId']}',
+                  '${Translations.get('collection_id', locale)} #${p['collectionId']}',
                   style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                 ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: (p['status'] == 'Paid' ? Colors.green : Colors.orange)
-                  .withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              p['status'],
-              style: TextStyle(
-                color: p['status'] == 'Paid' ? Colors.green : Colors.orange,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
+          _statusBadge(p['status'] ?? 'Pending'),
         ],
       ),
     );
@@ -776,39 +825,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showNotifications() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? AppTheme.surfaceDark : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            Text(
-              'Notifications',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.5,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: Center(
-                child: Text(
-                  'No notifications',
-                  style: TextStyle(color: Colors.grey.shade400),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

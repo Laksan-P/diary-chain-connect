@@ -52,6 +52,8 @@ class Translations {
       'buffalo': 'Buffalo',
       'cow': 'Cow',
       'goat': 'Goat',
+      'notifications': 'Notifications',
+      'no_notifications': 'No notifications yet',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -105,6 +107,8 @@ class Translations {
       'buffalo': 'මී කිරි',
       'cow': 'එළකිරි',
       'goat': 'එළු කිරි',
+      'notifications': 'දැනුම්දීම්',
+      'no_notifications': 'තවමත් දැනුම්දීම් නොමැත',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -158,6 +162,8 @@ class Translations {
       'buffalo': 'எருமை',
       'cow': 'பசு',
       'goat': 'ஆadu',
+      'notifications': 'அறிவிப்புகள்',
+      'no_notifications': 'இன்னும் அறிவிப்புகள் இல்லை',
     },
   };
 

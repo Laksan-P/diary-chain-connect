@@ -13,7 +13,8 @@ export default async function handler(req, res) {
   // ────────── GET /api/notifications?action=list ──────────
   if (action === 'list' && req.method === 'GET') {
     try {
-      const userId = req.query.userId || user.id;
+      // Strictly use the ID from the authenticated token for security
+      const userId = user.id;
       const { data: notes, error } = await supabase
         .from('notifications')
         .select('id, user_id, title, message, type, is_read, created_at')
@@ -40,7 +41,10 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'id is required' });
 
     try {
-      await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+      await supabase.from('notifications')
+        .update({ is_read: true })
+        .eq('id', id)
+        .eq('user_id', user.id);
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error('Mark notification read error:', err);

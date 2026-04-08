@@ -206,11 +206,37 @@ export default async function handler(req, res) {
 
       await supabase.from('dispatches').update({ status, rejection_reason: reason || null }).eq('id', id);
 
+      // Notify all farmers in this dispatch
       const { data: items, error: iErr } = await supabase
-        .from('dispatch_items').select('collection_id').eq('dispatch_id', id);
+        .from('dispatch_items')
+        .select(`
+          collection_id,
+          milk_collections (
+            farmer_id,
+            date,
+            farmers (user_id)
+          )
+        `)
+        .eq('dispatch_id', id);
+
       if (!iErr && items) {
         for (const item of items) {
+          const collection = item.milk_collections;
           await supabase.from('milk_collections').update({ dispatch_status: status }).eq('id', item.collection_id);
+
+          if (collection?.farmers?.user_id) {
+            const title = status === 'Approved' ? 'Dispatch Approved' : 'Dispatch Rejected';
+            const message = status === 'Approved'
+              ? `Your milk collection on ${collection.date} was approved by Nestlé.`
+              : `Your milk collection on ${collection.date} was rejected by Nestlé. Reason: ${reason || 'N/A'}`;
+            
+            await supabase.from('notifications').insert({
+              user_id: collection.farmers.user_id,
+              title,
+              message,
+              type: 'dispatch_status'
+            });
+          }
         }
       }
 
