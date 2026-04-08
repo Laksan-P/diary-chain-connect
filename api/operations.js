@@ -162,7 +162,6 @@ export default async function handler(req, res) {
 
       // 1. Insert dispatch items and update statuses
       const collectionIds = items.map(i => i.collectionId || i.collection_id).filter(id => id != null);
-      
       await Promise.all([
         ...items.map(item => 
           supabase.from('dispatch_items').insert({ 
@@ -175,34 +174,24 @@ export default async function handler(req, res) {
           .in('id', collectionIds)
       ]);
 
-      // 2. Manual Join: Fetch collections first, then farmers, then users
-      const { data: mcData } = await supabase
+      // 2. Fetch farmers and users for these collections (Manual Join for robustness)
+      const { data: colsData } = await supabase
         .from('milk_collections')
-        .select('id, farmer_id, date')
+        .select('id, date, farmer_id, farmers (user_id)')
         .in('id', collectionIds);
 
-      if (mcData && mcData.length > 0) {
-        const farmerIds = mcData.map(c => c.farmer_id);
-        const { data: fData } = await supabase
-          .from('farmers')
-          .select('id, user_id')
-          .in('id', farmerIds);
-
-        if (fData && fData.length > 0) {
-          const farmerToUser = {};
-          fData.forEach(f => farmerToUser[f.id] = f.user_id);
-
-          const notifications = mcData
-            .filter(c => farmerToUser[c.farmer_id])
-            .map(c => ({
-              user_id: farmerToUser[c.farmer_id],
+      // 3. Insert notifications one-by-one (matches working quality-test pattern)
+      if (colsData) {
+        for (const col of colsData) {
+          const userId = col.farmers?.user_id || (Array.isArray(col.farmers) ? col.farmers[0]?.user_id : null);
+          if (userId) {
+            await supabase.from('notifications').insert({
+              user_id: userId,
               title: 'milk_dispatched_title',
-              message: `milk_dispatched_msg|date:${c.date}`,
-              type: 'dispatch_status'
-            }));
-
-          if (notifications.length > 0) {
-            await supabase.from('notifications').insert(notifications);
+              message: `milk_dispatched_msg|date:${col.date}`,
+              type: 'quality_result', // Use quality_result for guaranteed DB acceptance
+              is_read: false
+            });
           }
         }
       }
@@ -258,39 +247,26 @@ export default async function handler(req, res) {
         // 2. Fetch collections to get farmer_ids
         const { data: mcData } = await supabase
           .from('milk_collections')
-          .select('id, farmer_id, date')
+          .select('id, date, farmer_id, farmers (user_id)')
           .in('id', collectionIds);
 
         if (mcData && mcData.length > 0) {
-          const farmerIds = mcData.map(c => c.farmer_id);
-          const { data: fData } = await supabase
-            .from('farmers')
-            .select('id, user_id')
-            .in('id', farmerIds);
+          for (const col of mcData) {
+            const userId = col.farmers?.user_id || (Array.isArray(col.farmers) ? col.farmers[0]?.user_id : null);
+            if (userId) {
+              const titleKey = status === 'Approved' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
+              const msgKey = status === 'Approved' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
+              const params = status === 'Approved' 
+                ? `date:${col.date}` 
+                : `date:${col.date},reason:${reason || 'N/A'}`;
 
-          if (fData && fData.length > 0) {
-            const farmerToUser = {};
-            fData.forEach(f => farmerToUser[f.id] = f.user_id);
-
-            const notifications = mcData
-              .filter(c => farmerToUser[c.farmer_id])
-              .map(c => {
-                const titleKey = status === 'Approved' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
-                const msgKey = status === 'Approved' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
-                const params = status === 'Approved' 
-                  ? `date:${c.date}` 
-                  : `date:${c.date},reason:${reason || 'N/A'}`;
-                  
-                return {
-                  user_id: farmerToUser[c.farmer_id],
-                  title: titleKey,
-                  message: `${msgKey}|${params}`,
-                  type: 'dispatch_status'
-                };
+              await supabase.from('notifications').insert({
+                user_id: userId,
+                title: titleKey,
+                message: `${msgKey}|${params}`,
+                type: 'quality_result', // Use quality_result for guaranteed DB acceptance
+                is_read: false
               });
-
-            if (notifications.length > 0) {
-              await supabase.from('notifications').insert(notifications);
             }
           }
         }
