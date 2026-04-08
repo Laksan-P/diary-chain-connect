@@ -243,21 +243,6 @@ const PaymentsPage: React.FC = () => {
                       </p>
                     </div>
 
-                    <div className="mt-8 pt-8 border-t w-full text-left">
-                       <h4 className="text-sm font-black uppercase text-primary mb-3 flex items-center gap-2">
-                         <FileText className="w-4 h-4" /> User Guide: How this works
-                       </h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="bg-muted/30 p-4 rounded-xl">
-                             <p className="text-xs font-bold mb-1">📅 Bi-Weekly Cycle</p>
-                             <p className="text-[11px] text-muted-foreground leading-relaxed">System works on a rolling 14-day procurement cycle. Approved milk is processed automatically once it has been in the system for 2 weeks.</p>
-                          </div>
-                          <div className="bg-muted/30 p-4 rounded-xl">
-                             <p className="text-xs font-bold mb-1">⚖️ Quality & Pricing</p>
-                             <p className="text-[11px] text-muted-foreground leading-relaxed">Only "Approved" milk from chilling centers is included. Calculations use your active Pricing Strategy recorded in the system.</p>
-                          </div>
-                       </div>
-                    </div>
                   </motion.div>
                 ) : (
                   <motion.div 
