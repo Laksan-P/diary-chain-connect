@@ -27,30 +27,11 @@ import { StatusBadge } from '@/components/StatusBadge';
  * 11. Notify Farmer
  */
 
-const getCycleSummary = async (skip = false) => {
-  const res = await fetch(`/api/payments?action=cycle-summary${skip ? '&skipCycle=true' : ''}`);
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.error || 'Failed to fetch summary');
-  }
-  return res.json();
-};
-
-const processBatchDetails = async (summaryItems: any[]) => {
-  const res = await fetch('/api/payments?action=process-batch', {
-    method: 'POST',
-    body: JSON.stringify({ summaryItems }),
-    headers: { 'Content-Type': 'application/json' }
-  });
-  if (!res.ok) throw new Error('Processing failed');
-  return res.json();
-};
-
-const getPaymentHistory = async () => {
-  const res = await fetch('/api/payments?action=list');
-  if (!res.ok) throw new Error('Failed to fetch history');
-  return res.json();
-};
+import { 
+  getPaymentCycleSummary, 
+  processPaymentBatch, 
+  getPayments 
+} from '@/services/api';
 
 const PaymentsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -62,7 +43,7 @@ const PaymentsPage: React.FC = () => {
   const loadCycle = async (skip = false) => {
     setLoading(true);
     try {
-      const data = await getCycleSummary(skip);
+      const data = await getPaymentCycleSummary(skip);
       setCycleData(data);
       if (data.cycleReached) {
         toast({ title: 'System: Step 5 Complete', description: 'Payment summary generated successfully.' });
@@ -77,7 +58,7 @@ const PaymentsPage: React.FC = () => {
 
   const loadHistory = async () => {
     try {
-      const data = await getPaymentHistory();
+      const data = await getPayments();
       setHistory(data);
     } catch (e) { console.error(e); }
   };
@@ -88,7 +69,7 @@ const PaymentsPage: React.FC = () => {
     setLoading(true);
     try {
       // Step 8: Process Payment
-      await processBatchDetails(cycleData.summary);
+      await processPaymentBatch(cycleData.summary);
       
       // Step 9, 10, 11 happen on backend
       toast({ 

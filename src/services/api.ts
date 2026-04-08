@@ -223,6 +223,19 @@ export const generatePayment = async (collectionId: number): Promise<Payment> =>
   });
 };
 
+/** GET /api/payments?action=cycle-summary */
+export const getPaymentCycleSummary = async (skipCycle = false): Promise<any> => {
+  return apiFetch<any>(`/api/payments?action=cycle-summary${skipCycle ? '&skipCycle=true' : ''}`);
+};
+
+/** POST /api/payments?action=process-batch */
+export const processPaymentBatch = async (summaryItems: any[]): Promise<any> => {
+  return apiFetch<any>('/api/payments?action=process-batch', {
+    method: 'POST',
+    body: JSON.stringify({ summaryItems }),
+  });
+};
+
 /** PATCH /api/payments?action=update-status&id=X */
 export const updatePaymentStatus = async (id: number, status: 'Paid'): Promise<void> => {
   await apiFetch<{ success: boolean }>(`/api/payments?action=update-status&id=${id}`, {
