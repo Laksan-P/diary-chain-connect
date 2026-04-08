@@ -19,6 +19,8 @@ void main() {
   );
 }
 
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 class NestleDairyApp extends StatelessWidget {
   const NestleDairyApp({super.key});
 
@@ -29,6 +31,7 @@ class NestleDairyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Nestlé Dairy Connect',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       locale: prefs.locale,
       themeMode: prefs.themeMode,
       theme: AppTheme.lightTheme,

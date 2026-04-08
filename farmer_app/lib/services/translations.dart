@@ -54,6 +54,12 @@ class Translations {
       'goat': 'Goat',
       'notifications': 'Notifications',
       'no_notifications': 'No notifications yet',
+      'milk_dispatched_title': 'Milk Dispatched',
+      'milk_dispatched_msg': 'Your milk collection on {date} has been dispatched to Nestlé.',
+      'dispatch_approved_title': 'Dispatch Approved',
+      'dispatch_approved_msg': 'Your milk collection on {date} was approved by Nestlé.',
+      'dispatch_rejected_title': 'Dispatch Rejected',
+      'dispatch_rejected_msg': 'Your milk collection on {date} was rejected by Nestlé. Reason: {reason}',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -109,6 +115,12 @@ class Translations {
       'goat': 'එළු කිරි',
       'notifications': 'දැනුම්දීම්',
       'no_notifications': 'තවමත් දැනුම්දීම් නොමැත',
+      'milk_dispatched_title': 'කිරි ප්‍රවාහනය ආරම්භ විය',
+      'milk_dispatched_msg': '{date} දින ඔබ ලබාදුන් කිරි ප්‍රමාණය නෙස්ලේ ආයතනය වෙත යොමු කරන ලදී.',
+      'dispatch_approved_title': 'ප්‍රවාහනය අනුමතයි',
+      'dispatch_approved_msg': '{date} දින ඔබ ලබාදුන් කිරි ප්‍රමාණය නෙස්ලේ ආයතනය විසින් අනුමත කරන ලදී.',
+      'dispatch_rejected_title': 'ප්‍රවාහනය ප්‍රතික්ෂේපිතයි',
+      'dispatch_rejected_msg': '{date} දින ඔබ ලබාදුන් කිරි ප්‍රමාණය නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී. හේතුව: {reason}',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -164,10 +176,22 @@ class Translations {
       'goat': 'ஆadu',
       'notifications': 'அறிவிப்புகள்',
       'no_notifications': 'இன்னும் அறிவிப்புகள் இல்லை',
+      'milk_dispatched_title': 'பால் அனுப்பப்பட்டது',
+      'milk_dispatched_msg': '{date} அன்று நீங்கள் வழங்கிய பால் நெஸ்லே நிறுவனத்திற்கு அனுப்பப்பட்டுள்ளது.',
+      'dispatch_approved_title': 'அனுப்புதல் அங்கீகரிக்கப்பட்டது',
+      'dispatch_approved_msg': '{date} அன்று நீங்கள் வழங்கிய பால் நெஸ்லே நிறுவனத்தால் அங்கீகரிக்கப்பட்டது.',
+      'dispatch_rejected_title': 'அனுப்புதல் நிராகரிக்கப்பட்டது',
+      'dispatch_rejected_msg': '{date} அன்று நீங்கள் வழங்கிய பால் நெஸ்லே நிறுவனத்தால் நிராகரிக்கப்பட்டது. காரணம்: {reason}',
     },
   };
 
-  static String get(String key, String locale) {
-    return _data[locale]?[key] ?? _data['en']?[key] ?? key;
+  static String get(String key, String locale, {Map<String, String>? params}) {
+    String text = _data[locale]?[key] ?? _data['en']?[key] ?? key;
+    if (params != null) {
+      params.forEach((k, v) {
+        text = text.replaceAll('{$k}', v);
+      });
+    }
+    return text;
   }
 }

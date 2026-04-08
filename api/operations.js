@@ -160,13 +160,51 @@ export default async function handler(req, res) {
       if (dErr) throw dErr;
       const dispatchId = dResult.id;
 
-      for (const item of items) {
-        await supabase.from('dispatch_items').insert({ dispatch_id: dispatchId, collection_id: item.collectionId });
-        await supabase.from('milk_collections').update({ dispatch_status: 'Dispatched' }).eq('id', item.collectionId);
+      // 1. Insert dispatch items and update statuses
+      // Improved: Handle both camelCase and snake_case from different frontend versions
+      const collectionIds = items.map(i => i.collectionId || i.collection_id).filter(id => id != null);
+      
+      await Promise.all([
+        ...items.map(item => 
+          supabase.from('dispatch_items').insert({ 
+            dispatch_id: dispatchId, 
+            collection_id: item.collectionId || item.collection_id 
+          })
+        ),
+        supabase.from('milk_collections')
+          .update({ dispatch_status: 'Dispatched' })
+          .in('id', collectionIds)
+      ]);
+
+      // 2. Fetch all farmers for these collections in one go
+      // Improved: Match working pattern by including foreign key column
+      const { data: colsData, error: colsErr } = await supabase
+        .from('milk_collections')
+        .select('farmer_id, date, farmers (user_id)')
+        .in('id', collectionIds);
+
+      // 3. Insert all notifications in one go for "instant" feel
+      if (!colsErr && colsData) {
+        const notifications = colsData
+          .filter(c => c && c.farmers && c.farmers.user_id)
+          .map(c => ({
+            user_id: c.farmers.user_id,
+            title: 'milk_dispatched_title',
+            message: `milk_dispatched_msg|date:${c.date}`,
+            type: 'dispatch_status'
+          }));
+
+        if (notifications.length > 0) {
+          const { error: notifyErr } = await supabase.from('notifications').insert(notifications);
+          if (notifyErr) console.error('Notify Error:', notifyErr);
+        }
+      } else if (colsErr) {
+        console.error('Fetch Error:', colsErr);
       }
 
       const { data: dispatch, error: fetchErr } = await supabase
         .from('dispatches')
+        // ... ...
         .select(`
           id, chilling_center_id, transporter_name, vehicle_number, driver_contact,
           dispatch_date, status, created_at,
@@ -219,24 +257,39 @@ export default async function handler(req, res) {
         `)
         .eq('dispatch_id', id);
 
-      if (!iErr && items) {
-        for (const item of items) {
-          const collection = item.milk_collections;
-          await supabase.from('milk_collections').update({ dispatch_status: status }).eq('id', item.collection_id);
+      if (!iErr && items && items.length > 0) {
+        // 1. Bulk Update status of all milk collections in this dispatch
+        const collectionIds = items.map(item => item.collection_id);
+        await supabase.from('milk_collections').update({ dispatch_status: status }).in('id', collectionIds);
 
-          if (collection?.farmers?.user_id) {
-            const title = status === 'Approved' ? 'Dispatch Approved' : 'Dispatch Rejected';
-            const message = status === 'Approved'
-              ? `Your milk collection on ${collection.date} was approved by Nestlé.`
-              : `Your milk collection on ${collection.date} was rejected by Nestlé. Reason: ${reason || 'N/A'}`;
-            
-            await supabase.from('notifications').insert({
+        // 2. Prepare notifications for all farmers
+        const notifications = items
+          .filter(item => {
+            const mc = item.milk_collections;
+            // Handle if it's returns as an array (sometimes happens with Supabase joins)
+            const collection = Array.isArray(mc) ? mc[0] : mc;
+            return collection?.farmers?.user_id;
+          })
+          .map(item => {
+            const mc = item.milk_collections;
+            const collection = Array.isArray(mc) ? mc[0] : mc;
+            const titleKey = status === 'Approved' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
+            const msgKey = status === 'Approved' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
+            const params = status === 'Approved' 
+              ? `date:${collection.date}` 
+              : `date:${collection.date},reason:${reason || 'N/A'}`;
+              
+            return {
               user_id: collection.farmers.user_id,
-              title,
-              message,
+              title: titleKey,
+              message: `${msgKey}|${params}`,
               type: 'dispatch_status'
-            });
-          }
+            };
+          });
+
+        if (notifications.length > 0) {
+          const { error: notifyErr } = await supabase.from('notifications').insert(notifications);
+          if (notifyErr) console.error('Approval Notify Error:', notifyErr);
         }
       }
 

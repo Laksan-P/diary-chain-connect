@@ -4,12 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   // Professional Navy Blue Palette
   static const Color primary = Color(0xFF1B264F); // Rich Navy
-  static const Color primaryLight = Color(0xFF274690); // Royal Navy
+  static const Color primaryLight = Color(0xFF3B82F6); // Vibrant Royal Blue (better for dark visibility)
   static const Color accent = Color(0xFF576CA8); // Steel Blue
   
   static const Color backgroundLight = Color(0xFFF8FAFC);
-  static const Color backgroundDark = Color(0xFF0F172A); // Slate midnight
-  static const Color surfaceDark = Color(0xFF1E293B);
+  static const Color backgroundDark = Color(0xFF020617); // Deepest Midnight
+  static const Color surfaceDark = Color(0xFF0F172A); // Elevated Surface
 
   static List<BoxShadow> premiumShadow = [
     BoxShadow(

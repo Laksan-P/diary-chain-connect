@@ -332,12 +332,14 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
   Widget _buildSupplyCard(BuildContext context, dynamic c) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final milkType = Translations.get(c['milkType']?.toString().toLowerCase() ?? 'cow', widget.locale);
+    
     return _buildPassbookCard(
       context,
       icon: LucideIcons.droplets,
-      iconColor: isDark ? Colors.cyanAccent : AppTheme.primary,
-      title: 'Collection #${c['id']}',
-      subtitle: DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse('${c['date']} ${c['time'] ?? '00:00:00'}')),
+      iconColor: isDark ? AppTheme.primaryLight : AppTheme.primary,
+      title: '${Translations.get('collection_id', widget.locale)} #${c['id']}',
+      subtitle: '${DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse('${c['date']} ${c['time'] ?? '00:00:00'}').toLocal())} • $milkType',
       trailing: '${c['quantity']} L',
       status: c['qualityResult'] ?? 'Pending',
       type: 'supply',
@@ -351,7 +353,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
       icon: LucideIcons.banknote,
       iconColor: isDark ? Colors.greenAccent : Colors.green,
       title: 'Settlement Amount',
-      subtitle: DateFormat('MMM dd, yyyy').format(DateTime.parse(p['paidAt'] ?? p['createdAt'])),
+      subtitle: DateFormat('MMM dd, yyyy').format(DateTime.parse(p['paidAt'] ?? p['createdAt']).toLocal()),
       trailing: 'Rs. ${p['amount']}',
       status: p['status'] ?? 'Pending',
       type: 'payment',
@@ -422,7 +424,9 @@ class _PassbookScreenState extends State<PassbookScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
                   fontSize: 15,
-                  color: type == 'supply' ? (isDark ? Colors.cyanAccent : AppTheme.accent) : Colors.green,
+                  color: type == 'supply' 
+                    ? (isDark ? AppTheme.primaryLight : AppTheme.primary) 
+                    : Colors.green,
                 ),
               ),
               const SizedBox(height: 6),

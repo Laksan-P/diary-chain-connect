@@ -6,15 +6,23 @@ import '../services/translations.dart';
 import 'app_theme.dart';
 
 class NotificationsScreen extends StatefulWidget {
+  final List<dynamic> notifications;
+  final bool isLoading;
   final String userId;
   final String locale;
   final VoidCallback onBack;
+  final VoidCallback onRefresh;
+  final VoidCallback? onRead;
 
   const NotificationsScreen({
     super.key,
+    required this.notifications,
+    required this.isLoading,
     required this.userId,
     required this.locale,
     required this.onBack,
+    required this.onRefresh,
+    this.onRead,
   });
 
   @override
@@ -23,39 +31,64 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final _api = ApiService();
-  List<dynamic> _notifications = [];
-  bool _isLoading = true;
+  // We'll use a local copy for optimistic updates, then sync with parent
+  late List<dynamic> _localNotifications;
 
   @override
   void initState() {
     super.initState();
-    _fetchNotifications();
+    _localNotifications = List.from(widget.notifications);
   }
 
-  Future<void> _fetchNotifications() async {
-    setState(() => _isLoading = true);
-    try {
-      final data = await _api.get('/notifications?action=list&userId=${widget.userId}');
-      if (mounted) {
-        setState(() {
-          _notifications = data;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+  @override
+  void didUpdateWidget(NotificationsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!mounted) return;
+    // Sync local list if parent list changes (e.g. from background refresh)
+    if (widget.notifications != oldWidget.notifications) {
+      setState(() {
+        _localNotifications = List.from(widget.notifications);
+      });
     }
+  }
+
+  Future<void> _fetchNotifications({bool showLoader = true}) async {
+    widget.onRefresh();
   }
 
   Future<void> _markAsRead(String id) async {
+    // Optimistic UI update
+    setState(() {
+      final index = _localNotifications.indexWhere((n) => n['id'].toString() == id);
+      if (index != -1) {
+        _localNotifications[index]['isRead'] = true;
+      }
+    });
+
     try {
       await _api.patch('/notifications?action=mark-read&id=$id', {});
-      _fetchNotifications();
+      widget.onRead?.call();
     } catch (e) {
       debugPrint("Error marking read: $e");
+      _fetchNotifications(showLoader: false);
     }
+  }
+
+  String _translate(String? raw) {
+    if (raw == null) return '';
+    if (raw.contains('|')) {
+      final parts = raw.split('|');
+      final key = parts[0];
+      final paramsList = parts[1].split(',');
+      final Map<String, String> params = {};
+      for (var p in paramsList) {
+        final kv = p.split(':');
+        if (kv.length == 2) params[kv[0]] = kv[1];
+      }
+      return Translations.get(key, widget.locale, params: params);
+    }
+    // If it doesn't have |, it might still be a key (like the title)
+    return Translations.get(raw, widget.locale);
   }
 
   @override
@@ -75,17 +108,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-              sliver: _isLoading 
+              sliver: widget.isLoading 
                 ? const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
-                : _notifications.isEmpty
+                : _localNotifications.isEmpty
                   ? SliverFillRemaining(
                       hasScrollBody: false,
                       child: _buildEmptyState(),
                     )
                   : SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildNotificationCard(_notifications[index], isDark),
-                        childCount: _notifications.length,
+                        (context, index) => _buildNotificationCard(_localNotifications[index], isDark),
+                        childCount: _localNotifications.length,
                       ),
                     ),
             ),
@@ -213,7 +246,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        note['title'] ?? 'Notification',
+                        _translate(note['title']),
                         style: TextStyle(
                           fontWeight: isRead ? FontWeight.bold : FontWeight.w900,
                           fontSize: 14,
@@ -240,7 +273,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    note['message'] ?? '',
+                    _translate(note['message']),
                     style: TextStyle(
                       color: isDark 
                           ? (isRead ? Colors.white24 : Colors.white60) 
@@ -251,7 +284,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse(note['createdAt'])),
+                    DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse(note['createdAt']).toLocal()),
                     style: TextStyle(
                       color: isDark ? Colors.white12 : Colors.grey.shade400,
                       fontSize: 10,
