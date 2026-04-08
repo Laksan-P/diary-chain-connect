@@ -205,6 +205,13 @@ export const createPricingRule = async (data: Partial<PricingRule>): Promise<Pri
     body: JSON.stringify(data),
   });
 };
+/** PATCH /api/operations?action=update-pricing-rule&id=X */
+export const updatePricingRule = async (id: number, isActive: boolean): Promise<void> => {
+  await apiFetch<{ success: boolean }>(`/api/operations?action=update-pricing-rule&id=${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isActive }),
+  });
+};
 
 // ============ PAYMENTS ============
 

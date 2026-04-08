@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useToast } from '@/hooks/use-toast';
-import { getPricingRules, createPricingRule } from '@/services/api';
+import { getPricingRules, createPricingRule, updatePricingRule } from '@/services/api';
 import type { PricingRule } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -58,6 +58,17 @@ const PricingRules: React.FC = () => {
     }
   };
 
+  const toggleRule = async (id: number, currentStatus: boolean) => {
+    try {
+      await updatePricingRule(id, !currentStatus);
+      const updated = await getPricingRules();
+      setRules(updated);
+      toast({ title: !currentStatus ? 'Pricing Rule Activated' : 'Pricing Rule Deactivated' });
+    } catch {
+      toast({ title: 'Operation failed', variant: 'destructive' });
+    }
+  };
+
   const columns = [
     { key: 'basePricePerLiter', header: 'Unit Price (Rs)', render: (r: PricingRule) => <span className="font-bold text-foreground">Rs. {r.basePricePerLiter}</span> },
     { key: 'fatBonus', header: 'FAT Bonus', render: (r: PricingRule) => `Rs. ${r.fatBonus}` },
@@ -67,15 +78,29 @@ const PricingRules: React.FC = () => {
       key: 'isActive', 
       header: 'Status', 
       render: (r: PricingRule) => r.isActive ? (
-        <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-max">
-          <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Current Active
+        <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-max shadow-sm border border-emerald-200">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Current Active
         </span>
       ) : (
-        <span className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-[10px] font-black uppercase tracking-wider w-max">
-          Archived Rule
+        <span className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-[10px] font-black uppercase tracking-wider w-max border">
+          Pending / Offline
         </span>
       )
     },
+    {
+      key: 'actions',
+      header: 'Manage',
+      render: (r: PricingRule) => (
+        <Button 
+          size="sm" 
+          variant={r.isActive ? "ghost" : "default"}
+          className={`h-8 px-4 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${r.isActive ? 'text-destructive hover:bg-destructive/10' : 'bg-primary hover:bg-primary/90 text-white shadow-md'}`}
+          onClick={() => toggleRule(r.id, r.isActive)}
+        >
+          {r.isActive ? 'Pause Rule' : 'Activate Now'}
+        </Button>
+      )
+    }
   ];
 
   return (

@@ -281,5 +281,29 @@ export default async function handler(req, res) {
     }
   }
 
+  // ────────── PATCH /api/operations?action=update-pricing-rule&id=X ──────────
+  if (action === 'update-pricing-rule' && req.method === 'PATCH') {
+    if (!id) return res.status(400).json({ error: 'id is required' });
+    try {
+      const { isActive } = getBody(req);
+      
+      // If we are activating this rule, deactivate ALL others first
+      if (isActive) {
+        await supabase.from('pricing_rules').update({ is_active: false }).neq('id', id);
+      }
+
+      const { error } = await supabase
+        .from('pricing_rules')
+        .update({ is_active: isActive })
+        .eq('id', id);
+      
+      if (error) throw error;
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('Update pricing rule error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   return res.status(400).json({ error: 'Invalid action' });
 }
