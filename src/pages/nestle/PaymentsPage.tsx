@@ -211,8 +211,8 @@ const PaymentsPage: React.FC = () => {
                     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-900 shadow-sm flex flex-col items-center gap-3">
                       <AlertCircle className="w-8 h-8 text-amber-500" />
                       <div>
-                        <p className="font-black text-sm uppercase tracking-tighter">Wait until Payment Date</p>
-                        <p className="text-xs opacity-80 mt-1">Status: Cycle Condition Not Met (Bi-weekly check active)</p>
+                        <p className="font-black text-sm uppercase tracking-tighter">Bi-weekly Period Active</p>
+                        <p className="text-xs opacity-80 mt-1 text-center">System is currently waiting until the next payment date (1st or 15th).</p>
                       </div>
                     </div>
                     
@@ -222,10 +222,10 @@ const PaymentsPage: React.FC = () => {
                         onClick={() => loadCycle(true)}
                         disabled={loading}
                       >
-                        {loading ? 'Processing Steps 1-5...' : 'Check Payment Cycle Target'}
+                        {loading ? 'Processing Steps 1-5...' : 'Manual Skip: Start Payment Cycle'}
                       </Button>
-                      <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">
-                        Clicking checks collections (Step 1) and bypasses date check (Step 2)
+                      <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest text-center">
+                        Force System to identify collections and generate summary (Bypass Step 2)
                       </p>
                     </div>
                   </motion.div>

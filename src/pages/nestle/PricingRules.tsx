@@ -63,7 +63,19 @@ const PricingRules: React.FC = () => {
     { key: 'fatBonus', header: 'FAT Bonus', render: (r: PricingRule) => `Rs. ${r.fatBonus}` },
     { key: 'snfBonus', header: 'SNF Bonus', render: (r: PricingRule) => `Rs. ${r.snfBonus}` },
     { key: 'effectiveFrom', header: 'Effective Date', render: (r: PricingRule) => formatDate(r.effectiveFrom) },
-    { key: 'isActive', header: 'Status', render: (r: PricingRule) => <StatusBadge status={r.isActive ? 'Pass' : 'Pending'} /> },
+    { 
+      key: 'isActive', 
+      header: 'Status', 
+      render: (r: PricingRule) => r.isActive ? (
+        <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-max">
+          <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> Current Active
+        </span>
+      ) : (
+        <span className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-[10px] font-black uppercase tracking-wider w-max">
+          Archived Rule
+        </span>
+      )
+    },
   ];
 
   return (
