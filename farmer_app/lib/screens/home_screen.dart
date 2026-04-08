@@ -5,8 +5,9 @@ import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'app_theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'profile_screen.dart';
 import 'package:intl/intl.dart';
+import 'passbook_screen.dart';
+import 'profile_screen.dart';
 
 import '../providers/preferences_provider.dart';
 import '../services/translations.dart';
@@ -73,8 +74,22 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _currentIndex,
         children: [
           _buildFintechDashboard(user, prefs),
-          _buildPassbookView(locale),
-          _buildPaymentsView(locale),
+          PassbookScreen(
+            collections: _collections,
+            payments: _payments,
+            locale: locale,
+            isLoading: _isLoading,
+            onRefresh: _fetchData,
+            mode: 'supply',
+          ),
+          PassbookScreen(
+            collections: _collections,
+            payments: _payments,
+            locale: locale,
+            isLoading: _isLoading,
+            onRefresh: _fetchData,
+            mode: 'payments',
+          ),
           ProfileScreen(onBack: _handleBack),
         ],
       ),

@@ -182,16 +182,22 @@ export default async function handler(req, res) {
   // Keep list for history
   if (action === 'list' && req.method === 'GET') {
     try {
-      const { data: payments } = await supabase
+      let query = supabase
         .from('payments')
         .select(`
           id, farmer_id, collection_id, quantity, base_pay, amount, status, paid_at, created_at,
           farmers (name, farmer_id)
-        `)
-        .order('created_at', { ascending: false });
+        `);
+
+      if (req.query.farmerId) {
+        query = query.eq('farmer_id', req.query.farmerId);
+      }
+
+      const { data: payments } = await query.order('created_at', { ascending: false });
       
       const flattened = payments.map(p => ({
         id: p.id,
+        collectionId: p.collection_id,
         farmerName: p.farmers?.name,
         farmerCode: p.farmers?.farmer_id,
         amount: p.amount,
