@@ -59,12 +59,13 @@ export default async function handler(req, res) {
       if (col && !cErr) {
         const userId = col.farmers?.user_id;
         const date = col.date;
-        const title = resultValue === 'Pass' ? 'Quality Test Passed' : 'Quality Test Failed';
-        const message = resultValue === 'Pass'
-          ? `Your milk collection on ${date} passed quality testing.`
-          : `Your milk collection on ${date} failed quality testing. Reason: ${reasonValue}`;
+        const titleKey = resultValue === 'Pass' ? 'quality_test_passed_title' : 'quality_test_failed_title';
+        const msgKey = resultValue === 'Pass' ? 'quality_test_passed_msg' : 'quality_test_failed_msg';
+        const params = resultValue === 'Pass'
+          ? `date:${date}`
+          : `date:${date},reason:${reasonValue || 'N/A'}`;
         if (userId) {
-          await supabase.from('notifications').insert({ user_id: userId, title, message, type: 'quality_result' });
+          await supabase.from('notifications').insert({ user_id: userId, title: titleKey, message: `${msgKey}|${params}`, type: 'quality_result' });
         }
       }
 

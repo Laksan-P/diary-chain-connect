@@ -278,7 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
           prefs.setLocale(code);
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected

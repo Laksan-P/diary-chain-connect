@@ -34,6 +34,8 @@ class NestleDairyApp extends StatelessWidget {
       scaffoldMessengerKey: scaffoldMessengerKey,
       locale: prefs.locale,
       themeMode: prefs.themeMode,
+      themeAnimationDuration: const Duration(milliseconds: 150),
+      themeAnimationCurve: Curves.easeOut,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       home: const AuthWrapper(),

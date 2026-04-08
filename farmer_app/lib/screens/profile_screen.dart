@@ -211,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 16),
                 _settingsTile(
                   Translations.get('edit_profile', locale),
-                  'Update your name, address and contact info',
+                  Translations.get('profile_edit_subtitle', locale),
                   LucideIcons.userCog,
                   onTap: () {
                     HapticFeedback.mediumImpact();
@@ -227,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 _settingsTile(
                   Translations.get('theme_mode', locale),
-                  prefs.themeMode == ThemeMode.system ? 'System' : prefs.themeMode == ThemeMode.dark ? 'Dark' : 'Light',
+                  prefs.themeMode == ThemeMode.system ? Translations.get('system', locale) : prefs.themeMode == ThemeMode.dark ? Translations.get('dark', locale) : Translations.get('light', locale),
                   prefs.themeMode == ThemeMode.dark ? LucideIcons.moon : LucideIcons.sun,
                   onTap: () => _showThemePicker(context, prefs),
                 ),
@@ -388,11 +388,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Theme Mode', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(Translations.get('theme_mode', prefs.locale.languageCode), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
-              _themeOption('System Default', ThemeMode.system, LucideIcons.smartphone, prefs),
-              _themeOption('Light Mode', ThemeMode.light, LucideIcons.sun, prefs),
-              _themeOption('Dark Mode', ThemeMode.dark, LucideIcons.moon, prefs),
+              _themeOption(Translations.get('system_default', prefs.locale.languageCode), ThemeMode.system, LucideIcons.smartphone, prefs),
+              _themeOption(Translations.get('light_mode', prefs.locale.languageCode), ThemeMode.light, LucideIcons.sun, prefs),
+              _themeOption(Translations.get('dark_mode', prefs.locale.languageCode), ThemeMode.dark, LucideIcons.moon, prefs),
             ],
           ),
         ),
@@ -491,14 +491,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (v == null || v.isEmpty) return Translations.get('required_field', locale);
         if (icon == LucideIcons.phone) {
           if (v.length != 10) {
-            return 'Phone must be 10 digits';
+            return Translations.get('phone_10_digits', locale);
           }
           if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) {
-            return 'Invalid phone number';
+            return Translations.get('invalid_phone', locale);
           }
         }
         if (icon == LucideIcons.creditCard && !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) {
-          return 'Invalid NIC (e.g. 123456789V or 12-digit)';
+          return Translations.get('invalid_nic', locale);
         }
         return null;
       },

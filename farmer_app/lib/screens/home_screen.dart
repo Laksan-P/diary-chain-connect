@@ -294,14 +294,14 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: () => _onTabTapped(index),
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOutQuint,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedScale(
-              duration: const Duration(milliseconds: 500),
+              duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutBack,
               scale: isActive ? 1.2 : 1.0,
               child: Icon(
@@ -350,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'Recent Activity',
+                Translations.get('recent_activity', locale),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
@@ -374,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.all(32),
                 child: Center(
                   child: Text(
-                    'No recent activity',
+                    Translations.get('no_records_found', locale),
                     style: TextStyle(color: Colors.grey.withValues(alpha: 0.5)),
                   ),
                 ),
@@ -529,7 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 12),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
+            duration: const Duration(milliseconds: 200),
             child: Text(
               _isBalanceVisible ? currencyFormat.format(balance) : '••••••',
               key: ValueKey(_isBalanceVisible),
@@ -558,7 +558,7 @@ class _HomeScreenState extends State<HomeScreen> {
         clipBehavior: Clip.none,
         children: [
           AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
+            duration: const Duration(milliseconds: 200),
             width: 44,
             height: 44,
             decoration: BoxDecoration(
@@ -605,7 +605,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _fintechCollectionCard(dynamic c, String locale) {
     return TweenAnimationBuilder(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 250),
       curve: Curves.easeOutQuint,
       tween: Tween<double>(begin: 0, end: 1),
       builder: (context, double value, child) {
@@ -686,7 +686,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                _statusBadge(c['qualityResult'] ?? 'Pending'),
+                _statusBadge(c['qualityResult'] ?? 'Pending', locale),
               ],
             ),
           ],
@@ -728,9 +728,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Total Earnings',
-                style: TextStyle(
+              Text(
+                Translations.get('total_earnings', locale),
+                style: const TextStyle(
                   color: Colors.white70,
                   fontWeight: FontWeight.bold,
                 ),
@@ -774,9 +774,9 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             alignment: Alignment.center,
-            child: const Text(
-              'Withdraw Funds',
-              style: TextStyle(
+            child: Text(
+              Translations.get('withdraw_funds', locale),
+              style: const TextStyle(
                 color: AppTheme.primary,
                 fontWeight: FontWeight.w900,
                 fontSize: 14,
@@ -790,7 +790,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _staggered(int index, Widget child) {
     return TweenAnimationBuilder(
-      duration: Duration(milliseconds: 500 + (index * 100).clamp(0, 500)),
+      duration: Duration(milliseconds: 300 + (index * 50).clamp(0, 300)),
       curve: Curves.easeOutQuint,
       tween: Tween<double>(begin: 0, end: 1),
       builder: (context, double value, child) {
@@ -897,16 +897,27 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          _statusBadge(p['status'] ?? 'Pending'),
+          _statusBadge(p['status'] ?? 'Pending', locale),
         ],
       ),
     );
   }
 
-  Widget _statusBadge(String status) {
-    Color color = status == 'Pass'
-        ? Colors.green
-        : (status == 'Fail' ? Colors.red : Colors.orange);
+  Widget _statusBadge(String status, String locale) {
+    Color color;
+    switch (status.toLowerCase()) {
+      case 'pass':
+      case 'paid':
+      case 'approved':
+        color = Colors.green;
+        break;
+      case 'fail':
+      case 'rejected':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.orange;
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -914,7 +925,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        status,
+        Translations.get(status.toLowerCase(), locale),
         style: TextStyle(
           color: color,
           fontSize: 12,

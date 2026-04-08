@@ -127,7 +127,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
     String valueSuffix = "";
 
     if (widget.mode == 'supply') {
-      label = "Total Milk Supplied";
+      label = Translations.get('total_milk_supplied', widget.locale);
       valueSuffix = " L";
       for (var c in widget.collections) {
         if ((c['qualityResult'] ?? '').toString().toLowerCase() == 'pass') {
@@ -135,7 +135,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
         }
       }
     } else {
-      label = "Total Earnings";
+      label = Translations.get('total_earnings', widget.locale);
       valuePrefix = "Rs. ";
       for (var p in widget.payments) {
         if ((p['status'] ?? '').toString().toLowerCase() == 'paid') {
@@ -209,7 +209,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Based on your latest records",
+            Translations.get('latest_records_msg', widget.locale),
             style: TextStyle(
               color: isDark ? Colors.white24 : Colors.grey.shade400,
               fontSize: 12,
@@ -228,8 +228,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
         child: _buildEmptyState(
           widget.mode == 'supply' ? LucideIcons.droplets : LucideIcons.banknote, 
           _statusFilter == 'All' 
-              ? 'No records found' 
-              : 'No $_statusFilter records'
+              ? Translations.get('no_records_found', widget.locale) 
+              : Translations.get('no_status_records', widget.locale, params: {'status': Translations.get(_statusFilter.toLowerCase(), widget.locale)})
         ),
       );
     }
@@ -316,7 +316,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
               ),
             if (isSelected) const SizedBox(width: 8),
             Text(
-              value,
+              value == 'All' ? Translations.get('all', widget.locale) : Translations.get(value.toLowerCase(), widget.locale),
               style: TextStyle(
                 fontWeight: isSelected ? FontWeight.w900 : FontWeight.normal,
                 color: isSelected 
@@ -352,7 +352,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
       context,
       icon: LucideIcons.banknote,
       iconColor: isDark ? Colors.greenAccent : Colors.green,
-      title: 'Settlement Amount',
+      title: Translations.get('settlement_amount', widget.locale),
       subtitle: DateFormat('MMM dd, yyyy').format(DateTime.parse(p['paidAt'] ?? p['createdAt']).toLocal()),
       trailing: 'Rs. ${p['amount']}',
       status: p['status'] ?? 'Pending',
@@ -461,7 +461,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        status.toUpperCase(),
+        Translations.get(status.toLowerCase(), widget.locale).toUpperCase(),
         style: TextStyle(
           color: color,
           fontSize: 8,
