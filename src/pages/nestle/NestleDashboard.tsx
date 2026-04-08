@@ -13,13 +13,13 @@ const NestleDashboard: React.FC = () => {
 
   useEffect(() => {
     getFarmers().then(f => setStats(s => ({ ...s, farmers: f.length }))).catch(console.error);
-    
+
     getCollections().then(cols => {
       setStats(s => ({ ...s, totalQty: cols.reduce((sum, c) => sum + parseNumber(c.quantity), 0) }));
     }).catch(console.error);
-    
+
     getDispatches().then(d => setStats(s => ({ ...s, dispatches: d.length }))).catch(console.error);
-    
+
     getNestleOfficers().then(o => setStats(s => ({ ...s, nestleOfficers: o.length }))).catch(console.error);
 
     getChillingCenters().then(c => setStats(s => ({ ...s, chillingCenters: c.length }))).catch(console.error);
