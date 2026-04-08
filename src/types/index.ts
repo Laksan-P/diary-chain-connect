@@ -115,6 +115,7 @@ export interface Payment {
   farmerName?: string;
   farmerCode?: string;
   collectionId: number;
+  quantity?: number;
   amount: number;
   basePay: number;
   fatBonus: number;

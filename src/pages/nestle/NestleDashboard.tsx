@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Milk, Users, Truck, Building2 } from 'lucide-react';
+import { Milk, Users, Truck, Building2, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';
 import StatCard from '@/components/StatCard';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -10,7 +10,16 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const NestleDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({ farmers: 0, totalQty: 0, dispatches: 0, pendingDispatches: 0, nestleOfficers: 0, chillingCenters: 0 });
+  const [stats, setStats] = useState({ 
+    farmers: 0, 
+    totalQty: 0, 
+    dispatches: 0, 
+    pendingDispatches: 0, 
+    nestleOfficers: 0, 
+    chillingCenters: 0,
+    totalPayouts: 0,
+    pendingPayouts: 0
+  });
   const [recentDispatches, setRecentDispatches] = useState<any[]>([]);
 
   useEffect(() => {
@@ -29,8 +38,15 @@ const NestleDashboard: React.FC = () => {
       setRecentDispatches(d.slice(0, 5));
     }).catch(console.error);
 
-    getNestleOfficers().then(o => setStats(s => ({ ...s, nestleOfficers: o.length }))).catch(console.error);
+    getPayments().then(p => {
+      setStats(s => ({ 
+        ...s, 
+        totalPayouts: p.reduce((sum, x) => sum + parseNumber(x.amount), 0),
+        pendingPayouts: p.filter(x => x.status === 'Pending').reduce((sum, x) => sum + parseNumber(x.amount), 0)
+      }));
+    }).catch(console.error);
 
+    getNestleOfficers().then(o => setStats(s => ({ ...s, nestleOfficers: o.length }))).catch(console.error);
     getChillingCenters().then(c => setStats(s => ({ ...s, chillingCenters: c.length }))).catch(console.error);
   }, []);
 
@@ -44,29 +60,47 @@ const NestleDashboard: React.FC = () => {
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase">Live</span>
           </p>
         </div>
-        {stats.pendingDispatches > 0 && (
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="flex items-center gap-3 bg-warning/10 border border-warning/20 p-3 rounded-xl"
-          >
-            <div className="w-8 h-8 rounded-full bg-warning/20 flex items-center justify-center text-warning-foreground">
-              <Truck className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-warning-foreground leading-tight">{stats.pendingDispatches} Pending Dispatches</p>
-              <a href="/nestle/dispatches" className="text-[10px] text-warning-foreground/70 underline underline-offset-2 hover:text-warning-foreground transition-colors">Action Required</a>
-            </div>
-          </motion.div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {stats.pendingDispatches > 0 && (
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="flex items-center gap-3 bg-warning/10 border border-warning/20 p-3 rounded-xl"
+            >
+              <div className="w-8 h-8 rounded-full bg-warning/20 flex items-center justify-center text-warning-foreground">
+                <Truck className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-warning-foreground leading-tight">{stats.pendingDispatches} Pending Dispatches</p>
+                <a href="/nestle/dispatches" className="text-[10px] text-warning-foreground/70 underline underline-offset-2 hover:text-warning-foreground transition-colors">Action Required</a>
+              </div>
+            </motion.div>
+          )}
+          {stats.pendingPayouts > 0 && (
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 p-3 rounded-xl"
+            >
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <span className="text-xs font-bold">Rs.</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-emerald-800 leading-tight">Unprocessed Payments</p>
+                <p className="text-[10px] text-emerald-600 font-bold">{formatCurrency(stats.pendingPayouts)}</p>
+              </div>
+            </motion.div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard title="Total Farmers" value={stats.farmers} icon={Users} variant="default" />
-        <StatCard title="Total Chilling Centers" value={stats.chillingCenters} icon={Building2} variant="default" />
         <StatCard title="Milk Collected" value={formatQuantity(stats.totalQty)} icon={Milk} variant="success" />
-        <StatCard title="Total Dispatches" value={stats.dispatches} icon={Truck} variant="default" />
-        <StatCard title="Nestlé Officers" value={stats.nestleOfficers} icon={Users} variant="default" />
+        <StatCard title="Payouts (Total)" value={formatCurrency(stats.totalPayouts)} icon={DollarSign} variant="default" />
+        <StatCard title="Dispatches" value={stats.dispatches} icon={Truck} variant="default" />
+        <StatCard title="Active Centers" value={stats.chillingCenters} icon={Building2} variant="default" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
