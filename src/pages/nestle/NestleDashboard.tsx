@@ -160,7 +160,7 @@ const NestleDashboard: React.FC = () => {
             </div>
             <div className="pt-4 border-t">
               <p className="text-xs text-muted-foreground italic leading-relaxed">
-                "Nestlé consistently maintains a high quality standard across all 4 region chilling centers."
+                "Nestlé consistently maintains a high quality standard across all region chilling centers."
               </p>
             </div>
           </div>
