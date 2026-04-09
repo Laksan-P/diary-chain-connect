@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { Truck, ChevronDown, ChevronUp, Check, X, Info } from 'lucide-react';
+import { Truck, ChevronDown, ChevronUp, Check, X, Info, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useToast } from '@/hooks/use-toast';
-import { getDispatches, updateDispatchStatus } from '@/services/api';
-import type { Dispatch } from '@/types';
+import { getDispatches, updateDispatchStatus, getChillingCenters } from '@/services/api';
+import type { Dispatch, ChillingCenter } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatQuantity, parseNumber } from '@/lib/utils';
 
 const DispatchMonitoring: React.FC = () => {
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
+  const [centers, setCenters] = useState<ChillingCenter[]>([]);
+  const [filterCenterId, setFilterCenterId] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
@@ -32,7 +35,14 @@ const DispatchMonitoring: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchDispatches(); }, []);
+  useEffect(() => { 
+    fetchDispatches(); 
+    getChillingCenters().then(setCenters);
+  }, []);
+
+  const filteredDispatches = filterCenterId === 'all' 
+    ? dispatches 
+    : dispatches.filter(d => d.chillingCenterId === parseInt(filterCenterId));
 
   const handleApprove = async (id: number) => {
     try {
@@ -69,7 +79,22 @@ const DispatchMonitoring: React.FC = () => {
             <p className="text-muted-foreground text-sm">Monitor and verify milk dispatches from chilling centers</p>
           </div>
         </div>
+        <div className="flex items-center gap-3 bg-muted/30 p-2 rounded-xl border border-border/50">
+          <Filter className="w-4 h-4 text-muted-foreground ml-2" />
+          <Select value={filterCenterId} onValueChange={setFilterCenterId}>
+            <SelectTrigger className="w-[200px] border-none bg-transparent focus:ring-0">
+              <SelectValue placeholder="All Centers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Chilling Centers</SelectItem>
+              {centers.map(c => (
+                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
 
       <div className="glass-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -92,12 +117,13 @@ const DispatchMonitoring: React.FC = () => {
                     <span className="text-muted-foreground">Loading dispatches...</span>
                   </td>
                 </tr>
-              ) : dispatches.length === 0 ? (
+              ) : filteredDispatches.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">No dispatch records found</td>
                 </tr>
-              ) : dispatches.map((dispatch) => (
+              ) : filteredDispatches.map((dispatch) => (
                 <React.Fragment key={dispatch.id}>
+
                   <tr 
                     className={`hover:bg-muted/30 transition-colors cursor-pointer ${expandedRow === dispatch.id ? 'bg-muted/20' : ''}`}
                     onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
