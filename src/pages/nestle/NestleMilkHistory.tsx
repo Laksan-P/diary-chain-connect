@@ -5,31 +5,44 @@ import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getCollections } from '@/services/api';
-import type { MilkCollection } from '@/types';
+import { getCollections, getChillingCenters } from '@/services/api';
+import type { MilkCollection, ChillingCenter } from '@/types';
 import { formatDate, formatQuantity } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const NestleMilkHistory: React.FC = () => {
   const [collections, setCollections] = useState<MilkCollection[]>([]);
+  const [centers, setCenters] = useState<ChillingCenter[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
   const [filterDate, setFilterDate] = useState('');
   const [filterFarmer, setFilterFarmer] = useState('');
-  const [filterCenter, setFilterCenter] = useState('');
+  const [selectedCenter, setSelectedCenter] = useState<string>('all');
 
   useEffect(() => { 
-    // Fetch all collections (no specific centerId passed)
-    getCollections().then(c => { 
-      setCollections(c); 
-      setLoading(false); 
-    }); 
+    Promise.all([getCollections(), getChillingCenters()])
+      .then(([cols, c]) => {
+        setCollections(cols);
+        setCenters(c);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Error fetching history data:', error);
+        setLoading(false);
+      });
   }, []);
 
   const filteredCollections = collections.filter(c => {
     const matchDate = filterDate ? c.date === filterDate : true;
     const matchFarmer = filterFarmer ? (c.farmerName?.toLowerCase() || '').includes(filterFarmer.toLowerCase()) : true;
-    const matchCenter = filterCenter ? (c.chillingCenterName?.toLowerCase() || '').includes(filterCenter.toLowerCase()) : true;
+    const matchCenter = selectedCenter === 'all' ? true : c.chillingCenterId.toString() === selectedCenter;
     return matchDate && matchFarmer && matchCenter;
   });
 
@@ -74,10 +87,19 @@ const NestleMilkHistory: React.FC = () => {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">By Chilling Center</Label>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search center..." value={filterCenter} onChange={e => setFilterCenter(e.target.value)} className="h-9 pl-9" />
-            </div>
+            <Select value={selectedCenter} onValueChange={setSelectedCenter}>
+              <SelectTrigger className="h-9 bg-background/50 border-border/50">
+                <SelectValue placeholder="All Centers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Centers</SelectItem>
+                {centers.map(center => (
+                  <SelectItem key={center.id} value={center.id.toString()}>
+                    {center.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </motion.div>
@@ -88,3 +110,4 @@ const NestleMilkHistory: React.FC = () => {
 };
 
 export default NestleMilkHistory;
+
