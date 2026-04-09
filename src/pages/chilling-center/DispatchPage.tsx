@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Truck } from 'lucide-react';
+import { Truck, RefreshCcw } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -133,9 +134,16 @@ const DispatchPage: React.FC = () => {
       </motion.form>
 
       <div>
-        <h3 className="text-lg font-display font-semibold text-foreground mb-3">Dispatch History</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-display font-semibold text-foreground">Dispatch History</h3>
+          <Button variant="ghost" size="sm" onClick={loadData} className="gap-2 text-primary" disabled={loading}>
+            <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
         <DataTable columns={dispatchColumns} data={dispatches.filter(d => d.chillingCenterId === centerId)} />
       </div>
+
     </div>
   );
 };

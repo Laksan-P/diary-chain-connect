@@ -165,11 +165,12 @@ export default async function handler(req, res) {
         if (farmerData?.user_id) {
           await supabase.from('notifications').insert({
             user_id: farmerData.user_id,
-            title: 'Payment Received',
-            message: `Payment of Rs. ${totalPayment} for ${totalQty}L of milk has been processed.`,
+            title: 'payment_received_title',
+            message: `payment_received_msg|amount:${totalPayment},qty:${totalQty}`,
             type: 'payment'
           });
         }
+
       }
 
       return res.status(200).json({ success: true, message: 'Batch processed successfully' });

@@ -201,6 +201,13 @@ export default async function handler(req, res) {
       const payload = { id: userId, email, role: 'farmer', name };
       const token = signToken(payload);
 
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        title: 'registration_successful_title',
+        message: `registration_welcome_msg|name:${name},code:${farmerCode}`,
+        type: 'general'
+      });
+
       return res.status(201).json({
         token,
         user: {
@@ -209,6 +216,7 @@ export default async function handler(req, res) {
           bankName: bankName || '', accountNumber: accountNumber || '', branch: branch || '',
         },
       });
+
     } catch (err) {
       console.error('[AUTH:register-farmer] Error:', err);
       return res.status(500).json({ error: 'Server error' });
@@ -270,6 +278,13 @@ export default async function handler(req, res) {
           account_number: accountNumber || '', branch: branch || '',
         });
       }
+
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        title: 'registration_successful_title',
+        message: `registration_welcome_msg|name:${name},code:${farmerCode}`,
+        type: 'general'
+      });
 
       return res.status(201).json({
         id: farmerRowId, farmerId: farmerCode, userId, name, address, phone, nic,

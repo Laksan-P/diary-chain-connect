@@ -113,7 +113,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return 'dispatch_rejected_msg|date:${rejectMatch.group(1)},reason:${rejectMatch.group(2)}';
     }
 
+    if (raw == 'dispatch_rejected_title') return 'dispatch_rejected_title'; // Already a key
+    if (raw == 'Payment Received') return 'payment_received_title';
+
+    // Message: "Payment of Rs. 129960.00 for 1083L of milk has been processed."
+    final paymentMatch = RegExp(r'^Payment of Rs. (\S+) for (\S+)L of milk has been processed\.$').firstMatch(raw);
+    if (paymentMatch != null) {
+      return 'payment_received_msg|amount:${paymentMatch.group(1)},qty:${paymentMatch.group(2)}';
+    }
+
     return raw; // No match — return original
+
   }
 
   String _translate(String? raw) {

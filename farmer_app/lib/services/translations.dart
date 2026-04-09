@@ -88,6 +88,10 @@ class Translations {
       'phone_10_digits': 'Phone must be 10 digits',
       'invalid_phone': 'Invalid phone number',
       'invalid_nic': 'Invalid NIC (e.g. 123456789V or 12-digit)',
+      'payment_received_title': 'Payment Received',
+      'payment_received_msg': 'Payment of Rs. {amount} for {qty}L of milk has been processed.',
+      'registration_successful_title': 'Registration Successful',
+      'registration_welcome_msg': 'Welcome, {name}! Your farmer account {code} is now active.',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -177,6 +181,10 @@ class Translations {
       'phone_10_digits': 'දුරකථන අංකය ඉලක්කම් 10ක් විය යුතුය',
       'invalid_phone': 'වලංගු නොවන දුරකථන අංකයකි',
       'invalid_nic': 'වලංගු නොවන හැඳුනුම්පත් අංකයකි',
+      'payment_received_title': 'ගෙවීම් ලැබුණි',
+      'payment_received_msg': 'කිරි ලීටර් {qty} ක් සඳහා රු. {amount} ක ගෙවීමක් සිදුකර ඇත.',
+      'registration_successful_title': 'ලියාපදිංචිය සාර්ථකයි',
+      'registration_welcome_msg': 'ආයුබෝවන් {name}! ඔබගේ {code} ගොවි ගිණුම දැන් සක්‍රීයයි.',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -266,6 +274,10 @@ class Translations {
       'phone_10_digits': 'தொலைபேசி எண் 10 இலக்கங்களாக இருக்க வேண்டும்',
       'invalid_phone': 'தவறான தொலைபேசி எண்',
       'invalid_nic': 'தவறான அடையாள அட்டை அடையாள அட்டை எண்',
+      'payment_received_title': 'கொடுப்பனவு பெறப்பட்டது',
+      'payment_received_msg': '{qty}L பாலுக்கான ரூ. {amount} கொடுப்பனவு செயலாக்கப்பட்டது.',
+      'registration_successful_title': 'பதிவு வெற்றிகரமாக முடிந்தது',
+      'registration_welcome_msg': 'வரவேற்கிறோம் {name}! உங்கள் விவசாயி கணக்கு {code} இப்போது செயல்பாட்டில் உள்ளது.',
     },
   };
 

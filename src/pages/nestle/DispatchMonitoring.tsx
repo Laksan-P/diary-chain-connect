@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Truck, ChevronDown, ChevronUp, Check, X, Info, Filter } from 'lucide-react';
+import { Truck, ChevronDown, ChevronUp, Check, X, Info, Filter, RefreshCcw } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -45,27 +46,39 @@ const DispatchMonitoring: React.FC = () => {
     : dispatches.filter(d => d.chillingCenterId === parseInt(filterCenterId));
 
   const handleApprove = async (id: number) => {
+    // Optimistic Update
+    setDispatches(ds => ds.map(d => d.id === id ? { ...d, status: 'Approved' as const } : d));
+    
     try {
       await updateDispatchStatus(id, 'Approved');
-      setDispatches(ds => ds.map(d => d.id === id ? { ...d, status: 'Approved' as const } : d));
       toast({ title: 'Dispatch Approved', description: `Dispatch #${id} has been accepted.` });
     } catch (error) {
-      toast({ title: 'Approval Failed', variant: 'destructive' });
+      // Rollback on failure
+      setDispatches(ds => ds.map(d => d.id === id ? { ...d, status: 'Dispatched' as const } : d));
+      toast({ title: 'Approval Failed', variant: 'destructive', description: 'Could not update status. Please try again.' });
     }
   };
 
   const handleReject = async () => {
     if (!rejectDialog.id) return;
+    const id = rejectDialog.id;
+    const reason = rejectReason;
+    
+    // Optimistic Update
+    setDispatches(ds => ds.map(d => d.id === id ? { ...d, status: 'Rejected' as const, rejectionReason: reason } : d));
+    setRejectDialog({ open: false, id: null });
+    setRejectReason('');
+
     try {
-      await updateDispatchStatus(rejectDialog.id, 'Rejected', rejectReason);
-      setDispatches(ds => ds.map(d => d.id === rejectDialog.id ? { ...d, status: 'Rejected' as const, rejectionReason: rejectReason } : d));
-      toast({ title: 'Dispatch Rejected', description: `Dispatch #${rejectDialog.id} has been rejected.`, variant: 'destructive' });
-      setRejectDialog({ open: false, id: null });
-      setRejectReason('');
+      await updateDispatchStatus(id, 'Rejected', reason);
+      toast({ title: 'Dispatch Rejected', description: `Dispatch #${id} has been rejected.`, variant: 'destructive' });
     } catch (error) {
-      toast({ title: 'Rejection Failed', variant: 'destructive' });
+      // Rollback on failure
+      setDispatches(ds => ds.map(d => d.id === id ? { ...d, status: 'Dispatched' as const, rejectionReason: undefined } : d));
+      toast({ title: 'Rejection Failed', variant: 'destructive', description: 'Could not update status. Please try again.' });
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -80,6 +93,16 @@ const DispatchMonitoring: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-3 bg-muted/30 p-2 rounded-xl border border-border/50">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={fetchDispatches} 
+            className="h-8 w-8 p-0 hover:bg-primary/10 text-primary"
+            disabled={loading}
+          >
+            <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+          <div className="w-px h-4 bg-border mx-1" />
           <Filter className="w-4 h-4 text-muted-foreground ml-2" />
           <Select value={filterCenterId} onValueChange={setFilterCenterId}>
             <SelectTrigger className="w-[200px] border-none bg-transparent focus:ring-0">
