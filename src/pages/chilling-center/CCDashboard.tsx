@@ -16,13 +16,17 @@ const CCDashboard: React.FC = () => {
   const [dispatchCount, setDispatchCount] = useState(0);
 
   useEffect(() => {
-    const centerId = user?.chillingCenterId || 1;
-    Promise.all([getCollections(centerId), getFarmers(), getDispatches(centerId)]).then(([cols, farmers, dispatches]) => {
-      setCollections(cols);
-      setFarmerCount(farmers.length);
-      setDispatchCount(dispatches.length);
+    const centerId = user?.chillingCenterId;
+    if (centerId) {
+      Promise.all([getCollections(centerId), getFarmers(), getDispatches(centerId)]).then(([cols, farmers, dispatches]) => {
+        setCollections(cols);
+        setFarmerCount(farmers.length);
+        setDispatchCount(dispatches.length);
+        setLoading(false);
+      });
+    } else {
       setLoading(false);
-    });
+    }
   }, [user]);
 
   const totalQty = collections.reduce((s, c) => s + parseNumber(c.quantity), 0);
@@ -41,8 +45,9 @@ const CCDashboard: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-display font-bold text-foreground">Dashboard Overview</h2>
-        <p className="text-sm text-muted-foreground">Kandy Central Chilling Center</p>
+        <p className="text-sm text-muted-foreground">{user?.chillingCenterName || 'Chilling Center Dashboard'}</p>
       </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Registered Farmers" value={farmerCount} icon={Users} variant="default" trend={{ value: 12, label: 'this month' }} />

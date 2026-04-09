@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { getChillingCenters, registerFarmerByCenter } from '@/services/api';
 import type { ChillingCenter } from '@/types';
+
 
 const RegisterFarmer: React.FC = () => {
   const [centers, setCenters] = useState<ChillingCenter[]>([]);
@@ -18,9 +20,19 @@ const RegisterFarmer: React.FC = () => {
     bankName: '', accountNumber: '', branch: '', email: '', password: '',
   });
 
-  useEffect(() => { getChillingCenters().then(setCenters); }, []);
+  const { user } = useAuth();
+
+  useEffect(() => { 
+    getChillingCenters().then(centersList => {
+      setCenters(centersList);
+      if (user?.chillingCenterId) {
+        update('chillingCenterId', String(user.chillingCenterId));
+      }
+    }); 
+  }, [user]);
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -14,7 +14,7 @@ import type { MilkCollection, Dispatch } from '@/types';
 
 const DispatchPage: React.FC = () => {
   const { user } = useAuth();
-  const centerId = user?.chillingCenterId || 1;
+  const centerId = user?.chillingCenterId;
   const [collections, setCollections] = useState<MilkCollection[]>([]);
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
@@ -30,13 +30,15 @@ const DispatchPage: React.FC = () => {
   const isOverCapacity = capacityNum > 0 && selectedTotal > capacityNum;
 
   const loadData = () => {
+    if (!centerId) return;
     getCollections(centerId).then(c => setCollections(c.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending')));
     getDispatches(centerId).then(setDispatches);
   };
 
   useEffect(() => {
-    loadData();
-  }, [user]);
+    if (centerId) loadData();
+  }, [centerId]);
+
 
   const toggleSelect = (id: number) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
