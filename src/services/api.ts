@@ -272,6 +272,13 @@ export const getNotifications = async (): Promise<Notification[]> => {
   return apiFetch<Notification[]>('/api/notifications?action=list');
 };
 
+/** PATCH /api/notifications?action=mark-read&id=X */
+export const markNotificationRead = async (id: string | number): Promise<void> => {
+  await apiFetch<void>(`/api/notifications?action=mark-read&id=${id}`, {
+    method: 'PATCH'
+  });
+};
+
 // ============ LOGOUT ============
 export const logout = () => {
   clearToken();
