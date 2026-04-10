@@ -260,13 +260,12 @@ const DispatchMonitoring: React.FC = () => {
                                     {new Date(dispatch.dispatchDate).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
                                   </span>
                                 </div>
-                                  {dispatch.rejectionReason && (
-                                    <>
-                                      <span className="text-destructive font-semibold">Rejection Reason:</span>
-                                      <span className="text-destructive">{dispatch.rejectionReason}</span>
-                                    </>
-                                  )}
-                                </div>
+                                {dispatch.rejectionReason && (
+                                  <>
+                                    <span className="text-destructive font-semibold">Rejection Reason:</span>
+                                    <span className="text-destructive">{dispatch.rejectionReason}</span>
+                                  </>
+                                )}
                               </div>
                               <div className="space-y-2">
                                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Milk Collection Records</h4>
