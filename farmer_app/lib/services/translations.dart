@@ -55,15 +55,20 @@ class Translations {
       'notifications': 'Notifications',
       'no_notifications': 'No notifications yet',
       'milk_dispatched_title': 'Milk Dispatched',
-      'milk_dispatched_msg': 'Your milk collection on {date} has been dispatched to Nestlé.',
+      'milk_dispatched_msg':
+          'Your milk collection on {date} has been dispatched to Nestlé.',
       'dispatch_approved_title': 'Dispatch Approved',
-      'dispatch_approved_msg': 'Your milk collection on {date} was approved by Nestlé.',
+      'dispatch_approved_msg':
+          'Your milk collection on {date} was approved by Nestlé.',
       'dispatch_rejected_title': 'Dispatch Rejected',
-      'dispatch_rejected_msg': 'Your milk collection on {date} was rejected by Nestlé. Reason: {reason}',
+      'dispatch_rejected_msg':
+          'Your milk collection on {date} was rejected by Nestlé. Reason: {reason}',
       'quality_test_passed_title': 'Quality Test Passed',
-      'quality_test_passed_msg': 'Your milk collection on {date} passed quality testing.',
+      'quality_test_passed_msg':
+          'Your milk collection on {date} passed quality testing.',
       'quality_test_failed_title': 'Quality Test Failed',
-      'quality_test_failed_msg': 'Your milk collection on {date} failed quality testing. Reason: {reason}',
+      'quality_test_failed_msg':
+          'Your milk collection on {date} failed quality testing. Reason: {reason}',
       'total_milk_supplied': 'Total Milk Supplied',
       'total_earnings': 'Total Earnings',
       'latest_records_msg': 'Based on your latest records',
@@ -89,22 +94,31 @@ class Translations {
       'invalid_phone': 'Invalid phone number',
       'invalid_nic': 'Invalid NIC (e.g. 123456789V or 12-digit)',
       'payment_received_title': 'Payment Received',
-      'payment_received_msg': 'Payment of Rs. {amount} for {qty}L of milk has been processed.',
+      'payment_received_msg':
+          'Payment of Rs. {amount} for {qty}L of milk has been processed.',
       'registration_successful_title': 'Registration Successful',
-      'registration_welcome_msg': 'Welcome, {name}! Your farmer account {code} is now active.',
+      'registration_welcome_msg':
+          'Welcome, {name}! Your farmer account {code} is now active.',
       'payment_cycle_reminder_title': 'Payment Cycle Update',
-      'payment_cycle_reminder_msg': 'Next payment processing will initiate in {days} days.',
-      'payment_ready_msg': 'Payment day has arrived! Nestlé will credit your account today.',
+      'payment_cycle_reminder_msg':
+          'Next payment processing will initiate in {days} days.',
+      'payment_ready_msg':
+          'Payment day has arrived! Nestlé will credit your account today.',
       'nestle_quality_test_passed_title': 'Nestle Quality Pass',
-      'nestle_quality_test_passed_msg': 'Final verification by Nestlé for your collection on {date} was successful.',
+      'nestle_quality_test_passed_msg':
+          'Final verification by Nestlé for your collection on {date} was successful.',
       'nestle_quality_test_failed_title': 'Nestle Quality Fail',
-      'nestle_quality_test_failed_msg': 'Final verification by Nestlé for your collection on {date} failed. Reason: {reason}',
+      'nestle_quality_test_failed_msg':
+          'Final verification by Nestlé for your collection on {date} failed. Reason: {reason}',
       'new_dispatch_alert_title': 'New Dispatch Incoming',
-      'new_dispatch_alert_msg': 'Tanker {vehicle} from {cc} is on its way to HQ.',
+      'new_dispatch_alert_msg':
+          'Tanker {vehicle} from {cc} is on its way to HQ.',
       'cc_collection_passed_nestle_title': 'Collection Verified by Nestlé',
-      'cc_collection_passed_nestle_msg': 'Milk collection #{id} from farmer {farmer} was PASSED by Nestlé quality check.',
+      'cc_collection_passed_nestle_msg':
+          'Milk collection #{id} from farmer {farmer} was PASSED by Nestlé quality check.',
       'cc_collection_rejected_nestle_title': 'Collection Rejected by Nestlé',
-      'cc_collection_rejected_nestle_msg': 'Milk collection #{id} from farmer {farmer} was REJECTED by Nestlé. Reason: {reason}',
+      'cc_collection_rejected_nestle_msg':
+          'Milk collection #{id} from farmer {farmer} was REJECTED by Nestlé. Reason: {reason}',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -161,15 +175,20 @@ class Translations {
       'notifications': 'දැනුම්දීම්',
       'no_notifications': 'තවමත් දැනුම්දීම් නොමැත',
       'milk_dispatched_title': 'කිරි ප්‍රවාහනය ආරම්භ විය',
-      'milk_dispatched_msg': '{date} දින ඔබ ලබාදුන් කිරි ප්‍රමාණය නෙස්ලේ ආයතනය වෙත යොමු කරන ලදී.',
+      'milk_dispatched_msg':
+          '{date} දින ඔබ ලබාදුන් කිරි ප්‍රමාණය නෙස්ලේ ආයතනය වෙත යොමු කරන ලදී.',
       'dispatch_approved_title': 'ප්‍රවාහනය අනුමතයි',
-      'dispatch_approved_msg': '{date} දින ඔබ ලබාදුන් කිරි ප්‍රමාණය නෙස්ලේ ආයතනය විසින් අනුමත කරන ලදී.',
+      'dispatch_approved_msg':
+          '{date} දින ඔබ ලබාදුන් කිරි ප්‍රමාණය නෙස්ලේ ආයතනය විසින් අනුමත කරන ලදී.',
       'dispatch_rejected_title': 'ප්‍රවාහනය ප්‍රතික්ෂේපිතයි',
-      'dispatch_rejected_msg': '{date} දින ඔබ ලබාදුන් කිරි ප්‍රමාණය නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී. හේතුව: {reason}',
+      'dispatch_rejected_msg':
+          '{date} දින ඔබ ලබාදුන් කිරි ප්‍රමාණය නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී. හේතුව: {reason}',
       'quality_test_passed_title': 'තත්ත්ව පරීක්ෂාව සාර්ථකයි',
-      'quality_test_passed_msg': '{date} දින ඔබේ කිරි එකතු කිරීම තත්ත්ව පරීක්ෂාවෙන් සමත් විය.',
+      'quality_test_passed_msg':
+          '{date} දින ඔබේ කිරි එකතු කිරීම තත්ත්ව පරීක්ෂාවෙන් සමත් විය.',
       'quality_test_failed_title': 'තත්ත්ව පරීක්ෂාව අසාර්ථකයි',
-      'quality_test_failed_msg': '{date} දින ඔබේ කිරි එකතු කිරීම තත්ත්ව පරීක්ෂාවෙන් අසමත් විය. හේතුව: {reason}',
+      'quality_test_failed_msg':
+          '{date} දින ඔබේ කිරි එකතු කිරීම තත්ත්ව පරීක්ෂාවෙන් අසමත් විය. හේතුව: {reason}',
       'total_milk_supplied': 'මුළු කිරි සැපයුම',
       'total_earnings': 'මුළු ආදායම',
       'latest_records_msg': 'ඔබේ නවතම වාර්තා මත පදනම්ව',
@@ -195,22 +214,33 @@ class Translations {
       'invalid_phone': 'වලංගු නොවන දුරකථන අංකයකි',
       'invalid_nic': 'වලංගු නොවන හැඳුනුම්පත් අංකයකි',
       'payment_received_title': 'ගෙවීම් ලැබුණි',
-      'payment_received_msg': 'කිරි ලීටර් {qty} ක් සඳහා රු. {amount} ක ගෙවීමක් සිදුකර ඇත.',
+      'payment_received_msg':
+          'කිරි ලීටර් {qty} ක් සඳහා රු. {amount} ක ගෙවීමක් සිදුකර ඇත.',
       'registration_successful_title': 'ලියාපදිංචිය සාර්ථකයි',
-      'registration_welcome_msg': 'ආයුබෝවන් {name}! ඔබගේ {code} ගොවි ගිණුම දැන් සක්‍රීයයි.',
+      'registration_welcome_msg':
+          'ආයුබෝවන් {name}! ඔබගේ {code} ගොවි ගිණුම දැන් සක්‍රීයයි.',
       'payment_cycle_reminder_title': 'ගෙවීම් වටය පිළිබඳ දැනුම්දීම',
-      'payment_cycle_reminder_msg': 'මීළඟ ගෙවීම් සැකසීම තව දින {days} කින් ආරම්භ වේ.',
-      'payment_ready_msg': 'ගෙවීම් දිනය එළඹිණ! නෙස්ලේ ආයතනය අද ඔබේ ගිණුමට ගෙවනු ඇත.',
+      'payment_cycle_reminder_msg':
+          'මීළඟ ගෙවීම් සැකසීම තව දින {days} කින් ආරම්භ වේ.',
+      'payment_ready_msg':
+          'ගෙවීම් දිනය එළඹිණ! නෙස්ලේ ආයතනය අද ඔබේ ගිණුමට ගෙවනු ඇත.',
       'nestle_quality_test_passed_title': 'නෙස්ලේ තත්ත්ව පරීක්ෂාව සාර්ථකයි',
-      'nestle_quality_test_passed_msg': '{date} දින ඔබේ එකතු කිරීම නෙස්ලේ ආයතනයේ අවසාන පරීක්ෂාවෙන් සමත් විය.',
+      'nestle_quality_test_passed_msg':
+          '{date} දින ඔබේ එකතු කිරීම නෙස්ලේ ආයතනයේ අවසාන පරීක්ෂාවෙන් සමත් විය.',
       'nestle_quality_test_failed_title': 'නෙස්ලේ තත්ත්ව පරීක්ෂාව අසාර්ථකයි',
-      'nestle_quality_test_failed_msg': '{date} දින ඔබේ එකතු කිරීම නෙස්ලේ පරීක්ෂාවෙන් අසමත් විය. හේතුව: {reason}',
+      'nestle_quality_test_failed_msg':
+          '{date} දින ඔබේ එකතු කිරීම නෙස්ලේ පරීක්ෂාවෙන් අසමත් විය. හේතුව: {reason}',
       'new_dispatch_alert_title': 'නව ප්‍රවාහනයක් පැමිණේ',
-      'new_dispatch_alert_msg': '{cc} මධ්‍යස්ථානයේ සිට {vehicle} රථය HQ වෙත ගමන් අරඹා ඇත.',
-      'cc_collection_passed_nestle_title': 'එකතු කිරීම නෙස්ලේ ආයතනය විසින් තහවුරු කරන ලදී',
-      'cc_collection_passed_nestle_msg': '{farmer} ගොවි මහතාගේ අංක #{id} දරන කිරි එකතු කිරීම නෙස්ලේ තත්ත්ව පරීක්ෂාවෙන් සමත් විය.',
-      'cc_collection_rejected_nestle_title': 'එකතු කිරීම නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී',
-      'cc_collection_rejected_nestle_msg': '{farmer} ගොවි මහතාගේ අංක #{id} දරන කිරි එකතු කිරීම නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී. හේතුව: {reason}',
+      'new_dispatch_alert_msg':
+          '{cc} මධ්‍යස්ථානයේ සිට {vehicle} රථය HQ වෙත ගමන් අරඹා ඇත.',
+      'cc_collection_passed_nestle_title':
+          'එකතු කිරීම නෙස්ලේ ආයතනය විසින් තහවුරු කරන ලදී',
+      'cc_collection_passed_nestle_msg':
+          '{farmer} ගොවි මහතාගේ අංක #{id} දරන කිරි එකතු කිරීම නෙස්ලේ තත්ත්ව පරීක්ෂාවෙන් සමත් විය.',
+      'cc_collection_rejected_nestle_title':
+          'එකතු කිරීම නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී',
+      'cc_collection_rejected_nestle_msg':
+          '{farmer} ගොවි මහතාගේ අංක #{id} දරන කිරි එකතු කිරීම නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී. හේතුව: {reason}',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -267,15 +297,20 @@ class Translations {
       'notifications': 'அறிவிப்புகள்',
       'no_notifications': 'இன்னும் அறிவிப்புகள் இல்லை',
       'milk_dispatched_title': 'பால் அனுப்பப்பட்டது',
-      'milk_dispatched_msg': '{date} அன்று நீங்கள் வழங்கிய பால் நெஸ்லே நிறுவனத்திற்கு அனுப்பப்பட்டுள்ளது.',
+      'milk_dispatched_msg':
+          '{date} அன்று நீங்கள் வழங்கிய பால் நெஸ்லே நிறுவனத்திற்கு அனுப்பப்பட்டுள்ளது.',
       'dispatch_approved_title': 'அனுப்புதல் அங்கீகரிக்கப்பட்டது',
-      'dispatch_approved_msg': '{date} அன்று நீங்கள் வழங்கிய பால் நெஸ்லே நிறுவனத்தால் அங்கீகரிக்கப்பட்டது.',
+      'dispatch_approved_msg':
+          '{date} அன்று நீங்கள் வழங்கிய பால் நெஸ்லே நிறுவனத்தால் அங்கீகரிக்கப்பட்டது.',
       'dispatch_rejected_title': 'அனுப்புதல் நிராகரிக்கப்பட்டது',
-      'dispatch_rejected_msg': '{date} அன்று நீங்கள் வழங்கிய பால் நெஸ்லே நிறுவனத்தால் நிராகரிக்கப்பட்டது. காரணம்: {reason}',
+      'dispatch_rejected_msg':
+          '{date} அன்று நீங்கள் வழங்கிய பால் நெஸ்லே நிறுவனத்தால் நிராகரிக்கப்பட்டது. காரணம்: {reason}',
       'quality_test_passed_title': 'தர சோதனை வெற்றி',
-      'quality_test_passed_msg': '{date} அன்று உங்கள் பால் சேகரிப்பு தர சோதனையில் தேர்ச்சி பெற்றது.',
+      'quality_test_passed_msg':
+          '{date} அன்று உங்கள் பால் சேகரிப்பு தர சோதனையில் தேர்ச்சி பெற்றது.',
       'quality_test_failed_title': 'தர சோதனை தோல்வி',
-      'quality_test_failed_msg': '{date} அன்று உங்கள் பால் சேகரிப்பு தர சோதனையில் தோல்வியடைந்தது. காரணம்: {reason}',
+      'quality_test_failed_msg':
+          '{date} அன்று உங்கள் பால் சேகரிப்பு தர சோதனையில் தோல்வியடைந்தது. காரணம்: {reason}',
       'total_milk_supplied': 'வழங்கப்பட்ட மொத்த பால்',
       'total_earnings': 'மொத்த வருவாய்',
       'latest_records_msg': 'உங்கள் சமீபத்திய பதிவுகளின் அடிப்படையில்',
@@ -296,27 +331,39 @@ class Translations {
       'light': 'ஒளி',
       'system_default': 'கணினி இயல்புநிலை',
       'light_mode': 'ஒளி பயன்முறை',
-      'profile_edit_subtitle': 'உங்கள் பெயர், முகவரி மற்றும் விவரங்களைப் புதுப்பிக்கவும்',
+      'profile_edit_subtitle':
+          'உங்கள் பெயர், முகவரி மற்றும் விவரங்களைப் புதுப்பிக்கவும்',
       'phone_10_digits': 'தொலைபேசி எண் 10 இலக்கங்களாக இருக்க வேண்டும்',
       'invalid_phone': 'தவறான தொலைபேசி எண்',
       'invalid_nic': 'தவறான அடையாள அட்டை அடையாள அட்டை எண்',
       'payment_received_title': 'கொடுப்பனவு பெறப்பட்டது',
-      'payment_received_msg': '{qty}L பாலுக்கான ரூ. {amount} கொடுப்பனவு செயலாக்கப்பட்டது.',
+      'payment_received_msg':
+          '{qty}L பாலுக்கான ரூ. {amount} கொடுப்பனவு செயலாக்கப்பட்டது.',
       'registration_successful_title': 'பதிவு வெற்றிகரமாக முடிந்தது',
-      'registration_welcome_msg': 'வரவேற்கிறோம் {name}! உங்கள் விவசாயி கணக்கு {code} இப்போது செயல்பாட்டில் உள்ளது.',
+      'registration_welcome_msg':
+          'வரவேற்கிறோம் {name}! உங்கள் விவசாயி கணக்கு {code} இப்போது செயல்பாட்டில் உள்ளது.',
       'payment_cycle_reminder_title': 'கொடுப்பனவு சுழற்சி அறிவிப்பு',
-      'payment_cycle_reminder_msg': 'அடுத்த கொடுப்பனவு செயலாக்கம் {days} நாட்களில் தொடங்கும்.',
-      'payment_ready_msg': 'கொடுப்பனவு நாள் வந்தது! நெஸ்லே இன்று உங்கள் கணக்கில் வரவு வைப்பார்கள்.',
+      'payment_cycle_reminder_msg':
+          'அடுத்த கொடுப்பனவு செயலாக்கம் {days} நாட்களில் தொடங்கும்.',
+      'payment_ready_msg':
+          'கொடுப்பனவு நாள் வந்தது! நெஸ்லே இன்று உங்கள் கணக்கில் வரவு வைப்பார்கள்.',
       'nestle_quality_test_passed_title': 'நெஸ்லே தர சோதனை வெற்றி',
-      'nestle_quality_test_passed_msg': '{date} அன்று உங்கள் சேகரிப்பு நெஸ்லே நிறுவனத்தின் இறுதி சரிபார்ப்பில் தேறியது.',
+      'nestle_quality_test_passed_msg':
+          '{date} அன்று உங்கள் சேகரிப்பு நெஸ்லே நிறுவனத்தின் இறுதி சரிபார்ப்பில் தேறியது.',
       'nestle_quality_test_failed_title': 'நெஸ்லே தர சோதனை தோல்வி',
-      'nestle_quality_test_failed_msg': '{date} அன்று உங்கள் சேகரிப்பு நெஸ்லே சரிபார்ப்பில் தோல்வியடைந்தது. காரணம்: {reason}',
+      'nestle_quality_test_failed_msg':
+          '{date} அன்று உங்கள் சேகரிப்பு நெஸ்லே சரிபார்ப்பில் தோல்வியடைந்தது. காரணம்: {reason}',
       'new_dispatch_alert_title': 'புதிய அனுப்புதல் வருகிறது',
-      'new_dispatch_alert_msg': '{cc} இல் இருந்து {vehicle} வண்டி தலைமையகத்திற்கு வருகிறது.',
-      'cc_collection_passed_nestle_title': 'சேகரிப்பு நெஸ்லேவால் சரிபார்க்கப்பட்டது',
-      'cc_collection_passed_nestle_msg': 'விவசாயி {farmer} இன் பால் சேகரிப்பு #{id} நெஸ்லே தர சோதனையில் தேர்ச்சி பெற்றது.',
-      'cc_collection_rejected_nestle_title': 'சேகரிப்பு நெஸ்லேவால் நிராகரிக்கப்பட்டது',
-      'cc_collection_rejected_nestle_msg': 'விவசாயி {farmer} இன் பால் சேகரிப்பு #{id} நெஸ்லேயால் நிராகரிக்கப்பட்டது. காரணம்: {reason}',
+      'new_dispatch_alert_msg':
+          '{cc} இல் இருந்து {vehicle} வண்டி தலைமையகத்திற்கு வருகிறது.',
+      'cc_collection_passed_nestle_title':
+          'சேகரிப்பு நெஸ்லேவால் சரிபார்க்கப்பட்டது',
+      'cc_collection_passed_nestle_msg':
+          'விவசாயி {farmer} இன் பால் சேகரிப்பு #{id} நெஸ்லே தர சோதனையில் தேர்ச்சி பெற்றது.',
+      'cc_collection_rejected_nestle_title':
+          'சேகரிப்பு நெஸ்லேவால் நிராகரிக்கப்பட்டது',
+      'cc_collection_rejected_nestle_msg':
+          'விவசாயி {farmer} இன் பால் சேகரிப்பு #{id} நெஸ்லேயால் நிராகரிக்கப்பட்டது. காரணம்: {reason}',
     },
   };
 

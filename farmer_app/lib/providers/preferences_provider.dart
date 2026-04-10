@@ -3,7 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AppPreferences extends ChangeNotifier {
   final _storage = const FlutterSecureStorage();
-  
+
   Locale _locale = const Locale('en');
   ThemeMode _themeMode = ThemeMode.system;
 
@@ -21,7 +21,7 @@ class AppPreferences extends ChangeNotifier {
     if (lang != null) {
       _locale = Locale(lang);
     }
-    
+
     if (theme == 'dark') {
       _themeMode = ThemeMode.dark;
     } else if (theme == 'light') {
@@ -40,7 +40,9 @@ class AppPreferences extends ChangeNotifier {
 
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
-    String value = mode == ThemeMode.dark ? 'dark' : (mode == ThemeMode.light ? 'light' : 'system');
+    String value = mode == ThemeMode.dark
+        ? 'dark'
+        : (mode == ThemeMode.light ? 'light' : 'system');
     await _storage.write(key: 'theme_mode', value: value);
     notifyListeners();
   }
