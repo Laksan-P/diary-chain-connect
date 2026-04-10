@@ -84,13 +84,15 @@ const RegisterFarmer: React.FC = () => {
               required 
             />
           </div>
-          <div className="space-y-2">
-            <Label>Chilling Center</Label>
-            <Select value={form.chillingCenterId} onValueChange={v => update('chillingCenterId', v)}>
-              <SelectTrigger><SelectValue placeholder="Select center" /></SelectTrigger>
-              <SelectContent>{centers.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
+          {!user?.chillingCenterId && (
+            <div className="space-y-2">
+              <Label>Chilling Center</Label>
+              <Select value={form.chillingCenterId} onValueChange={v => update('chillingCenterId', v)}>
+                <SelectTrigger><SelectValue placeholder="Select center" /></SelectTrigger>
+                <SelectContent>{centers.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <div className="border-t pt-4">

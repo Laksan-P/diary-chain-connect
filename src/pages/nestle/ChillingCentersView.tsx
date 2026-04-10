@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { getCenterPerformance, createChillingCenter, getChillingCenters } from '@/services/api';
+import { getCenterPerformance, registerChillingCenterByAdmin, getChillingCenters } from '@/services/api';
 import type { CenterPerformance, ChillingCenter } from '@/types';
 
 const ChillingCentersView: React.FC = () => {
   const [centers, setCenters] = useState<(CenterPerformance & { location?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', location: '', contact: '' });
+  const [form, setForm] = useState({ name: '', location: '', contact: '', email: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -41,13 +41,18 @@ const ChillingCentersView: React.FC = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await createChillingCenter({ name: form.name, location: form.location });
-      toast({ title: 'Success', description: 'Chilling Center added successfully.' });
-      setForm({ name: '', location: '', contact: '' });
+      await registerChillingCenterByAdmin({ 
+        name: form.name, 
+        location: form.location,
+        email: form.email,
+        password: form.password
+      });
+      toast({ title: 'Success', description: 'Chilling Center registered with credentials.' });
+      setForm({ name: '', location: '', contact: '', email: '', password: '' });
       setShowForm(false);
       loadData();
-    } catch {
-      toast({ title: 'Error', description: 'Failed to add chilling center.', variant: 'destructive' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to add chilling center.', variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -83,7 +88,7 @@ const ChillingCentersView: React.FC = () => {
       {showForm && (
         <motion.form initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} onSubmit={handleSubmit} className="glass-card p-6 space-y-4">
           <h3 className="font-semibold border-b pb-2">Register New Chilling Center</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Center Name</Label>
               <Input value={form.name} maxLength={50} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. North Province Center" required />
@@ -93,16 +98,12 @@ const ChillingCentersView: React.FC = () => {
               <Input value={form.location} maxLength={50} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Jaffna" required />
             </div>
             <div className="space-y-2">
-              <Label>Contact Details (Optional)</Label>
-              <Input 
-                value={form.contact} 
-                maxLength={10} 
-                onChange={e => {
-                  const val = e.target.value.replace(/\D/g, ''); // Numbers only
-                  setForm(f => ({ ...f, contact: val })); 
-                }} 
-                placeholder="e.g. 0771234567" 
-              />
+              <Label>Login Email</Label>
+              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="e.g. center@nestle.com" required />
+            </div>
+            <div className="space-y-2">
+              <Label>Login Password</Label>
+              <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required />
             </div>
           </div>
           <Button type="submit" disabled={submitting}>{submitting ? 'Registering...' : 'Complete Registration'}</Button>

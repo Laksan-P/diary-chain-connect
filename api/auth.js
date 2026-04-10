@@ -102,12 +102,13 @@ export default async function handler(req, res) {
       if (data.role === 'chilling_center') {
         const { data: cc, error: ccErr } = await supabase
           .from('chilling_centers')
-          .select('id')
+          .select('id, name')
           .eq('user_id', data.id)
           .maybeSingle();
         if (ccErr) throw ccErr;
         if (!cc) return res.status(401).json({ error: 'Chilling Center profile no longer exists' });
         chillingCenterId = cc.id;
+        payload.chillingCenterName = cc.name;
       }
 
       let nestleOfficerId = null;
@@ -404,8 +405,11 @@ export default async function handler(req, res) {
         }
       }
       if (user.role === 'chilling_center') {
-        const { data: cc } = await supabase.from('chilling_centers').select('id').eq('user_id', user.id).maybeSingle();
-        if (cc) user.chillingCenterId = cc.id;
+        const { data: cc } = await supabase.from('chilling_centers').select('id, name').eq('user_id', user.id).maybeSingle();
+        if (cc) {
+          user.chillingCenterId = cc.id;
+          user.chillingCenterName = cc.name;
+        }
       }
       if (user.role === 'nestle_officer' || user.role === 'nestle') {
         const { data: off } = await supabase.from('nestle_officers').select('id').eq('user_id', user.id).maybeSingle();

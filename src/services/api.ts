@@ -83,7 +83,16 @@ export const registerFarmer = async (data: FarmerRegistration): Promise<AuthResp
 };
 
 /** POST /api/auth?action=register-user */
-export const registerUser = async (data: { name: string; email: string; password: string; role: 'nestle' | 'chilling_center' }): Promise<AuthResponse> => {
+export const registerUser = async (data: { 
+  name: string; 
+  email: string; 
+  password: string; 
+  role: 'nestle' | 'chilling_center';
+  location?: string;
+  bankName?: string;
+  accountNumber?: string;
+  branch?: string;
+}): Promise<AuthResponse> => {
   const res = await apiFetch<AuthResponse>('/api/auth?action=register-user', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -91,6 +100,14 @@ export const registerUser = async (data: { name: string; email: string; password
   setToken(res.token);
   setStoredUser(res.user);
   return res;
+};
+
+/** Admin action to register a CC without switching context */
+export const registerChillingCenterByAdmin = async (data: any): Promise<any> => {
+  return apiFetch<any>('/api/auth?action=register-user', {
+    method: 'POST',
+    body: JSON.stringify({ ...data, role: 'chilling_center' }),
+  });
 };
 
 /** POST /api/auth?action=register-farmer-by-center */
@@ -129,8 +146,10 @@ export const createChillingCenter = async (data: { name: string; location: strin
 // ============ FARMERS ============
 
 /** GET /api/farmers?action=list */
-export const getFarmers = async (): Promise<Farmer[]> => {
-  return apiFetch<Farmer[]>('/api/farmers?action=list');
+export const getFarmers = async (centerId?: number): Promise<Farmer[]> => {
+  let url = '/api/farmers?action=list';
+  if (centerId) url += `&centerId=${centerId}`;
+  return apiFetch<Farmer[]>(url);
 };
 
 /** GET /api/farmers?action=get&id=X */

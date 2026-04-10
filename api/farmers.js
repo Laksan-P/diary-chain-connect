@@ -16,12 +16,12 @@ export default async function handler(req, res) {
   const user = authenticate(req, res);
   if (!user) return;
 
-  const { action, id } = req.query;
-
+  const { action, id, centerId } = req.query;
+  
   // ────────── GET /api/farmers?action=list ──────────
   if (action === 'list' && req.method === 'GET') {
     try {
-      const { data: farmers, error } = await supabase
+      let query = supabase
         .from('farmers')
         .select(`
           id, farmer_id, user_id, name, address, phone, nic, chilling_center_id,
@@ -29,6 +29,12 @@ export default async function handler(req, res) {
           milk_collections (quantity),
           created_at
         `);
+
+      if (centerId) {
+        query = query.eq('chilling_center_id', centerId);
+      }
+
+      const { data: farmers, error } = await query;
 
       if (error) throw error;
 

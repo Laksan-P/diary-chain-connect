@@ -17,7 +17,13 @@ const MilkCollectionPage: React.FC = () => {
   const { toast } = useToast();
   const [form, setForm] = useState({ farmerId: '', date: new Date().toISOString().split('T')[0], time: new Date().toTimeString().slice(0, 5), temperature: '', quantity: '', milkType: 'Cow' });
 
-  useEffect(() => { getFarmers().then(setFarmers); }, []);
+  useEffect(() => { 
+    if (user?.chillingCenterId) {
+      getFarmers(user.chillingCenterId).then(setFarmers); 
+    } else {
+      getFarmers().then(setFarmers);
+    }
+  }, [user]);
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
 

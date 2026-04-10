@@ -192,6 +192,10 @@ export default async function handler(req, res) {
 
       if (req.query.farmerId) {
         query = query.eq('farmer_id', req.query.farmerId);
+      } else if (req.query.centerId) {
+        const { data: ccFarmers } = await supabase.from('farmers').select('id').eq('chilling_center_id', req.query.centerId);
+        const ids = ccFarmers?.map(f => f.id) || [];
+        query = query.in('farmer_id', ids);
       }
 
       const { data: payments } = await query.order('created_at', { ascending: false });
