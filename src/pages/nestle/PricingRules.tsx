@@ -18,8 +18,8 @@ const AnimatedDeleteButton: React.FC<{ onDelete: () => Promise<void> }> = ({ onD
     if (!confirm('Are you sure you want to delete this pricing strategy? This action cannot be undone.')) return;
     
     setIsDeleting(true);
-    // Fast animation: 400ms
-    await new Promise(resolve => setTimeout(resolve, 400));
+    // Instant feel: 300ms
+    await new Promise(resolve => setTimeout(resolve, 300));
     await onDelete();
     setIsDeleting(false);
   };
@@ -31,30 +31,34 @@ const AnimatedDeleteButton: React.FC<{ onDelete: () => Promise<void> }> = ({ onD
       title="Delete Pricing Strategy"
     >
       <div className="relative w-5 h-5 flex items-center justify-center">
-        {/* Lid - Cleaner design */}
+        {/* Lid */}
         <motion.div
           animate={isDeleting ? { rotate: -45, x: -1, y: -2 } : { rotate: 0, x: 0, y: 0 }}
-          transition={{ duration: 0.2 }}
-          className="absolute top-0 w-4 h-0.5 bg-destructive rounded-full origin-left"
+          transition={{ duration: 0.15 }}
+          className="absolute top-0 w-4 h-0.5 bg-destructive rounded-full origin-left z-10"
           style={{ top: '3px' }}
         >
-          {/* Lid handle */}
           <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-0.5 bg-destructive rounded-t-full" />
         </motion.div>
 
-        {/* Bin body - Cleaner design */}
-        <div className="absolute bottom-0 w-3.5 h-3.5 border-[1.5px] border-destructive rounded-[2px] flex justify-around px-[2px] pt-[2px]">
+        {/* Bin body */}
+        <div className="absolute bottom-0 w-3.5 h-3.5 border-[1.5px] border-destructive rounded-[2px] flex justify-around px-[2px] pt-[2px] bg-background">
            <div className="w-[1px] h-2 bg-destructive/50" />
            <div className="w-[1px] h-2 bg-destructive/50" />
         </div>
         
-        {/* File being deleted - Snappier drop */}
+        {/* The "File" - More visible white paper style */}
         <motion.div
-          initial={{ opacity: 0, y: -4, scale: 0.4 }}
-          animate={isDeleting ? { opacity: [0, 1, 0], y: [ -2, 2, 4], scale: [0.4, 0.6, 0.2] } : { opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeIn" }}
-          className="absolute top-0 w-1.5 h-2 bg-destructive/40 border border-destructive/60 rounded-sm"
-          style={{ top: '4px' }}
+          initial={{ opacity: 0, y: -8, scale: 0.2 }}
+          animate={isDeleting ? { 
+            opacity: [0, 1, 1, 0], 
+            y: [-6, -2, 4, 6], 
+            scale: [0.4, 0.7, 0.7, 0.4],
+            rotate: [0, -10, 10, 0] 
+          } : { opacity: 0 }}
+          transition={{ duration: 0.25, ease: "easeInOut" }}
+          className="absolute w-2 h-2.5 bg-white border border-destructive/30 shadow-sm rounded-[1px] z-0"
+          style={{ top: '2px' }}
         />
       </div>
     </button>
