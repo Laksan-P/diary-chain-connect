@@ -75,8 +75,22 @@ export default async function handler(req, res) {
         const params = resultValue === 'Pass'
           ? `date:${date}`
           : `date:${date},reason:${reasonValue || 'N/A'}`;
+        
         if (userId) {
+          // 1. Send detailed Quality Result notification
           await supabase.from('notifications').insert({ user_id: userId, title: titleKey, message: `${msgKey}|${params}`, type: 'quality_result' });
+          
+          // 2. If tested by Nestle, also send the Dispatch status update notification
+          if (user.role === 'nestle') {
+            const dispatchTitle = resultValue === 'Pass' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
+            const dispatchMsg = resultValue === 'Pass' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
+            await supabase.from('notifications').insert({ 
+              user_id: userId, 
+              title: dispatchTitle, 
+              message: `${dispatchMsg}|${params}`, 
+              type: 'quality_result' 
+            });
+          }
         }
       }
 

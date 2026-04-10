@@ -96,13 +96,15 @@ const DispatchMonitoring: React.FC = () => {
 
       if (res.result === 'Pass') {
         toast({ title: 'Quality Check Passed', description: 'Collection has been automatically approved.' });
-        // NOTE: In a real system, the backend would trigger the status update. 
-        // For this demo/sprint, we'll refresh the data.
         await fetchDispatches();
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
         setTestForm({ snf: '', fat: '', water: '' });
       } else {
-        toast({ title: 'Quality Check Failed', description: `Result: ${res.reason}`, variant: 'destructive' });
+        // Automatically route to rejection flow with pre-filled reason
+        setTestDialog({ open: false, collectionId: null, dispatchId: null });
+        setRejectDialog({ open: true, id: testDialog.dispatchId });
+        setRejectReason(`Quality Check Failed: ${res.reason}`);
+        toast({ title: 'Quality Check Failed', description: `Routing to rejection for: ${res.reason}`, variant: 'destructive' });
       }
     } catch (error) {
       toast({ title: 'System Error', description: 'Failed to submit quality test.', variant: 'destructive' });
