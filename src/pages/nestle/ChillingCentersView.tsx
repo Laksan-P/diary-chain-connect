@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, Plus, RefreshCw } from 'lucide-react';
+import { Building2, Plus, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DataTable from '@/components/DataTable';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ const ChillingCentersView: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', location: '', contact: '', email: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
   const loadData = async () => {
@@ -103,7 +104,22 @@ const ChillingCentersView: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label>Login Password</Label>
-              <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required />
+              <div className="relative">
+                <Input 
+                  type={showPassword ? "text" : "password"} 
+                  value={form.password} 
+                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))} 
+                  required 
+                  className="pr-10" 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
           <Button type="submit" disabled={submitting}>{submitting ? 'Registering...' : 'Complete Registration'}</Button>
