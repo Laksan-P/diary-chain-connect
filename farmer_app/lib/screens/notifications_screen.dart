@@ -242,6 +242,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         icon = LucideIcons.wallet;
         typeColor = Colors.green;
         break;
+      case 'payment_reminder':
+        icon = LucideIcons.calendar;
+        typeColor = Colors.orange;
+        break;
       case 'dispatch_status':
         icon = LucideIcons.truck;
         typeColor = isDark ? Colors.orangeAccent : Colors.orange;
@@ -256,7 +260,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return GestureDetector(
       onTap: () {
-        if (!isRead) _markAsRead(note['id'].toString());
+        if (!isRead && type != 'payment_reminder') _markAsRead(note['id'].toString());
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -307,7 +311,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           color: isDark ? (isRead ? Colors.white70 : Colors.white) : (isRead ? Colors.black54 : Colors.black87),
                         ),
                       ),
-                      if (!isRead)
+                      if (!isRead && type != 'payment_reminder')
                         Container(
                           width: 12,
                           height: 12,
@@ -336,15 +340,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse(note['createdAt']).toLocal()),
-                    style: TextStyle(
-                      color: isDark ? Colors.white12 : Colors.grey.shade400,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                  if (type != 'payment_reminder') ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse(note['createdAt']).toLocal()),
+                      style: TextStyle(
+                        color: isDark ? Colors.white12 : Colors.grey.shade400,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

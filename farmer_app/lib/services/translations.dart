@@ -100,6 +100,10 @@ class Translations {
       'nestle_quality_test_failed_msg': 'Final verification by Nestlé for your collection on {date} failed. Reason: {reason}',
       'new_dispatch_alert_title': 'New Dispatch Incoming',
       'new_dispatch_alert_msg': 'Tanker {vehicle} from {cc} is on its way to HQ.',
+      'cc_collection_passed_nestle_title': 'Collection Verified by Nestlé',
+      'cc_collection_passed_nestle_msg': 'Milk collection #{id} from farmer {farmer} was PASSED by Nestlé quality check.',
+      'cc_collection_rejected_nestle_title': 'Collection Rejected by Nestlé',
+      'cc_collection_rejected_nestle_msg': 'Milk collection #{id} from farmer {farmer} was REJECTED by Nestlé. Reason: {reason}',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -201,6 +205,10 @@ class Translations {
       'nestle_quality_test_failed_msg': '{date} දින ඔබේ එකතු කිරීම නෙස්ලේ පරීක්ෂාවෙන් අසමත් විය. හේතුව: {reason}',
       'new_dispatch_alert_title': 'නව ප්‍රවාහනයක් පැමිණේ',
       'new_dispatch_alert_msg': '{cc} මධ්‍යස්ථානයේ සිට {vehicle} රථය HQ වෙත ගමන් අරඹා ඇත.',
+      'cc_collection_passed_nestle_title': 'එකතු කිරීම නෙස්ලේ ආයතනය විසින් තහවුරු කරන ලදී',
+      'cc_collection_passed_nestle_msg': '{farmer} ගොවි මහතාගේ අංක #{id} දරන කිරි එකතු කිරීම නෙස්ලේ තත්ත්ව පරීක්ෂාවෙන් සමත් විය.',
+      'cc_collection_rejected_nestle_title': 'එකතු කිරීම නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී',
+      'cc_collection_rejected_nestle_msg': '{farmer} ගොවි මහතාගේ අංක #{id} දරන කිරි එකතු කිරීම නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී. හේතුව: {reason}',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -302,6 +310,10 @@ class Translations {
       'nestle_quality_test_failed_msg': '{date} அன்று உங்கள் சேகரிப்பு நெஸ்லே சரிபார்ப்பில் தோல்வியடைந்தது. காரணம்: {reason}',
       'new_dispatch_alert_title': 'புதிய அனுப்புதல் வருகிறது',
       'new_dispatch_alert_msg': '{cc} இல் இருந்து {vehicle} வண்டி தலைமையகத்திற்கு வருகிறது.',
+      'cc_collection_passed_nestle_title': 'சேகரிப்பு நெஸ்லேவால் சரிபார்க்கப்பட்டது',
+      'cc_collection_passed_nestle_msg': 'விவசாயி {farmer} இன் பால் சேகரிப்பு #{id} நெஸ்லே தர சோதனையில் தேர்ச்சி பெற்றது.',
+      'cc_collection_rejected_nestle_title': 'சேகரிப்பு நெஸ்லேவால் நிராகரிக்கப்பட்டது',
+      'cc_collection_rejected_nestle_msg': 'விவசாயி {farmer} இன் பால் சேகரிப்பு #{id} நெஸ்லேயால் நிராகரிக்கப்பட்டது. காரணம்: {reason}',
     },
   };
 
