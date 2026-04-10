@@ -20,6 +20,7 @@ const DispatchPage: React.FC = () => {
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
   const [form, setForm] = useState({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: new Date().toISOString().slice(0, 16), tankerCapacity: '' });
 
@@ -30,10 +31,21 @@ const DispatchPage: React.FC = () => {
   const capacityNum = Number(form.tankerCapacity) || 0;
   const isOverCapacity = capacityNum > 0 && selectedTotal > capacityNum;
 
-  const loadData = () => {
+  const loadData = async () => {
     if (!centerId) return;
-    getCollections(centerId).then(c => setCollections(c.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending')));
-    getDispatches(centerId).then(setDispatches);
+    setIsRefreshing(true);
+    try {
+      const c = await getCollections(centerId);
+      setCollections(c.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending'));
+      const d = await getDispatches(centerId);
+      setDispatches(d);
+      // Wait for at least 600ms to show the animation clearly
+      await new Promise(resolve => setTimeout(resolve, 600));
+    } catch (err) {
+      console.error('Load data error:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -136,9 +148,9 @@ const DispatchPage: React.FC = () => {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-display font-semibold text-foreground">Dispatch History</h3>
-          <Button variant="ghost" size="sm" onClick={loadData} className="gap-2 text-primary" disabled={loading}>
-            <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+          <Button variant="ghost" size="sm" onClick={loadData} className="gap-2 text-primary hover:text-primary hover:bg-primary/5" disabled={isRefreshing}>
+            <RefreshCcw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
         <DataTable columns={dispatchColumns} data={dispatches.filter(d => d.chillingCenterId === centerId)} />
