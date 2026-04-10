@@ -63,12 +63,14 @@ export default async function handler(req, res) {
 
       const { data: col, error: cErr } = await supabase
         .from('milk_collections')
-        .select('farmer_id, date, farmers (user_id)')
+        .select('farmer_id, date, chilling_center_id, chilling_centers(user_id), farmers (user_id, name)')
         .eq('id', collectionId)
         .maybeSingle();
 
       if (col && !cErr) {
         const userId = col.farmers?.user_id;
+        const farmerName = col.farmers?.name;
+        const ccUserId = col.chilling_centers?.user_id;
         const date = col.date;
         const titleKey = resultValue === 'Pass' ? 'quality_test_passed_title' : 'quality_test_failed_title';
         const msgKey = resultValue === 'Pass' ? 'quality_test_passed_msg' : 'quality_test_failed_msg';
@@ -77,10 +79,10 @@ export default async function handler(req, res) {
           : `date:${date},reason:${reasonValue || 'N/A'}`;
         
         if (userId) {
-          // 1. Send detailed Quality Result notification
+          // 1. Send detailed Quality Result notification to Farmer
           await supabase.from('notifications').insert({ user_id: userId, title: titleKey, message: `${msgKey}|${params}`, type: 'quality_result' });
           
-          // 2. If tested by Nestle, also send the Dispatch status update notification
+          // 2. If tested by Nestle, also send the Dispatch status update notification to Farmer
           if (user.role === 'nestle') {
             const dispatchTitle = resultValue === 'Pass' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
             const dispatchMsg = resultValue === 'Pass' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
@@ -90,6 +92,18 @@ export default async function handler(req, res) {
               message: `${dispatchMsg}|${params}`, 
               type: 'quality_result' 
             });
+
+            // 3. Notify Chilling Center about Nestlé's verification result (Include Farmer Name)
+            if (ccUserId) {
+              const ccTitle = resultValue === 'Pass' ? 'cc_collection_passed_nestle_title' : 'cc_collection_rejected_nestle_title';
+              const ccMsg = resultValue === 'Pass' ? 'cc_collection_passed_nestle_msg' : 'cc_collection_rejected_nestle_msg';
+              await supabase.from('notifications').insert({
+                user_id: ccUserId,
+                title: ccTitle,
+                message: `${ccMsg}|id:${collectionId},farmer:${farmerName},result:${resultValue}${reasonValue ? `,reason:${reasonValue}` : ''}`,
+                type: 'quality_result'
+              });
+            }
           }
         }
       }
@@ -262,7 +276,30 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Status must be Approved or Rejected' });
       }
 
+      const { data: dispatch, error: dFetchErr } = await supabase
+        .from('dispatches')
+        .select('chilling_center_id, transporter_name, vehicle_number, chilling_centers(user_id)')
+        .eq('id', id)
+        .single();
+      
+      if (dFetchErr) throw dFetchErr;
+
       await supabase.from('dispatches').update({ status, rejection_reason: reason || null }).eq('id', id);
+
+      // notify CC User (Include Tanker/Vehicle info)
+      const ccUserId = dispatch.chilling_centers?.user_id;
+      if (ccUserId) {
+        const vehicle = dispatch.vehicle_number;
+        const transporter = dispatch.transporter_name;
+        await supabase.from('notifications').insert({
+          user_id: ccUserId,
+          title: status === 'Approved' ? 'dispatch_accepted_by_nestle_title' : 'dispatch_rejected_by_nestle_title',
+          message: status === 'Approved' 
+            ? `dispatch_accepted_by_nestle_msg|id:${id},vehicle:${vehicle},transporter:${transporter}` 
+            : `dispatch_rejected_by_nestle_msg|id:${id},vehicle:${vehicle},transporter:${transporter},reason:${reason || 'N/A'}`,
+          type: 'dispatch'
+        });
+      }
 
       // Fetch dispatch items for this dispatch
       const { data: items } = await supabase

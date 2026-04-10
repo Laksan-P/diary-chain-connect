@@ -13,7 +13,6 @@ export default async function handler(req, res) {
   // ────────── GET /api/notifications?action=list ──────────
   if (action === 'list' && req.method === 'GET') {
     try {
-      // Strictly use the ID from the authenticated token for security
       const userId = user.id;
       const { data: notes, error } = await supabase
         .from('notifications')
@@ -23,11 +22,41 @@ export default async function handler(req, res) {
 
       if (error) throw error;
 
-      const flattened = notes.map((n) => ({
+      let flattened = notes.map((n) => ({
         id: n.id, userId: n.user_id, title: n.title,
         message: n.message, type: n.type,
         isRead: n.is_read, createdAt: n.created_at,
       }));
+
+      // In-memory injection of Bi-weekly Payment Reminder for Farmers
+      if (user.role === 'farmer') {
+        const now = new Date();
+        const day = now.getDate();
+        let targetDate;
+        
+        // Cycle 1: Pays on 14th, Cycle 2: Pays on 28th
+        if (day <= 14) {
+          targetDate = new Date(now.getFullYear(), now.getMonth(), 14);
+        } else if (day <= 28) {
+          targetDate = new Date(now.getFullYear(), now.getMonth(), 28);
+        } else {
+          // Next month's 14th
+          targetDate = new Date(now.getFullYear(), now.getMonth() + 1, 14);
+        }
+
+        const diffTime = Math.abs(targetDate.getTime() - now.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        flattened.unshift({
+          id: 999999, // Virtual ID
+          userId: user.id,
+          title: 'payment_cycle_reminder_title',
+          message: `payment_cycle_reminder_msg|days:${diffDays}`,
+          type: 'general',
+          isRead: false,
+          createdAt: new Date().toISOString()
+        });
+      }
 
       return res.status(200).json(flattened);
     } catch (err) {
