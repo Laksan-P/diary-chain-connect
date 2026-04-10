@@ -54,6 +54,9 @@ export default async function handler(req, res) {
               const oldestDate = new Date(oldest.date);
               oldestDate.setHours(0, 0, 0, 0);
 
+              // Calculate the next upcoming settlement date (not the past one)
+              // Bi-weekly: 1st-15th settles on the 16th, 16th-end settles on the 1st of next month
+              // If that date is already past, advance to the NEXT cycle
               let targetDate;
               if (oldestDate.getDate() <= 15) {
                 targetDate = new Date(oldestDate.getFullYear(), oldestDate.getMonth(), 16);
@@ -61,15 +64,23 @@ export default async function handler(req, res) {
                 targetDate = new Date(oldestDate.getFullYear(), oldestDate.getMonth() + 1, 1);
               }
 
+              // If the target is already past, find the next upcoming settlement from TODAY
+              if (targetDate <= now) {
+                const today = new Date(now);
+                if (today.getDate() < 16) {
+                  targetDate = new Date(today.getFullYear(), today.getMonth(), 16);
+                } else {
+                  targetDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+                }
+              }
+
               const diffTime = targetDate.getTime() - now.getTime();
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-              // Daily-unique virtual ID: YYYYMMDD + 90,000,000 (never stored in DB with this ID)
+              // Daily-unique virtual ID: YYYYMMDD + 90,000,000
               const todayStr = now.toISOString().split('T')[0].replace(/-/g, '');
               const virtualId = parseInt(todayStr) + 90000000;
 
-              // Check if farmer already read today's reminder
-              // (stored with 'payment' type since DB enum doesn't have 'payment_reminder')
               const { data: readNote } = await supabase
                 .from('notifications')
                 .select('is_read')
@@ -77,16 +88,15 @@ export default async function handler(req, res) {
                 .eq('id', virtualId)
                 .maybeSingle();
 
-              const msgKey = diffDays <= 0 ? 'payment_ready_msg' : 'payment_cycle_reminder_msg';
-              // Format scheduled payment date e.g. "Apr 16, 2026"
-              const schedDate = targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              // Only say "today" when diffDays is exactly 0 (actual payment day)
+              // Otherwise always show remaining days
+              const msgKey = diffDays === 0 ? 'payment_ready_msg' : 'payment_cycle_reminder_msg';
 
-              // Inject virtual reminder at top of list (type is client-side only)
               flattened.unshift({
                 id: virtualId,
                 userId: user.id,
                 title: 'payment_cycle_reminder_title',
-                message: `${msgKey}|days:${diffDays},date:${schedDate}`,
+                message: `${msgKey}|days:${diffDays}`,
                 type: 'payment_reminder',
                 isRead: readNote ? readNote.is_read : false,
                 createdAt: new Date().toISOString()
