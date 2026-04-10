@@ -61,6 +61,33 @@ export default async function handler(req, res) {
         .update(updates)
         .eq('id', collectionId);
 
+      // CRITICAL: Auto-approve the entire Dispatch if Nestle verification passes
+      if (resultValue === 'Pass' && user.role === 'nestle') {
+        // Find which dispatch this collection belongs to
+        const { data: itemLink } = await supabase
+          .from('dispatch_items')
+          .select('dispatch_id')
+          .eq('collection_id', collectionId)
+          .maybeSingle();
+        
+        if (itemLink?.dispatch_id) {
+          const dId = itemLink.dispatch_id;
+          // 1. Approve the Dispatch header
+          await supabase.from('dispatches').update({ status: 'Approved' }).eq('id', dId);
+          
+          // 2. Approve ALL other collections in this same dispatch
+          const { data: siblingItems } = await supabase
+            .from('dispatch_items')
+            .select('collection_id')
+            .eq('dispatch_id', dId);
+          
+          if (siblingItems && siblingItems.length > 0) {
+            const sibIds = siblingItems.map(si => si.collection_id);
+            await supabase.from('milk_collections').update({ dispatch_status: 'Approved' }).in('id', sibIds);
+          }
+        }
+      }
+
       const { data: col, error: cErr } = await supabase
         .from('milk_collections')
         .select('farmer_id, date, chilling_center_id, chilling_centers(user_id), farmers (user_id, name)')
