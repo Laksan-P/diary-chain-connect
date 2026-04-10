@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       
       // Auto-approve only if tested by Nestle.
       // Chilling center testing should keep status as Pending so it can be dispatched.
-      if (resultValue === 'Pass' && user.role === 'nestle') {
+      if (resultValue === 'Pass' && (user.role === 'nestle' || user.role === 'nestle_officer')) {
         updates.dispatch_status = 'Approved';
       }
 
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
         .eq('id', collectionId);
 
       // CRITICAL: Auto-approve the entire Dispatch if Nestle verification passes
-      if (resultValue === 'Pass' && user.role === 'nestle') {
+      if (resultValue === 'Pass' && (user.role === 'nestle' || user.role === 'nestle_officer')) {
         // Find which dispatch this collection belongs to
         const { data: itemLink } = await supabase
           .from('dispatch_items')
