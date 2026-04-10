@@ -325,6 +325,7 @@ export default async function handler(req, res) {
       let nestleOfficerId = null;
 
       if (role === 'chilling_center') {
+        const passwordHash = await bcrypt.hash(password, 10);
         const { data: cc, error: ccErr } = await supabase
           .from('chilling_centers')
           .insert({ 
@@ -332,7 +333,7 @@ export default async function handler(req, res) {
             location: location || 'Default Location', 
             user_id: userId,
             email: email,
-            password: password // Save plain text for direct visibility as requested
+            password: passwordHash // Store HASHED password
           })
           .select('id')
           .single();
