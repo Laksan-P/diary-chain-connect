@@ -49,7 +49,10 @@ export default async function handler(req, res) {
         quality_result: resultValue, 
         failure_reason: reasonValue 
       };
-      if (resultValue === 'Pass') {
+      
+      // Auto-approve only if tested by Nestle.
+      // Chilling center testing should keep status as Pending so it can be dispatched.
+      if (resultValue === 'Pass' && user.role === 'nestle') {
         updates.dispatch_status = 'Approved';
       }
 
