@@ -41,7 +41,10 @@ const NestleMilkHistory: React.FC = () => {
 
   const filteredCollections = collections.filter(c => {
     const matchDate = filterDate ? c.date === filterDate : true;
-    const matchFarmer = filterFarmer ? (c.farmerName?.toLowerCase() || '').includes(filterFarmer.toLowerCase()) : true;
+    const searchTerm = filterFarmer.toLowerCase();
+    const matchFarmer = filterFarmer 
+      ? (c.farmerName?.toLowerCase() || '').includes(searchTerm) || (c.farmerCode?.toLowerCase() || '').includes(searchTerm)
+      : true;
     const matchCenter = selectedCenter === 'all' ? true : c.chillingCenterId.toString() === selectedCenter;
     return matchDate && matchFarmer && matchCenter;
   });
@@ -49,6 +52,7 @@ const NestleMilkHistory: React.FC = () => {
   const columns = [
     { key: 'chillingCenterName', header: 'Chilling Center', render: (r: MilkCollection) => r.chillingCenterName || 'Unknown Region' },
     { key: 'date', header: 'Date', render: (r: MilkCollection) => formatDate(r.date) },
+    { key: 'farmerCode', header: 'Farmer ID', render: (r: MilkCollection) => <span className="font-mono font-medium text-xs">{r.farmerCode || 'N/A'}</span> },
     { key: 'farmerName', header: 'Farmer Name' },
     { key: 'milkType', header: 'Milk Type', render: (r: MilkCollection) => r.milkType || 'Cow' },
     { key: 'quantity', header: 'Qty (L)', render: (r: MilkCollection) => formatQuantity(r.quantity) },
@@ -79,10 +83,10 @@ const NestleMilkHistory: React.FC = () => {
             <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="h-9" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">By Farmer Name</Label>
+            <Label className="text-xs text-muted-foreground">By Farmer Name or ID</Label>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search farmer..." value={filterFarmer} onChange={e => setFilterFarmer(e.target.value)} className="h-9 pl-9" />
+              <Input placeholder="Search name or FRM-001..." value={filterFarmer} onChange={e => setFilterFarmer(e.target.value)} className="h-9 pl-9" />
             </div>
           </div>
           <div className="space-y-1.5">
