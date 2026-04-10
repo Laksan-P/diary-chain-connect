@@ -31,7 +31,30 @@ const DispatchPage: React.FC = () => {
   const { toast } = useToast();
   const getLocalDateTime = () => {
     const now = new Date();
-    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    // Offset in minutes, e.g. -330 for GMT+5:30
+    const offset = now.getTimezoneOffset();
+    const absOffset = Math.abs(offset);
+    const hours = Math.floor(absOffset / 60);
+    const mins = absOffset % 60;
+    const sign = offset <= 0 ? '+' : '-';
+    
+    // Naive local ISO: 2026-04-11T00:42
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const localISO = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    
+    // We'll return just the local ISO digits for the datetime-local input
+    return localISO;
+  };
+
+  // Helper to convert datetime-local string to full ISO with offset for DB
+  const toISOWithOffset = (dt: string) => {
+    if (!dt) return dt;
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const absOffset = Math.abs(offset);
+    const sign = offset <= 0 ? '+' : '-';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${dt}:00${sign}${pad(Math.floor(absOffset / 60))}:${pad(absOffset % 60)}`;
   };
   const [form, setForm] = useState({ 
     transporterName: '', 
@@ -80,6 +103,7 @@ const DispatchPage: React.FC = () => {
       await createDispatch({
         chillingCenterId: centerId,
         ...form,
+        dispatchDate: toISOWithOffset(form.dispatchDate),
         items: selected.map(id => ({ id: 0, dispatchId: 0, collectionId: id })),
       });
       toast({ title: 'Dispatch Created', description: `${selected.length} collections dispatched` });

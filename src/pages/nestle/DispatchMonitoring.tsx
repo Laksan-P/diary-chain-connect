@@ -251,10 +251,15 @@ const DispatchMonitoring: React.FC = () => {
                                   <Info className="w-3 h-3" /> Transport Details
                                 </h4>
                                 <div className="grid grid-cols-2 gap-y-2 text-sm">
+                                  <span className="text-muted-foreground">Transporter:</span>
+                                  <span className="font-medium text-foreground">{dispatch.transporterName}</span>
                                   <span className="text-muted-foreground">Driver Contact:</span>
                                   <span className="font-medium text-foreground">{dispatch.driverContact}</span>
                                   <span className="text-muted-foreground">Dispatch Time:</span>
-                                  <span className="font-medium text-foreground">{new Date(dispatch.dispatchDate).toLocaleTimeString()}</span>
+                                  <span className="font-medium text-foreground">
+                                    {new Date(dispatch.dispatchDate).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                  </span>
+                                </div>
                                   {dispatch.rejectionReason && (
                                     <>
                                       <span className="text-destructive font-semibold">Rejection Reason:</span>
