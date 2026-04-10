@@ -81,11 +81,13 @@ export default async function handler(req, res) {
               .eq('id', virtualId)
               .maybeSingle();
 
+            const msgKey = diffDays <= 0 ? 'payment_ready_msg' : 'payment_cycle_reminder_msg';
+
             flattened.unshift({
               id: virtualId,
               userId: user.id,
               title: 'payment_cycle_reminder_title',
-              message: `payment_cycle_reminder_msg|days:${diffDays === 0 ? 'Today' : diffDays}`,
+              message: `${msgKey}|days:${diffDays}`,
               type: 'payment_reminder',
               isRead: readNote ? readNote.is_read : false,
               createdAt: new Date().toISOString()
@@ -106,6 +108,30 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'id is required' });
 
     try {
+      // If it's a virtual ID (starting with 9), we insert a permanent 'read' record
+      // so the virtual injector can find it next time.
+      if (id.toString().startsWith('9')) {
+        // First check if it already exists (to avoid unique constraint errors if any)
+        const { data: existing } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('id', id)
+          .maybeSingle();
+        
+        if (!existing) {
+          // Find target date from ID (ID format is YYYYMMDD + 90000000)
+          await supabase.from('notifications').insert({
+            id: parseInt(id),
+            user_id: user.id,
+            title: 'payment_cycle_reminder_title',
+            message: 'Acknowledged',
+            type: 'payment_reminder',
+            is_read: true
+          });
+          return res.status(200).json({ success: true });
+        }
+      }
+
       await supabase.from('notifications')
         .update({ is_read: true })
         .eq('id', id)
