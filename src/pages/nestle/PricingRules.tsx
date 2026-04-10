@@ -100,7 +100,7 @@ const PricingRules: React.FC = () => {
         effectiveFrom: form.effectiveFrom,
       });
       setRules(r => [rule, ...r]);
-      toast({ title: 'New Pricing Rule Applied', description: `Base price set to Rs. ${form.basePricePerLiter}` });
+      toast({ title: 'New Pricing Rule Created (Pending)', description: `Base price set to Rs. ${form.basePricePerLiter}` });
     } catch {
       toast({ title: 'Error saving rule', variant: 'destructive' });
     } finally {

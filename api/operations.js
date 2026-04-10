@@ -321,13 +321,11 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      await supabase.from('pricing_rules').update({ is_active: false }).eq('is_active', true);
-
       const { data: newRule, error: insertErr } = await supabase
         .from('pricing_rules')
         .insert({
           base_price_per_liter: basePricePerLiter, fat_bonus: fatBonus,
-          snf_bonus: snfBonus, effective_from: effectiveFrom, is_active: true,
+          snf_bonus: snfBonus, effective_from: effectiveFrom, is_active: false,
         })
         .select('id')
         .single();
@@ -338,7 +336,7 @@ export default async function handler(req, res) {
         basePricePerLiter: parseFloat(basePricePerLiter),
         fatBonus: parseFloat(fatBonus),
         snfBonus: parseFloat(snfBonus),
-        effectiveFrom, isActive: true,
+        effectiveFrom, isActive: false,
       });
     } catch (err) {
       console.error('Create pricing rule error:', err);
