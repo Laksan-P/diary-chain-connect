@@ -262,7 +262,7 @@ export default async function handler(req, res) {
           await supabase.from('notifications').insert({
             user_id: n.id,
             title: 'new_dispatch_alert_title',
-            message: `new_dispatch_alert_msg|vehicle:${dispatch.vehicle_number},cc:${dispatch.chilling_centers?.name || 'Unknown'}`,
+            message: `new_dispatch_alert_msg|vehicle:${dispatch.vehicle_number},transporter:${dispatch.transporter_name},cc:${dispatch.chilling_centers?.name || 'Unknown'}`,
             type: 'dispatch'
           });
         }

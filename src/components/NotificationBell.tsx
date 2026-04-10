@@ -10,11 +10,16 @@ import { getNotifications, markNotificationRead } from '@/services/api';
 import type { Notification } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+
 const NotificationBell: React.FC = () => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchNotes = async () => {
+    if (!user) return;
     try {
       setLoading(true);
       const data = await getNotifications();
@@ -27,10 +32,32 @@ const NotificationBell: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!user) return;
     fetchNotes();
-    const interval = setInterval(fetchNotes, 30000); // Polling every 30s
-    return () => clearInterval(interval);
-  }, []);
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('realtime:notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Real-time notification received:', payload);
+          // Prepend the new notification
+          setNotifications(prev => [payload.new as Notification, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const handleMarkAsRead = async (id: string | number) => {
     try {
