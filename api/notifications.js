@@ -24,11 +24,13 @@ export default async function handler(req, res) {
 
       if (error) throw error;
 
-      let flattened = notes.map((n) => ({
-        id: n.id, userId: n.user_id, title: n.title,
-        message: n.message, type: n.type,
-        isRead: n.is_read, createdAt: n.created_at,
-      }));
+      let flattened = notes
+        .filter((n) => n.message !== 'Acknowledged') // Hide internal read-tracking records
+        .map((n) => ({
+          id: n.id, userId: n.user_id, title: n.title,
+          message: n.message, type: n.type,
+          isRead: n.is_read, createdAt: n.created_at,
+        }));
 
       // In-memory injection of Bi-weekly Payment Reminder for Farmers
       if (user.role === 'farmer') {
@@ -76,13 +78,15 @@ export default async function handler(req, res) {
                 .maybeSingle();
 
               const msgKey = diffDays <= 0 ? 'payment_ready_msg' : 'payment_cycle_reminder_msg';
+              // Format scheduled payment date e.g. "Apr 16, 2026"
+              const schedDate = targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
               // Inject virtual reminder at top of list (type is client-side only)
               flattened.unshift({
                 id: virtualId,
                 userId: user.id,
                 title: 'payment_cycle_reminder_title',
-                message: `${msgKey}|days:${diffDays}`,
+                message: `${msgKey}|days:${diffDays},date:${schedDate}`,
                 type: 'payment_reminder',
                 isRead: readNote ? readNote.is_read : false,
                 createdAt: new Date().toISOString()
