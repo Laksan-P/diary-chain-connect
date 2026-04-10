@@ -370,5 +370,22 @@ export default async function handler(req, res) {
     }
   }
 
+  // ────────── DELETE /api/operations?action=delete-pricing-rule&id=X ──────────
+  if (action === 'delete-pricing-rule' && req.method === 'DELETE') {
+    if (!id) return res.status(400).json({ error: 'id is required' });
+    try {
+      const { error } = await supabase
+        .from('pricing_rules')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('Delete pricing rule error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   return res.status(400).json({ error: 'Invalid action' });
 }

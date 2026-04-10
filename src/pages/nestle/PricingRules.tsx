@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Save, History, TrendingUp } from 'lucide-react';
+import { Settings, Save, History, TrendingUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useToast } from '@/hooks/use-toast';
-import { getPricingRules, createPricingRule, updatePricingRule } from '@/services/api';
+import { getPricingRules, createPricingRule, updatePricingRule, deletePricingRule } from '@/services/api';
 import type { PricingRule } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -69,6 +69,17 @@ const PricingRules: React.FC = () => {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this pricing strategy? This action cannot be undone.')) return;
+    try {
+      await deletePricingRule(id);
+      setRules(r => r.filter(rule => rule.id !== id));
+      toast({ title: 'Pricing Strategy Deleted' });
+    } catch {
+      toast({ title: 'Delete failed', variant: 'destructive' });
+    }
+  };
+
   const columns = [
     { key: 'basePricePerLiter', header: 'Unit Price (Rs)', render: (r: PricingRule) => <span className="font-bold text-foreground">Rs. {r.basePricePerLiter}</span> },
     { key: 'fatBonus', header: 'FAT Bonus', render: (r: PricingRule) => `Rs. ${r.fatBonus}` },
@@ -91,14 +102,25 @@ const PricingRules: React.FC = () => {
       key: 'actions',
       header: 'Manage',
       render: (r: PricingRule) => (
-        <Button 
-          size="sm" 
-          variant={r.isActive ? "ghost" : "default"}
-          className={`h-8 px-4 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${r.isActive ? 'text-destructive hover:bg-destructive/10' : 'bg-primary hover:bg-primary/90 text-white shadow-md'}`}
-          onClick={() => toggleRule(r.id, r.isActive)}
-        >
-          {r.isActive ? 'Pause Rule' : 'Activate Now'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            size="sm" 
+            variant={r.isActive ? "ghost" : "default"}
+            className={`h-8 px-4 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${r.isActive ? 'text-amber-600 hover:bg-amber-100' : 'bg-primary hover:bg-primary/90 text-white shadow-md'}`}
+            onClick={() => toggleRule(r.id, r.isActive)}
+          >
+            {r.isActive ? 'Pause Rule' : 'Activate Now'}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 rounded-lg transition-all"
+            onClick={() => handleDelete(r.id)}
+            title="Delete Pricing Strategy"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
       )
     }
   ];

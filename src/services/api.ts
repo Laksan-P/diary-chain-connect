@@ -213,6 +213,13 @@ export const updatePricingRule = async (id: number, isActive: boolean): Promise<
   });
 };
 
+/** DELETE /api/operations?action=delete-pricing-rule&id=X */
+export const deletePricingRule = async (id: number): Promise<void> => {
+  await apiFetch<{ success: boolean }>(`/api/operations?action=delete-pricing-rule&id=${id}`, {
+    method: 'DELETE',
+  });
+};
+
 // ============ PAYMENTS ============
 
 /** GET /api/payments?action=list */
