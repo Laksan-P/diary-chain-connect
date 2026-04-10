@@ -133,13 +133,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (migrated.contains('|')) {
       final parts = migrated.split('|');
       final key = parts[0];
-      final paramsList = parts[1].split(',');
+      // Split params on ',' but only on the first colon per segment
+      final paramStr = parts[1];
       final Map<String, String> params = {};
-      for (var p in paramsList) {
-        final kv = p.split(':');
-        if (kv.length >= 2) params[kv[0]] = kv.sublist(1).join(':');
+      final paramParts = paramStr.split(',');
+      for (var p in paramParts) {
+        final colonIdx = p.indexOf(':');
+        if (colonIdx > 0) {
+          params[p.substring(0, colonIdx)] = p.substring(colonIdx + 1);
+        }
       }
-      return Translations.get(key, widget.locale, params: params);
+      String resolved = Translations.get(key, widget.locale, params: params);
+      // Strip any unresolved placeholders like {date} that weren't passed as params
+      resolved = resolved.replaceAll(RegExp(r'\s?\(on \{date\}\)'), '');
+      resolved = resolved.replaceAll(RegExp(r'\{\w+\}'), '');
+      return resolved.trim();
     }
     // If it doesn't have |, it might still be a key (like the title)
     return Translations.get(migrated, widget.locale);
@@ -341,17 +349,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       height: 1.4,
                     ),
                   ),
-                  if (type != 'payment_reminder') ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse(note['createdAt']).toLocal()),
-                      style: TextStyle(
-                        color: isDark ? Colors.white12 : Colors.grey.shade400,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  const SizedBox(height: 12),
+                  Text(
+                    DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse(note['createdAt']).toLocal()),
+                    style: TextStyle(
+                      color: isDark ? Colors.white12 : Colors.grey.shade400,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
