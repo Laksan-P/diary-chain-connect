@@ -31,27 +31,30 @@ export default async function handler(req, res) {
       // In-memory injection of Bi-weekly Payment Reminder for Farmers
       if (user.role === 'farmer') {
         const now = new Date();
+        now.setHours(0, 0, 0, 0); // Normalize to start of day for stable day counting
+        
         const day = now.getDate();
         let targetDate;
         
-        // Cycle 1: Pays on 14th, Cycle 2: Pays on 28th
         if (day <= 14) {
           targetDate = new Date(now.getFullYear(), now.getMonth(), 14);
         } else if (day <= 28) {
           targetDate = new Date(now.getFullYear(), now.getMonth(), 28);
         } else {
-          // Next month's 14th
           targetDate = new Date(now.getFullYear(), now.getMonth() + 1, 14);
         }
 
-        const diffTime = Math.abs(targetDate.getTime() - now.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffTime = targetDate.getTime() - now.getTime();
+        const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        
+        // Generate a stable virtual ID based on the current cycle end date
+        const virtualId = parseInt(targetDate.toISOString().replace(/[-:T.]/g, '').substring(0, 8));
 
         flattened.unshift({
-          id: 999999, // Virtual ID
+          id: virtualId,
           userId: user.id,
           title: 'payment_cycle_reminder_title',
-          message: `payment_cycle_reminder_msg|days:${diffDays}`,
+          message: `payment_cycle_reminder_msg|days:${diffDays === 0 ? 'Today' : diffDays}`,
           type: 'general',
           isRead: false,
           createdAt: new Date().toISOString()

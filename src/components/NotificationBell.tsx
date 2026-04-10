@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Info, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Bell, Info, CheckCircle2, XCircle, Clock, RefreshCcw } from 'lucide-react';
 import { 
   Popover,
   PopoverContent,
@@ -51,6 +51,8 @@ const NotificationBell: React.FC = () => {
     if (params.reason) text += ` : ${params.reason}`;
     if (params.amount) text += ` - Rs. ${params.amount}`;
     if (params.days) text += ` in ${params.days} days`;
+    if (params.vehicle) text += ` [Vehicle: ${params.vehicle}]`;
+    if (params.transporter) text += ` [Transporter: ${params.transporter}]`;
     
     return text;
   };
@@ -117,8 +119,15 @@ const NotificationBell: React.FC = () => {
           )}
         </div>
         <div className="p-2 border-t text-center">
-          <Button variant="ghost" size="sm" className="w-full text-[10px] uppercase font-bold tracking-wider" onClick={fetchNotes}>
-            Refresh
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="w-full text-[10px] uppercase font-bold tracking-wider gap-2 hover:bg-primary/5 text-primary" 
+            onClick={fetchNotes}
+            disabled={loading}
+          >
+            <RefreshCcw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
       </PopoverContent>

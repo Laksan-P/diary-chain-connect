@@ -72,8 +72,15 @@ export default async function handler(req, res) {
         const farmerName = col.farmers?.name;
         const ccUserId = col.chilling_centers?.user_id;
         const date = col.date;
-        const titleKey = resultValue === 'Pass' ? 'quality_test_passed_title' : 'quality_test_failed_title';
-        const msgKey = resultValue === 'Pass' ? 'quality_test_passed_msg' : 'quality_test_failed_msg';
+        let titleKey = resultValue === 'Pass' ? 'quality_test_passed_title' : 'quality_test_failed_title';
+        let msgKey = resultValue === 'Pass' ? 'quality_test_passed_msg' : 'quality_test_failed_msg';
+        
+        // Special mention for Nestle's final check
+        if (user.role === 'nestle_officer' || user.role === 'nestle') {
+          titleKey = resultValue === 'Pass' ? 'nestle_quality_test_passed_title' : 'nestle_quality_test_failed_title';
+          msgKey = resultValue === 'Pass' ? 'nestle_quality_test_passed_msg' : 'nestle_quality_test_failed_msg';
+        }
+
         const params = resultValue === 'Pass'
           ? `date:${date}`
           : `date:${date},reason:${reasonValue || 'N/A'}`;
@@ -83,7 +90,7 @@ export default async function handler(req, res) {
           await supabase.from('notifications').insert({ user_id: userId, title: titleKey, message: `${msgKey}|${params}`, type: 'quality_result' });
           
           // 2. If tested by Nestle, also send the Dispatch status update notification to Farmer
-          if (user.role === 'nestle') {
+          if (user.role === 'nestle_officer' || user.role === 'nestle') {
             const dispatchTitle = resultValue === 'Pass' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
             const dispatchMsg = resultValue === 'Pass' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
             await supabase.from('notifications').insert({ 
@@ -247,6 +254,19 @@ export default async function handler(req, res) {
         .eq('id', dispatchId)
         .single();
       if (fetchErr) throw fetchErr;
+
+      // 4. Notify all Nestle Officers of Incoming Dispatch
+      const { data: nestleUsers } = await supabase.from('users').select('id').eq('role', 'nestle');
+      if (nestleUsers && nestleUsers.length > 0) {
+        for (const n of nestleUsers) {
+          await supabase.from('notifications').insert({
+            user_id: n.id,
+            title: 'new_dispatch_alert_title',
+            message: `new_dispatch_alert_msg|vehicle:${dispatch.vehicle_number},cc:${dispatch.chilling_centers?.name || 'Unknown'}`,
+            type: 'dispatch'
+          });
+        }
+      }
 
       return res.status(201).json({
         id: dispatch.id, chillingCenterId: dispatch.chilling_center_id,
