@@ -32,16 +32,7 @@ export default async function handler(req, res) {
       // In-memory injection of Bi-weekly Payment Reminder for Farmers
       if (user.role === 'farmer') {
         // Step 1: Find oldest approved but unpaid collection
-        const { data: unpaidCols } = await supabase
-          .from('milk_collections')
-          .select('date')
-          .eq('user_id', user.id) // This assumes farmer's user_id is in collections, which might be center_id or farmer_id? 
-          // Wait, let's fix the query to use the farmer's ID associated with this user.
-          .eq('dispatch_status', 'Approved')
-          .order('date', { ascending: true })
-          .limit(1);
-
-        // Actually, we need to join with farmers to get the right collections
+        // We need to join with farmers to get the right collections
         const { data: farmerInfo } = await supabase.from('farmers').select('id').eq('user_id', user.id).single();
         
         if (farmerInfo) {
