@@ -31,63 +31,67 @@ export default async function handler(req, res) {
 
       // In-memory injection of Bi-weekly Payment Reminder for Farmers
       if (user.role === 'farmer') {
-        // Step 1: Find oldest approved but unpaid collection
-        // We need to join with farmers to get the right collections
-        const { data: farmerInfo } = await supabase.from('farmers').select('id').eq('user_id', user.id).single();
-        
-        if (farmerInfo) {
-          const { data: oldest } = await supabase
-            .from('milk_collections')
-            .select('date')
-            .eq('farmer_id', farmerInfo.id)
-            .eq('dispatch_status', 'Approved')
-            .order('date', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-
-          if (oldest) {
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            const oldestDate = new Date(oldest.date);
-            oldestDate.setHours(0, 0, 0, 0);
-
-            // Nestle rule: Fixed Bi-weekly Cycle (1st-15th, 16th-End)
-            // Processing happens on the 16th or the 1st of the next month
-            let targetDate;
-            if (oldestDate.getDate() <= 15) {
-              targetDate = new Date(oldestDate.getFullYear(), oldestDate.getMonth(), 16);
-            } else {
-              targetDate = new Date(oldestDate.getFullYear(), oldestDate.getMonth() + 1, 1);
-            }
-
-            const diffTime = targetDate.getTime() - now.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            // Format ID using current date (YYYYMMDD) + 90,000,000 
-            // This ensures a unique 'unread' alert every single day.
-            const todayStr = now.toISOString().split('T')[0].replace(/-/g, '');
-            const virtualId = parseInt(todayStr) + 90000000;
-
-            // Check if user has already 'virtually' read TODAY'S reminder
-            const { data: readNote } = await supabase
-              .from('notifications')
-              .select('is_read')
-              .eq('user_id', user.id)
-              .eq('id', virtualId)
+        try {
+          // Use maybeSingle() so it returns null instead of throwing when no farmer exists
+          const { data: farmerInfo } = await supabase.from('farmers').select('id').eq('user_id', user.id).maybeSingle();
+          
+          if (farmerInfo) {
+            const { data: oldest } = await supabase
+              .from('milk_collections')
+              .select('date')
+              .eq('farmer_id', farmerInfo.id)
+              .eq('dispatch_status', 'Approved')
+              .order('date', { ascending: true })
+              .limit(1)
               .maybeSingle();
 
-            const msgKey = diffDays <= 0 ? 'payment_ready_msg' : 'payment_cycle_reminder_msg';
+            if (oldest) {
+              const now = new Date();
+              now.setHours(0, 0, 0, 0);
+              const oldestDate = new Date(oldest.date);
+              oldestDate.setHours(0, 0, 0, 0);
 
-            flattened.unshift({
-              id: virtualId,
-              userId: user.id,
-              title: 'payment_cycle_reminder_title',
-              message: `${msgKey}|days:${diffDays}`,
-              type: 'payment_reminder',
-              isRead: readNote ? readNote.is_read : false,
-              createdAt: new Date().toISOString()
-            });
+              // Nestle rule: Fixed Bi-weekly Cycle (1st-15th, 16th-End)
+              // Processing happens on the 16th or the 1st of the next month
+              let targetDate;
+              if (oldestDate.getDate() <= 15) {
+                targetDate = new Date(oldestDate.getFullYear(), oldestDate.getMonth(), 16);
+              } else {
+                targetDate = new Date(oldestDate.getFullYear(), oldestDate.getMonth() + 1, 1);
+              }
+
+              const diffTime = targetDate.getTime() - now.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              
+              // Format ID using current date (YYYYMMDD) + 90,000,000 
+              // This ensures a unique 'unread' alert every single day.
+              const todayStr = now.toISOString().split('T')[0].replace(/-/g, '');
+              const virtualId = parseInt(todayStr) + 90000000;
+
+              // Check if user has already 'virtually' read TODAY'S reminder
+              const { data: readNote } = await supabase
+                .from('notifications')
+                .select('is_read')
+                .eq('user_id', user.id)
+                .eq('id', virtualId)
+                .maybeSingle();
+
+              const msgKey = diffDays <= 0 ? 'payment_ready_msg' : 'payment_cycle_reminder_msg';
+
+              flattened.unshift({
+                id: virtualId,
+                userId: user.id,
+                title: 'payment_cycle_reminder_title',
+                message: `${msgKey}|days:${diffDays}`,
+                type: 'payment_reminder',
+                isRead: readNote ? readNote.is_read : false,
+                createdAt: new Date().toISOString()
+              });
+            }
           }
+        } catch (reminderErr) {
+          console.error('Payment reminder injection failed:', reminderErr);
+          // Don't crash the entire endpoint — just skip the reminder
         }
       }
 
