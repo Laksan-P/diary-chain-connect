@@ -12,6 +12,12 @@ import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, Dispatch } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const DispatchPage: React.FC = () => {
   const { user } = useAuth();
@@ -21,6 +27,7 @@ const DispatchPage: React.FC = () => {
   const [selected, setSelected] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [viewingDispatch, setViewingDispatch] = useState<Dispatch | null>(null);
   const { toast } = useToast();
   const [form, setForm] = useState({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: new Date().toISOString().slice(0, 16), tankerCapacity: '' });
 
@@ -153,8 +160,84 @@ const DispatchPage: React.FC = () => {
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
-        <DataTable columns={dispatchColumns} data={dispatches.filter(d => d.chillingCenterId === centerId)} />
+        <DataTable 
+          columns={dispatchColumns} 
+          data={dispatches.filter(d => d.chillingCenterId === centerId)} 
+          onRowClick={(row) => setViewingDispatch(row)}
+        />
       </div>
+
+      <Dialog open={!!viewingDispatch} onOpenChange={() => setViewingDispatch(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Dispatch Details — #{viewingDispatch?.id}</DialogTitle>
+          </DialogHeader>
+          {viewingDispatch && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Transporter</p>
+                  <p className="font-semibold">{viewingDispatch.transporterName}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Vehicle Number</p>
+                  <p className="font-semibold">{viewingDispatch.vehicleNumber}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Driver Contact</p>
+                  <p className="font-semibold">{viewingDispatch.driverContact}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Dispatch Date</p>
+                  <p className="font-semibold">{new Date(viewingDispatch.dispatchDate).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold mb-3">Associated Collections</h4>
+                <div className="glass-card overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/50 border-b">
+                        <th className="px-4 py-2 text-left">Coll ID</th>
+                        <th className="px-4 py-2 text-left">Farmer</th>
+                        <th className="px-4 py-2 text-right">Qty (L)</th>
+                        <th className="px-4 py-2 text-center">Result</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {viewingDispatch.items?.map((item) => (
+                        <tr key={item.id}>
+                          <td className="px-4 py-2 text-muted-foreground">#{item.collectionId}</td>
+                          <td className="px-4 py-2 font-medium">{item.farmerName}</td>
+                          <td className="px-4 py-2 text-right">{item.quantity} L</td>
+                          <td className="px-4 py-2 text-center">
+                            <StatusBadge status={item.qualityResult || 'Pass'} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-muted/30 font-bold border-t">
+                        <td colSpan={2} className="px-4 py-2 text-right">Total Quantity:</td>
+                        <td className="px-4 py-2 text-right">{viewingDispatch.totalQuantity} L</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+              
+              {viewingDispatch.status === 'Rejected' && viewingDispatch.rejectionReason && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+                  <p className="font-bold mb-1 uppercase tracking-tight text-[10px]">Rejection Reason</p>
+                  <p>{viewingDispatch.rejectionReason}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

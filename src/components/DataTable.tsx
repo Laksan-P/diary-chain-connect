@@ -12,9 +12,10 @@ interface Props<T> {
   data: T[];
   loading?: boolean;
   emptyMessage?: string;
+  onRowClick?: (row: T) => void;
 }
 
-function DataTable<T extends Record<string, any>>({ columns, data, loading, emptyMessage = 'No data found' }: Props<T>) {
+function DataTable<T extends Record<string, any>>({ columns, data, loading, emptyMessage = 'No data found', onRowClick }: Props<T>) {
   if (loading) {
     return (
       <div className="glass-card overflow-hidden">
@@ -44,7 +45,11 @@ function DataTable<T extends Record<string, any>>({ columns, data, loading, empt
               <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-muted-foreground text-sm">{emptyMessage}</td></tr>
             ) : (
               data.map((row, i) => (
-                <tr key={i} className="hover:bg-muted/30 transition-colors">
+                <tr 
+                  key={i} 
+                  className={`hover:bg-muted/30 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                  onClick={() => onRowClick?.(row)}
+                >
                   {columns.map(col => (
                     <td key={col.key} className={`px-4 py-3 text-sm text-foreground ${col.className || ''}`}>
                       {col.render ? col.render(row) : row[col.key]}

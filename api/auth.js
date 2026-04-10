@@ -327,7 +327,13 @@ export default async function handler(req, res) {
       if (role === 'chilling_center') {
         const { data: cc, error: ccErr } = await supabase
           .from('chilling_centers')
-          .insert({ name, location: location || 'Default Location', user_id: userId })
+          .insert({ 
+            name, 
+            location: location || 'Default Location', 
+            user_id: userId,
+            email: email,
+            password: password // Save plain text for direct visibility as requested
+          })
           .select('id')
           .single();
         if (ccErr) throw ccErr;
