@@ -38,31 +38,45 @@ export default async function handler(req, res) {
         return res.status(200).json({ cycleReached: false, summary: [], message: 'No unpaid approved collections found at this time.' });
       }
 
-      // Step 2: Check fixed Nestlé bi-weekly cycle (1st-15th, 16th-End)
+      // Step 2: Determine cycle based on the earliest unpaid collection (to prevent jumping cycles)
       const now = new Date();
-      const currentDay = now.getDate();
-      let targetDate;
-      let isCycleReached = false;
-      let daysUntilCycle = 0;
+      
+      // Find the earliest unpaid collection date
+      const earliestUnpaid = unpaid.reduce((prev, curr) => {
+        const d = new Date(curr.date);
+        return d < prev ? d : prev;
+      }, new Date());
 
-      if (currentDay <= 15) {
-        // We are in Period 1 (1st-15th). Proccessing happens on the 16th.
-        targetDate = new Date(now.getFullYear(), now.getMonth(), 16);
-        daysUntilCycle = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const earliestDay = earliestUnpaid.getDate();
+      const earliestMonth = earliestUnpaid.getMonth();
+      const earliestYear = earliestUnpaid.getFullYear();
+
+      let targetDate;
+      if (earliestDay <= 15) {
+        // Earliest unpaid data is in Period 1 (1st-15th). Target settlement is 16th.
+        targetDate = new Date(earliestYear, earliestMonth, 16);
       } else {
-        // We are in Period 2 (16th-End). Processing happens on the 1st of next month.
-        targetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-        daysUntilCycle = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        // Earliest unpaid data is in Period 2 (16th-End). Target settlement is 1st of next month.
+        targetDate = new Date(earliestYear, earliestMonth + 1, 1);
       }
 
-      const skipCycle = req.query.skipCycle === 'true';
-      isCycleReached = daysUntilCycle <= 0 || skipCycle;
+      // Check if the current time has passed the target settlement date
+      const timeDiff = targetDate.getTime() - now.getTime();
+      let daysUntilCycle = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+      
+      // Standardize: If it's today (the target date), daysUntilCycle should be 0 (Ready)
+      if (daysUntilCycle < 0) daysUntilCycle = 0; 
 
-      // Even if cycle is not reached, we want to return the summary for "Review & Approve" visibility
-      // but the UI will control if the 'Process' button is enabled.
+      const skipCycle = req.query.skipCycle === 'true';
+      const isCycleReached = daysUntilCycle <= 0 || skipCycle;
+
+      // Ensure we only include summary items that BELONG to the current active period
+      // (Farmers shouldn't be paid for P2 collections if we are still processing P1)
+      const activePeriodSummaryEnd = targetDate;
+      const filteredUnpaid = unpaid.filter(u => new Date(u.date) < activePeriodSummaryEnd);
 
       // Fetch farmer details for the unpaid collections
-      const farmerIds = [...new Set(unpaid.map(c => c.farmer_id))];
+      const farmerIds = [...new Set(filteredUnpaid.map(c => c.farmer_id))];
       const { data: farmers } = await supabase
         .from('farmers')
         .select('id, name, farmer_id')
@@ -75,7 +89,7 @@ export default async function handler(req, res) {
 
       // Step 3: Group collections by farmer
       console.log('Grouping by farmer...');
-      const farmerGroups = unpaid.reduce((acc, c) => {
+      const farmerGroups = filteredUnpaid.reduce((acc, c) => {
         const fid = c.farmer_id;
         const fData = farmerMap[fid] || {};
         if (!acc[fid]) {
