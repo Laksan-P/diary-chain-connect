@@ -85,6 +85,18 @@ export default async function handler(req, res) {
             const sibIds = siblingItems.map(si => si.collection_id);
             await supabase.from('milk_collections').update({ dispatch_status: 'Approved' }).in('id', sibIds);
           }
+
+          // 3. Notify CC about the overall Dispatch Approval (New addition)
+          const { data: dInfo } = await supabase.from('dispatches').select('chilling_centers(user_id), vehicle_number, transporter_name').eq('id', dId).single();
+          const ccOwnerId = dInfo?.chilling_centers?.user_id;
+          if (ccOwnerId) {
+            await supabase.from('notifications').insert({
+              user_id: ccOwnerId,
+              title: 'dispatch_accepted_by_nestle_title',
+              message: `dispatch_accepted_by_nestle_msg|id:${dId},vehicle:${dInfo.vehicle_number},transporter:${dInfo.transporter_name}`,
+              type: 'dispatch'
+            });
+          }
         }
       }
 
@@ -116,7 +128,7 @@ export default async function handler(req, res) {
           // 1. Send detailed Quality Result notification to Farmer
           await supabase.from('notifications').insert({ user_id: userId, title: titleKey, message: `${msgKey}|${params}`, type: 'quality_result' });
           
-          // 2. If tested by Nestle, also send the Dispatch status update notification to Farmer
+          // 2. If tested by Nestle, also send the Dispatch status update notification to Farmer (Separate Alert)
           if (user.role === 'nestle_officer' || user.role === 'nestle') {
             const dispatchTitle = resultValue === 'Pass' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
             const dispatchMsg = resultValue === 'Pass' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
@@ -124,7 +136,7 @@ export default async function handler(req, res) {
               user_id: userId, 
               title: dispatchTitle, 
               message: `${dispatchMsg}|${params}`, 
-              type: 'quality_result' 
+              type: 'dispatch' // Changed to dispatch type for better differentiation
             });
 
             // 3. Notify Chilling Center about Nestlé's verification result (Include Farmer Name)
