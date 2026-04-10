@@ -14,11 +14,12 @@ export default async function handler(req, res) {
   if (action === 'list' && req.method === 'GET') {
     try {
       const userId = user.id;
+      // IMPORTANT: Do NOT use .neq('type', 'payment_reminder') — that value is not in the DB enum
+      // The DB enum only allows: 'quality_result', 'payment', 'dispatch', 'general'
       const { data: notes, error } = await supabase
         .from('notifications')
         .select('id, user_id, title, message, type, is_read, created_at')
         .eq('user_id', userId)
-        .neq('type', 'payment_reminder') // Exclude virtual markers from main list
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -32,9 +33,9 @@ export default async function handler(req, res) {
       // In-memory injection of Bi-weekly Payment Reminder for Farmers
       if (user.role === 'farmer') {
         try {
-          // Use maybeSingle() so it returns null instead of throwing when no farmer exists
-          const { data: farmerInfo } = await supabase.from('farmers').select('id').eq('user_id', user.id).maybeSingle();
-          
+          const { data: farmerInfo } = await supabase
+            .from('farmers').select('id').eq('user_id', user.id).maybeSingle();
+
           if (farmerInfo) {
             const { data: oldest } = await supabase
               .from('milk_collections')
@@ -51,8 +52,6 @@ export default async function handler(req, res) {
               const oldestDate = new Date(oldest.date);
               oldestDate.setHours(0, 0, 0, 0);
 
-              // Nestle rule: Fixed Bi-weekly Cycle (1st-15th, 16th-End)
-              // Processing happens on the 16th or the 1st of the next month
               let targetDate;
               if (oldestDate.getDate() <= 15) {
                 targetDate = new Date(oldestDate.getFullYear(), oldestDate.getMonth(), 16);
@@ -62,13 +61,13 @@ export default async function handler(req, res) {
 
               const diffTime = targetDate.getTime() - now.getTime();
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              
-              // Format ID using current date (YYYYMMDD) + 90,000,000 
-              // This ensures a unique 'unread' alert every single day.
+
+              // Daily-unique virtual ID: YYYYMMDD + 90,000,000 (never stored in DB with this ID)
               const todayStr = now.toISOString().split('T')[0].replace(/-/g, '');
               const virtualId = parseInt(todayStr) + 90000000;
 
-              // Check if user has already 'virtually' read TODAY'S reminder
+              // Check if farmer already read today's reminder
+              // (stored with 'payment' type since DB enum doesn't have 'payment_reminder')
               const { data: readNote } = await supabase
                 .from('notifications')
                 .select('is_read')
@@ -78,6 +77,7 @@ export default async function handler(req, res) {
 
               const msgKey = diffDays <= 0 ? 'payment_ready_msg' : 'payment_cycle_reminder_msg';
 
+              // Inject virtual reminder at top of list (type is client-side only)
               flattened.unshift({
                 id: virtualId,
                 userId: user.id,
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
           }
         } catch (reminderErr) {
           console.error('Payment reminder injection failed:', reminderErr);
-          // Don't crash the entire endpoint — just skip the reminder
+          // Don't crash the endpoint — just skip the reminder
         }
       }
 
@@ -107,27 +107,32 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'id is required' });
 
     try {
-      // Numerical check: Virtual IDs are >= 90,000,000
       const numericId = parseInt(id);
+
       if (numericId >= 90000000) {
-        // First check if it already exists
+        // Virtual payment reminder — persist read state using 'payment' (valid DB enum value)
         const { data: existing } = await supabase
           .from('notifications')
           .select('id')
           .eq('id', numericId)
           .maybeSingle();
-        
+
         if (!existing) {
           await supabase.from('notifications').insert({
             id: numericId,
             user_id: user.id,
             title: 'payment_cycle_reminder_title',
             message: 'Acknowledged',
-            type: 'payment_reminder',
+            type: 'payment',  // Valid DB enum value
             is_read: true
           });
-          return res.status(200).json({ success: true });
+        } else {
+          await supabase.from('notifications')
+            .update({ is_read: true })
+            .eq('id', numericId)
+            .eq('user_id', user.id);
         }
+        return res.status(200).json({ success: true });
       }
 
       await supabase.from('notifications')
