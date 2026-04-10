@@ -45,9 +45,17 @@ export default async function handler(req, res) {
       if (qtErr) throw qtErr;
       const newId = qtRows.id;
 
+      const updates = { 
+        quality_result: resultValue, 
+        failure_reason: reasonValue 
+      };
+      if (resultValue === 'Pass') {
+        updates.dispatch_status = 'Approved';
+      }
+
       await supabase
         .from('milk_collections')
-        .update({ quality_result: resultValue, failure_reason: reasonValue })
+        .update(updates)
         .eq('id', collectionId);
 
       const { data: col, error: cErr } = await supabase

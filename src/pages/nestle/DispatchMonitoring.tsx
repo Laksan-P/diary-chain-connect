@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Truck, ChevronDown, ChevronUp, Check, X, Info, Filter, RefreshCcw } from 'lucide-react';
+import { Truck, ChevronDown, ChevronUp, Check, X, Info, Filter, RefreshCcw, Beaker, ClipboardCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useToast } from '@/hooks/use-toast';
-import { getDispatches, updateDispatchStatus, getChillingCenters } from '@/services/api';
+import { getDispatches, updateDispatchStatus, getChillingCenters, submitQualityTest } from '@/services/api';
 import type { Dispatch, ChillingCenter } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatQuantity, parseNumber } from '@/lib/utils';
@@ -22,6 +22,9 @@ const DispatchMonitoring: React.FC = () => {
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
   const [rejectReason, setRejectReason] = useState('');
   const { toast } = useToast();
+  const [testDialog, setTestDialog] = useState<{ open: boolean; collectionId: number | null; dispatchId: number | null }>({ open: false, collectionId: null, dispatchId: null });
+  const [testForm, setTestForm] = useState({ snf: '', fat: '', water: '' });
+  const [testing, setTesting] = useState(false);
 
   const fetchDispatches = async () => {
     setLoading(true);
@@ -76,6 +79,35 @@ const DispatchMonitoring: React.FC = () => {
       // Rollback on failure
       setDispatches(ds => ds.map(d => d.id === id ? { ...d, status: 'Dispatched' as const, rejectionReason: undefined } : d));
       toast({ title: 'Rejection Failed', variant: 'destructive', description: 'Could not update status. Please try again.' });
+    }
+  };
+
+  const handleQualityTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testDialog.collectionId || !testDialog.dispatchId) return;
+    setTesting(true);
+    try {
+      const res = await submitQualityTest({
+        collectionId: testDialog.collectionId,
+        snf: parseFloat(testForm.snf),
+        fat: parseFloat(testForm.fat),
+        water: parseFloat(testForm.water),
+      });
+
+      if (res.result === 'Pass') {
+        toast({ title: 'Quality Check Passed', description: 'Collection has been automatically approved.' });
+        // NOTE: In a real system, the backend would trigger the status update. 
+        // For this demo/sprint, we'll refresh the data.
+        await fetchDispatches();
+        setTestDialog({ open: false, collectionId: null, dispatchId: null });
+        setTestForm({ snf: '', fat: '', water: '' });
+      } else {
+        toast({ title: 'Quality Check Failed', description: `Result: ${res.reason}`, variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'System Error', description: 'Failed to submit quality test.', variant: 'destructive' });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -174,19 +206,19 @@ const DispatchMonitoring: React.FC = () => {
                         <div className="flex justify-end gap-2">
                           <Button 
                             size="sm" 
-                            variant="default" 
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3"
-                            onClick={() => handleApprove(dispatch.id)}
+                            variant="outline" 
+                            className="text-primary border-primary/20 hover:bg-primary/5 h-8 px-3"
+                            onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
                           >
-                            <Check className="w-3.5 h-3.5 mr-1" /> Approve
+                            <Beaker className="w-3.5 h-3.5 mr-1" /> Inspect Quality
                           </Button>
                           <Button 
                             size="sm" 
                             variant="destructive" 
-                            className="h-8 px-3"
+                            className="h-8 px-3 group"
                             onClick={() => setRejectDialog({ open: true, id: dispatch.id })}
                           >
-                            <X className="w-3.5 h-3.5 mr-1" /> Reject
+                            <X className="w-3.5 h-3.5 mr-1 group-hover:rotate-90 transition-transform" /> Reject
                           </Button>
                         </div>
                       ) : (
@@ -238,6 +270,7 @@ const DispatchMonitoring: React.FC = () => {
                                         <th className="px-3 py-2 text-left">Farmer</th>
                                         <th className="px-3 py-2 text-right">Quantity</th>
                                         <th className="px-3 py-2 text-center">Quality</th>
+                                        <th className="px-3 py-2 text-right">Action</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y">
@@ -247,6 +280,20 @@ const DispatchMonitoring: React.FC = () => {
                                           <td className="px-3 py-2 text-right">{formatQuantity(item.quantity || 0)}</td>
                                           <td className="px-3 py-2 text-center">
                                             <StatusBadge status={item.qualityResult || 'N/A'} />
+                                          </td>
+                                          <td className="px-3 py-2 text-right">
+                                            {dispatch.status === 'Dispatched' ? (
+                                              <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                className="h-6 text-[10px] font-bold uppercase tracking-tight"
+                                                onClick={() => setTestDialog({ open: true, collectionId: item.collectionId, dispatchId: dispatch.id })}
+                                              >
+                                                Verify Quality
+                                              </Button>
+                                            ) : (
+                                              <StatusBadge status="Verified" />
+                                            )}
                                           </td>
                                         </tr>
                                       ))}
@@ -272,7 +319,7 @@ const DispatchMonitoring: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Reject Dispatch #{rejectDialog.id}</DialogTitle>
             <DialogDescription>
-              Please provide a reason for rejecting this milk dispatch. This will notify the Chilling Center.
+              Provide a reason for rejection (e.g. Physical Damage, Spoiled, Leakage).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -282,7 +329,7 @@ const DispatchMonitoring: React.FC = () => {
                 id="reason" 
                 value={rejectReason} 
                 onChange={e => setRejectReason(e.target.value)} 
-                placeholder="e.g., Temperature above limit, Quality concerns..." 
+                placeholder="e.g., Physical damage, Temp too high..." 
                 className="col-span-3"
               />
             </div>
@@ -291,6 +338,56 @@ const DispatchMonitoring: React.FC = () => {
             <Button variant="ghost" onClick={() => setRejectDialog({ open: false, id: null })}>Cancel</Button>
             <Button variant="destructive" onClick={handleReject} disabled={!rejectReason.trim()}>Confirm Rejection</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={testDialog.open} onOpenChange={o => !o && setTestDialog({ open: false, collectionId: null, dispatchId: null })}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Beaker className="w-5 h-5 text-primary" />
+              Verify Quality — Collection #{testDialog.collectionId}
+            </DialogTitle>
+            <DialogDescription>
+              Enter Nestlé lab test parameters for this collection.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleQualityTest}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">FAT %</Label>
+                  <Input 
+                    type="number" step="0.01" value={testForm.fat} 
+                    onChange={e => setTestForm({...testForm, fat: e.target.value})} 
+                    placeholder="3.5" required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">SNF %</Label>
+                  <Input 
+                    type="number" step="0.01" value={testForm.snf} 
+                    onChange={e => setTestForm({...testForm, snf: e.target.value})} 
+                    placeholder="8.5" required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">Water %</Label>
+                  <Input 
+                    type="number" step="0.01" value={testForm.water} 
+                    onChange={e => setTestForm({...testForm, water: e.target.value})} 
+                    placeholder="0.3" required 
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setTestDialog({ open: false, collectionId: null, dispatchId: null })}>Cancel</Button>
+              <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={testing}>
+                {testing ? 'Verifying...' : 'Submit & Approve'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
