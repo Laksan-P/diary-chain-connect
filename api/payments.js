@@ -38,24 +38,28 @@ export default async function handler(req, res) {
         return res.status(200).json({ cycleReached: false, summary: [], message: 'No unpaid approved collections found at this time.' });
       }
 
-      // Step 2: Check bi-weekly cycle (Condition: Any collection older than 14 days?)
+      // Step 2: Check fixed Nestlé bi-weekly cycle (1st-15th, 16th-End)
       const now = new Date();
-      const oldestCollection = unpaid.reduce((prev, curr) => {
-        const d = new Date(curr.date);
-        return d < prev ? d : prev;
-      }, new Date());
+      const currentDay = now.getDate();
+      let targetDate;
+      let isCycleReached = false;
+      let daysUntilCycle = 0;
 
-      const daysDifference = Math.floor((now - oldestCollection) / (1000 * 60 * 60 * 24));
-      const skipCycle = req.query.skipCycle === 'true';
-      const isCycleReached = daysDifference >= 14 || skipCycle;
-
-      if (!isCycleReached) {
-        return res.status(200).json({ 
-          cycleReached: false, 
-          daysUntilCycle: 14 - daysDifference,
-          message: `Cycle not reached. Next scheduled processing in ${14 - daysDifference} days (based on 14-day bi-weekly cycle).` 
-        });
+      if (currentDay <= 15) {
+        // We are in Period 1 (1st-15th). Proccessing happens on the 16th.
+        targetDate = new Date(now.getFullYear(), now.getMonth(), 16);
+        daysUntilCycle = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      } else {
+        // We are in Period 2 (16th-End). Processing happens on the 1st of next month.
+        targetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        daysUntilCycle = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       }
+
+      const skipCycle = req.query.skipCycle === 'true';
+      isCycleReached = daysUntilCycle <= 0 || skipCycle;
+
+      // Even if cycle is not reached, we want to return the summary for "Review & Approve" visibility
+      // but the UI will control if the 'Process' button is enabled.
 
       // Fetch farmer details for the unpaid collections
       const farmerIds = [...new Set(unpaid.map(c => c.farmer_id))];
@@ -111,7 +115,8 @@ export default async function handler(req, res) {
       }));
 
       return res.status(200).json({ 
-        cycleReached: true, 
+        cycleReached: isCycleReached, 
+        daysUntilCycle,
         summary 
       });
     } catch (err) {

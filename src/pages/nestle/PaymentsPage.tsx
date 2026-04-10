@@ -44,8 +44,8 @@ const PaymentsPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await getPaymentCycleSummary(skip);
-      setCycleData(data);
-      if (data.cycleReached && data.summary?.length > 0) {
+      setCycleData({ ...data, isForced: skip });
+      if (data.summary?.length > 0) {
         toast({ title: 'Payment Cycle Active', description: 'Collections identified and summary generated.' });
         setActiveTab('review');
       } else if (data.cycleReached && data.summary?.length === 0) {
@@ -150,7 +150,7 @@ const PaymentsPage: React.FC = () => {
                 <p className="leading-none text-[10px] font-medium opacity-50 uppercase">Cycle Verification</p>
               </div>
             </TabsTrigger>
-            <TabsTrigger value="review" disabled={!cycleData?.cycleReached} className="px-6 py-3 gap-3 text-sm rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all group">
+            <TabsTrigger value="review" disabled={!cycleData?.summary || cycleData.summary.length === 0} className="px-6 py-3 gap-3 text-sm rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all group">
               <ShieldCheck className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary" /> 
               <div className="text-left">
                 <p className="leading-tight font-bold">Review & Approve</p>
@@ -282,11 +282,11 @@ const PaymentsPage: React.FC = () => {
               <Button size="lg" variant="outline" className="h-14 font-bold rounded-2xl border-2" onClick={handleRecalculate}>Recalculate Summary</Button>
               <Button 
                 size="lg" 
-                className="h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-100 px-8 btn-press" 
+                className={`h-14 font-black rounded-2xl shadow-lg px-8 btn-press ${cycleData?.cycleReached || cycleData?.isForced ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100' : 'bg-muted text-muted-foreground shadow-none pointer-events-none'}`}
                 onClick={handleProcessBatch} 
-                disabled={loading || !cycleData?.summary?.length}
+                disabled={loading || !cycleData?.summary?.length || (!cycleData?.cycleReached && !cycleData?.isForced)}
               >
-                {loading ? 'Processing...' : 'Verify & Disburse Payments'}
+                {loading ? 'Processing...' : (cycleData?.cycleReached || cycleData?.isForced ? 'Verify & Disburse Payments' : 'Period Not Reached')}
               </Button>
             </div>
           </motion.div>
