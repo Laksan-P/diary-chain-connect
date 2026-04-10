@@ -39,19 +39,19 @@ const DispatchMonitoring: React.FC = () => {
     }
   };
 
-  useEffect(() => { 
-    fetchDispatches(); 
+  useEffect(() => {
+    fetchDispatches();
     getChillingCenters().then(setCenters);
   }, []);
 
-  const filteredDispatches = filterCenterId === 'all' 
-    ? dispatches 
+  const filteredDispatches = filterCenterId === 'all'
+    ? dispatches
     : dispatches.filter(d => d.chillingCenterId === parseInt(filterCenterId));
 
   const handleApprove = async (id: number) => {
     // Optimistic Update
     setDispatches(ds => ds.map(d => d.id === id ? { ...d, status: 'Approved' as const } : d));
-    
+
     try {
       await updateDispatchStatus(id, 'Approved');
       toast({ title: 'Dispatch Approved', description: `Dispatch #${id} has been accepted.` });
@@ -66,7 +66,7 @@ const DispatchMonitoring: React.FC = () => {
     if (!rejectDialog.id) return;
     const id = rejectDialog.id;
     const reason = rejectReason;
-    
+
     // Optimistic Update
     setDispatches(ds => ds.map(d => d.id === id ? { ...d, status: 'Rejected' as const, rejectionReason: reason } : d));
     setRejectDialog({ open: false, id: null });
@@ -127,10 +127,10 @@ const DispatchMonitoring: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-3 bg-muted/30 p-2 rounded-xl border border-border/50">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={fetchDispatches} 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={fetchDispatches}
             className="h-8 w-8 p-0 hover:bg-primary/10 text-primary"
             disabled={loading}
           >
@@ -181,7 +181,7 @@ const DispatchMonitoring: React.FC = () => {
               ) : filteredDispatches.map((dispatch) => (
                 <React.Fragment key={dispatch.id}>
 
-                  <tr 
+                  <tr
                     className={`hover:bg-muted/30 transition-colors cursor-pointer ${expandedRow === dispatch.id ? 'bg-muted/20' : ''}`}
                     onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
                   >
@@ -206,17 +206,17 @@ const DispatchMonitoring: React.FC = () => {
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                       {dispatch.status === 'Dispatched' ? (
                         <div className="flex justify-end gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="text-primary border-primary/20 hover:bg-primary/5 h-8 px-3"
                             onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
                           >
                             <Beaker className="w-3.5 h-3.5 mr-1" /> Inspect Quality
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive" 
+                          <Button
+                            size="sm"
+                            variant="destructive"
                             className="h-8 px-3 group"
                             onClick={() => setRejectDialog({ open: true, id: dispatch.id })}
                           >
@@ -224,9 +224,9 @@ const DispatchMonitoring: React.FC = () => {
                           </Button>
                         </div>
                       ) : (
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           className="h-8 px-2 text-muted-foreground"
                           onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
                         >
@@ -239,7 +239,7 @@ const DispatchMonitoring: React.FC = () => {
                     {expandedRow === dispatch.id && (
                       <tr>
                         <td colSpan={6} className="px-6 py-0 bg-muted/10">
-                          <motion.div 
+                          <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
@@ -295,9 +295,9 @@ const DispatchMonitoring: React.FC = () => {
                                           </td>
                                           <td className="px-3 py-2 text-right">
                                             {dispatch.status === 'Dispatched' ? (
-                                              <Button 
-                                                size="sm" 
-                                                variant="outline" 
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
                                                 className="h-6 text-[10px] font-bold uppercase tracking-tight"
                                                 onClick={() => setTestDialog({ open: true, collectionId: item.collectionId, dispatchId: dispatch.id })}
                                               >
@@ -337,11 +337,11 @@ const DispatchMonitoring: React.FC = () => {
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="reason">Rejection Reason</Label>
-              <Input 
-                id="reason" 
-                value={rejectReason} 
-                onChange={e => setRejectReason(e.target.value)} 
-                placeholder="e.g., Physical damage, Temp too high..." 
+              <Input
+                id="reason"
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder="e.g., Physical damage, Temp too high..."
                 className="col-span-3"
               />
             </div>
@@ -369,26 +369,26 @@ const DispatchMonitoring: React.FC = () => {
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-bold text-muted-foreground">FAT %</Label>
-                  <Input 
-                    type="number" step="0.01" value={testForm.fat} 
-                    onChange={e => setTestForm({...testForm, fat: e.target.value})} 
-                    placeholder="3.5" required 
+                  <Input
+                    type="number" step="0.01" value={testForm.fat}
+                    onChange={e => setTestForm({ ...testForm, fat: e.target.value })}
+                    placeholder="3.5" required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-bold text-muted-foreground">SNF %</Label>
-                  <Input 
-                    type="number" step="0.01" value={testForm.snf} 
-                    onChange={e => setTestForm({...testForm, snf: e.target.value})} 
-                    placeholder="8.5" required 
+                  <Input
+                    type="number" step="0.01" value={testForm.snf}
+                    onChange={e => setTestForm({ ...testForm, snf: e.target.value })}
+                    placeholder="8.5" required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-bold text-muted-foreground">Water %</Label>
-                  <Input 
-                    type="number" step="0.01" value={testForm.water} 
-                    onChange={e => setTestForm({...testForm, water: e.target.value})} 
-                    placeholder="0.3" required 
+                  <Input
+                    type="number" step="0.01" value={testForm.water}
+                    onChange={e => setTestForm({ ...testForm, water: e.target.value })}
+                    placeholder="0.3" required
                   />
                 </div>
               </div>
