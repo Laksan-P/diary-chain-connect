@@ -18,6 +18,7 @@ export default async function handler(req, res) {
         .from('notifications')
         .select('id, user_id, title, message, type, is_read, created_at')
         .eq('user_id', userId)
+        .neq('type', 'payment_reminder') // Exclude virtual markers from main list
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -111,20 +112,19 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'id is required' });
 
     try {
-      // If it's a virtual ID (starting with 9), we insert a permanent 'read' record
-      // so the virtual injector can find it next time.
-      if (id.toString().startsWith('9')) {
-        // First check if it already exists (to avoid unique constraint errors if any)
+      // Numerical check: Virtual IDs are >= 90,000,000
+      const numericId = parseInt(id);
+      if (numericId >= 90000000) {
+        // First check if it already exists
         const { data: existing } = await supabase
           .from('notifications')
           .select('id')
-          .eq('id', id)
+          .eq('id', numericId)
           .maybeSingle();
         
         if (!existing) {
-          // Find target date from ID (ID format is YYYYMMDD + 90000000)
           await supabase.from('notifications').insert({
-            id: parseInt(id),
+            id: numericId,
             user_id: user.id,
             title: 'payment_cycle_reminder_title',
             message: 'Acknowledged',
