@@ -15,7 +15,21 @@ const MilkCollectionPage: React.FC = () => {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const [form, setForm] = useState({ farmerId: '', date: new Date().toISOString().split('T')[0], time: new Date().toTimeString().slice(0, 5), temperature: '', quantity: '', milkType: 'Cow' });
+  
+  // Get local date in YYYY-MM-DD format
+  const getLocalDate = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const [form, setForm] = useState({ 
+    farmerId: '', 
+    date: getLocalDate(), 
+    time: new Date().toTimeString().slice(0, 5), 
+    temperature: '', 
+    quantity: '', 
+    milkType: 'Cow' 
+  });
 
   useEffect(() => { 
     if (user?.chillingCenterId) {

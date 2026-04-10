@@ -29,7 +29,17 @@ const DispatchPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewingDispatch, setViewingDispatch] = useState<Dispatch | null>(null);
   const { toast } = useToast();
-  const [form, setForm] = useState({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: new Date().toISOString().slice(0, 16), tankerCapacity: '' });
+  const getLocalDateTime = () => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+  const [form, setForm] = useState({ 
+    transporterName: '', 
+    vehicleNumber: '', 
+    driverContact: '', 
+    dispatchDate: getLocalDateTime(), 
+    tankerCapacity: '' 
+  });
 
   const selectedTotal = selected.reduce((sum, id) => {
     const col = collections.find(c => c.id === id);

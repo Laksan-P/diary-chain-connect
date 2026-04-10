@@ -74,7 +74,7 @@ const PricingRules: React.FC = () => {
     basePricePerLiter: '', 
     fatBonus: '0.00', 
     snfBonus: '0.00', 
-    effectiveFrom: new Date().toISOString().split('T')[0] 
+    effectiveFrom: new Date().toLocaleDateString('en-CA') 
   });
 
   useEffect(() => { 
