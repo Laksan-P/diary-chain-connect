@@ -257,7 +257,13 @@ const DispatchMonitoring: React.FC = () => {
                                   <span className="font-medium text-foreground">{dispatch.driverContact}</span>
                                   <span className="text-muted-foreground">Dispatch Time:</span>
                                   <span className="font-medium text-foreground">
-                                    {new Date(dispatch.dispatchDate).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                    {(() => {
+                                      const d = dispatch.dispatchDate;
+                                      // If it's just a date string (length 10 like '2026-04-11'), time is missing in DB
+                                      if (d && d.length === 10) return 'Pending Sync (Run Fix)';
+                                      // Otherwise show local time
+                                      return new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+                                    })()}
                                   </span>
                                 </div>
                                 {dispatch.rejectionReason && (
