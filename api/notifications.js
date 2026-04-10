@@ -71,9 +71,12 @@ export default async function handler(req, res) {
             const diffTime = targetDate.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
-            const virtualId = parseInt(targetDate.toISOString().replace(/[-:T.]/g, '').substring(0, 8)) + 90000000;
+            // Format ID using current date (YYYYMMDD) + 90,000,000 
+            // This ensures a unique 'unread' alert every single day.
+            const todayStr = now.toISOString().split('T')[0].replace(/-/g, '');
+            const virtualId = parseInt(todayStr) + 90000000;
 
-            // Check if user has already 'virtually' read this cycle's reminder
+            // Check if user has already 'virtually' read TODAY'S reminder
             const { data: readNote } = await supabase
               .from('notifications')
               .select('is_read')

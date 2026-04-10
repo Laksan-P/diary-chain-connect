@@ -260,7 +260,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return GestureDetector(
       onTap: () {
-        if (!isRead && type != 'payment_reminder') _markAsRead(note['id'].toString());
+        if (!isRead) _markAsRead(note['id'].toString());
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
