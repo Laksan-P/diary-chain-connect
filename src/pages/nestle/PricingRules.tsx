@@ -11,6 +11,48 @@ import { getPricingRules, createPricingRule, updatePricingRule, deletePricingRul
 import type { PricingRule } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
+const AnimatedDeleteButton: React.FC<{ onDelete: () => Promise<void> }> = ({ onDelete }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleClick = async () => {
+    if (!confirm('Are you sure you want to delete this pricing strategy? This action cannot be undone.')) return;
+    
+    setIsDeleting(true);
+    // Let the animation play
+    await new Promise(resolve => setTimeout(resolve, 800));
+    await onDelete();
+    setIsDeleting(false);
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      className={`relative group p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-all ${isDeleting ? 'pointer-events-none' : ''}`}
+      title="Delete Pricing Strategy"
+    >
+      <div className="relative w-5 h-5 flex items-center justify-center">
+        {/* Lid */}
+        <motion.div
+          animate={isDeleting ? { rotate: -45, x: -2, y: -2 } : { rotate: 0, x: 0, y: 0 }}
+          className="absolute top-0 w-4 h-1 bg-destructive rounded-t-sm origin-left"
+          style={{ top: '2px' }}
+        />
+        {/* Bin body */}
+        <div className="absolute bottom-0 w-3.5 h-3.5 border-2 border-destructive rounded-b-sm border-t-0" />
+        <div className="absolute bottom-0 w-3.5 h-0.5 bg-destructive" style={{ bottom: '3.5px' }} />
+        
+        {/* File being deleted */}
+        <motion.div
+          initial={{ opacity: 0, y: -5, scale: 0.5 }}
+          animate={isDeleting ? { opacity: [0, 1, 0], y: [ -5, 2, 5], scale: [0.5, 0.8, 0.2] } : { opacity: 0 }}
+          transition={{ duration: 0.6 }}
+          className="absolute top-0 w-2 h-2.5 bg-destructive/40 border border-destructive/60 rounded-[1px]"
+        />
+      </div>
+    </button>
+  );
+};
+
 const PricingRules: React.FC = () => {
   const [rules, setRules] = useState<PricingRule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,8 +111,7 @@ const PricingRules: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this pricing strategy? This action cannot be undone.')) return;
+  const executeDelete = async (id: number) => {
     try {
       await deletePricingRule(id);
       setRules(r => r.filter(rule => rule.id !== id));
@@ -102,7 +143,7 @@ const PricingRules: React.FC = () => {
       key: 'actions',
       header: 'Manage',
       render: (r: PricingRule) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between w-full pr-2 gap-4">
           <Button 
             size="sm" 
             variant={r.isActive ? "ghost" : "default"}
@@ -111,15 +152,9 @@ const PricingRules: React.FC = () => {
           >
             {r.isActive ? 'Pause Rule' : 'Activate Now'}
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 rounded-lg transition-all"
-            onClick={() => handleDelete(r.id)}
-            title="Delete Pricing Strategy"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          <div className="flex-shrink-0">
+            <AnimatedDeleteButton onDelete={() => executeDelete(r.id)} />
+          </div>
         </div>
       )
     }
