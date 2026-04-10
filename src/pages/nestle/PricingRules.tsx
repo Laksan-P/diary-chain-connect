@@ -18,8 +18,8 @@ const AnimatedDeleteButton: React.FC<{ onDelete: () => Promise<void> }> = ({ onD
     if (!confirm('Are you sure you want to delete this pricing strategy? This action cannot be undone.')) return;
     
     setIsDeleting(true);
-    // Let the animation play
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Fast animation: 400ms
+    await new Promise(resolve => setTimeout(resolve, 400));
     await onDelete();
     setIsDeleting(false);
   };
@@ -31,22 +31,30 @@ const AnimatedDeleteButton: React.FC<{ onDelete: () => Promise<void> }> = ({ onD
       title="Delete Pricing Strategy"
     >
       <div className="relative w-5 h-5 flex items-center justify-center">
-        {/* Lid */}
+        {/* Lid - Cleaner design */}
         <motion.div
-          animate={isDeleting ? { rotate: -45, x: -2, y: -2 } : { rotate: 0, x: 0, y: 0 }}
-          className="absolute top-0 w-4 h-1 bg-destructive rounded-t-sm origin-left"
-          style={{ top: '2px' }}
-        />
-        {/* Bin body */}
-        <div className="absolute bottom-0 w-3.5 h-3.5 border-2 border-destructive rounded-b-sm border-t-0" />
-        <div className="absolute bottom-0 w-3.5 h-0.5 bg-destructive" style={{ bottom: '3.5px' }} />
+          animate={isDeleting ? { rotate: -45, x: -1, y: -2 } : { rotate: 0, x: 0, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="absolute top-0 w-4 h-0.5 bg-destructive rounded-full origin-left"
+          style={{ top: '3px' }}
+        >
+          {/* Lid handle */}
+          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-0.5 bg-destructive rounded-t-full" />
+        </motion.div>
+
+        {/* Bin body - Cleaner design */}
+        <div className="absolute bottom-0 w-3.5 h-3.5 border-[1.5px] border-destructive rounded-[2px] flex justify-around px-[2px] pt-[2px]">
+           <div className="w-[1px] h-2 bg-destructive/50" />
+           <div className="w-[1px] h-2 bg-destructive/50" />
+        </div>
         
-        {/* File being deleted */}
+        {/* File being deleted - Snappier drop */}
         <motion.div
-          initial={{ opacity: 0, y: -5, scale: 0.5 }}
-          animate={isDeleting ? { opacity: [0, 1, 0], y: [ -5, 2, 5], scale: [0.5, 0.8, 0.2] } : { opacity: 0 }}
-          transition={{ duration: 0.6 }}
-          className="absolute top-0 w-2 h-2.5 bg-destructive/40 border border-destructive/60 rounded-[1px]"
+          initial={{ opacity: 0, y: -4, scale: 0.4 }}
+          animate={isDeleting ? { opacity: [0, 1, 0], y: [ -2, 2, 4], scale: [0.4, 0.6, 0.2] } : { opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeIn" }}
+          className="absolute top-0 w-1.5 h-2 bg-destructive/40 border border-destructive/60 rounded-sm"
+          style={{ top: '4px' }}
         />
       </div>
     </button>
