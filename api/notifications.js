@@ -59,12 +59,17 @@ export default async function handler(req, res) {
             const oldestDate = new Date(oldest.date);
             oldestDate.setHours(0, 0, 0, 0);
 
-            // Nestle rule: 14 days after oldest approved collection
-            const targetDate = new Date(oldestDate);
-            targetDate.setDate(targetDate.getDate() + 14);
+            // Nestle rule: Fixed Bi-weekly Cycle (1st-15th, 16th-End)
+            // Processing happens on the 16th or the 1st of the next month
+            let targetDate;
+            if (oldestDate.getDate() <= 15) {
+              targetDate = new Date(oldestDate.getFullYear(), oldestDate.getMonth(), 16);
+            } else {
+              targetDate = new Date(oldestDate.getFullYear(), oldestDate.getMonth() + 1, 1);
+            }
 
             const diffTime = targetDate.getTime() - now.getTime();
-            const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
             const virtualId = parseInt(targetDate.toISOString().replace(/[-:T.]/g, '').substring(0, 8)) + 90000000;
 
