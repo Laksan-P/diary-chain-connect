@@ -98,24 +98,29 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = _auth!.user!;
     final farmerId = user['farmerId'];
 
+    // Fetch each independently so one failure doesn't block the others
     try {
-      final results = await Future.wait([
-        _api.get('/notifications?action=list'),
-        _api.get('/collections?action=list&farmerId=$farmerId'),
-        _api.get('/payments?action=list&farmerId=$farmerId'),
-      ]);
-
-      if (!mounted) return;
-
-      setState(() {
-        _notifications = results[0];
-        _collections = results[1];
-        _payments = results[2];
-        _updateBadges();
-      });
+      final notifs = await _api.get('/notifications?action=list');
+      if (mounted) setState(() { _notifications = notifs; });
     } catch (e) {
-      debugPrint("Silent refresh failed: $e");
+      debugPrint("Notification refresh failed: $e");
     }
+
+    try {
+      final cols = await _api.get('/collections?action=list&farmerId=$farmerId');
+      if (mounted) setState(() { _collections = cols; });
+    } catch (e) {
+      debugPrint("Collection refresh failed: $e");
+    }
+
+    try {
+      final pays = await _api.get('/payments?action=list&farmerId=$farmerId');
+      if (mounted) setState(() { _payments = pays; });
+    } catch (e) {
+      debugPrint("Payment refresh failed: $e");
+    }
+
+    if (mounted) setState(() { _updateBadges(); });
   }
 
   // ── Badge Management ──

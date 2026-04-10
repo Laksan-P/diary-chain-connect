@@ -246,6 +246,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         icon = LucideIcons.calendar;
         typeColor = Colors.orange;
         break;
+      case 'dispatch':
       case 'dispatch_status':
         icon = LucideIcons.truck;
         typeColor = isDark ? Colors.orangeAccent : Colors.orange;
