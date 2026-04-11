@@ -788,7 +788,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${DateFormat('EEEE, MMM dd').format(DateTime.parse(c['date']).toLocal())} • ${Translations.get(c['milkType']?.toString().toLowerCase() ?? 'cow', locale)}',
+                    '${Translations.formatDate(DateTime.parse(c['date']), locale)} • ${Translations.get(c['milkType']?.toString().toLowerCase() ?? 'cow', locale)}',
                     style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                   ),
                 ],
@@ -1014,7 +1014,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${Translations.get('collection_id', locale)} #${p['collectionId']} • ${DateFormat('MMM dd').format(DateTime.parse(p['paidAt'] ?? p['createdAt']).toLocal())}',
+                  '${Translations.get('collection_id', locale)} #${p['collectionId']} • ${Translations.formatDate(DateTime.parse(p['paidAt'] ?? p['createdAt']), locale)}',
                   style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                 ),
               ],

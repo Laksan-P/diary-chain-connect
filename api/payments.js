@@ -217,7 +217,7 @@ export default async function handler(req, res) {
         query = query.in('farmer_id', ids);
       }
 
-      const { data: payments } = await query.order('created_at', { ascending: false });
+      const { data: payments } = await query.order('collection_id', { ascending: false });
       
       const flattened = payments.map(p => ({
         id: p.id,

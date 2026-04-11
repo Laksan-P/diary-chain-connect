@@ -130,6 +130,11 @@ class Translations {
       'collections_included': 'Collections Included',
       'total_amount': 'Total Amount',
       'reason_label': 'Reason',
+      'jan': 'Jan', 'feb': 'Feb', 'mar': 'Mar', 'apr': 'Apr', 'may': 'May', 'jun': 'Jun',
+      'jul': 'Jul', 'aug': 'Aug', 'sep': 'Sep', 'oct': 'Oct', 'nov': 'Nov', 'dec': 'Dec',
+      'monday': 'Monday', 'tuesday': 'Tuesday', 'wednesday': 'Wednesday', 'thursday': 'Thursday',
+      'friday': 'Friday', 'saturday': 'Saturday', 'sunday': 'Sunday',
+      'weekday': 'Weekday', 'weekend': 'Weekend',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -263,6 +268,11 @@ class Translations {
       'collections_included': 'ඇතුළත් එකතු කිරීම්',
       'total_amount': 'මුළු මුදල',
       'reason_label': 'හේතුව',
+      'jan': 'ජන', 'feb': 'පෙබ', 'mar': 'මාර්', 'apr': 'අප්‍රේ', 'may': 'මැයි', 'jun': 'ජූනි',
+      'jul': 'ජූලි', 'aug': 'අගෝ', 'sep': 'සැප්', 'oct': 'ඔක්', 'nov': 'නොවැ', 'dec': 'දෙසැ',
+      'monday': 'සඳුදා', 'tuesday': 'අඟහරුවාදා', 'wednesday': 'බදාදා', 'thursday': 'බ්‍රහස්පතින්දා',
+      'friday': 'සිකුරාදා', 'saturday': 'සෙනසුරාදා', 'sunday': 'ඉරිදා',
+      'weekday': 'සතියේ දිනය', 'weekend': 'සති අන්තය',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -397,6 +407,11 @@ class Translations {
       'collections_included': 'சேர்க்கப்பட்ட சேகரிப்புகள்',
       'total_amount': 'மொத்த தொகை',
       'reason_label': 'காரணம்',
+      'jan': 'ஜன', 'feb': 'பிப்', 'mar': 'மார்', 'apr': 'ஏப்', 'may': 'மே', 'jun': 'ஜூன்',
+      'jul': 'ஜூலை', 'aug': 'ஆக', 'sep': 'செப்', 'oct': 'அக்', 'nov': 'நவ', 'dec': 'டிச',
+      'monday': 'திங்கள்', 'tuesday': 'செவ்வாய்', 'wednesday': 'புதன்', 'thursday': 'வியாழன்',
+      'friday': 'வெள்ளி', 'saturday': 'சனி', 'sunday': 'ஞாயிறு',
+      'weekday': 'வார நாள்', 'weekend': 'வார இறுதி',
     },
   };
 
@@ -408,5 +423,18 @@ class Translations {
       });
     }
     return text;
+  }
+
+  static String formatDate(DateTime date, String locale) {
+    // English is the fallback logic, but for si/ta we map manually
+    final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    final monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    
+    final weekday = get(dayNames[date.weekday - 1], locale);
+    final month = get(monthNames[date.month - 1], locale);
+    final day = date.day.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    
+    return "$weekday, $month $day, $year";
   }
 }

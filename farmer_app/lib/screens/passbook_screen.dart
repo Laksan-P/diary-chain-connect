@@ -42,11 +42,22 @@ class _PassbookScreenState extends State<PassbookScreen> {
         return status == _statusFilter.toLowerCase();
       }).toList();
     } else {
-      if (_statusFilter == 'All') return widget.payments;
-      return widget.payments.where((p) {
-        final status = (p['status'] ?? 'Pending').toString().toLowerCase();
-        return status == _statusFilter.toLowerCase();
-      }).toList();
+      List<dynamic> list = widget.payments;
+      if (_statusFilter != 'All') {
+        list = list.where((p) {
+          final status = (p['status'] ?? 'Pending').toString().toLowerCase();
+          return status == _statusFilter.toLowerCase();
+        }).toList();
+      }
+      
+      // Always sort by Collection ID descending
+      final sortedList = List<dynamic>.from(list);
+      sortedList.sort((a, b) {
+        final idA = int.tryParse(a['collectionId']?.toString() ?? '0') ?? 0;
+        final idB = int.tryParse(b['collectionId']?.toString() ?? '0') ?? 0;
+        return idB.compareTo(idA);
+      });
+      return sortedList;
     }
   }
 
@@ -353,7 +364,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
     final collectionId = c['id'].toString();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final milkType = Translations.get(c['milkType']?.toString().toLowerCase() ?? 'cow', widget.locale);
-    final date = DateFormat('EEEE, MMM dd, yyyy').format(DateTime.parse(c['date']).toLocal());
+    final date = Translations.formatDate(DateTime.parse(c['date']), widget.locale);
     final time = c['time'] ?? '--:--';
 
     showModalBottomSheet(
@@ -458,7 +469,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
   void _showPaymentDetails(BuildContext context, dynamic p) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final date = DateFormat('EEEE, MMM dd, yyyy').format(DateTime.parse(p['paidAt'] ?? p['createdAt']).toLocal());
+    final date = Translations.formatDate(DateTime.parse(p['paidAt'] ?? p['createdAt']), widget.locale);
     
     // Find collections included in this payment
     // Standard logic: payments often match collection IDs if they exist in the object
