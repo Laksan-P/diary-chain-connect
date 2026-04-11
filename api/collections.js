@@ -31,6 +31,7 @@ export default async function handler(req, res) {
         .select(`
           id, farmer_id, chilling_center_id, date, time, temperature, quantity, milk_type,
           quality_result, failure_reason, dispatch_status, created_at,
+          fat, snf, water,
           farmers (name, farmer_id),
           chilling_centers (name)
         `);
@@ -57,6 +58,9 @@ export default async function handler(req, res) {
         milkType: item.milk_type, qualityResult: item.quality_result,
         failureReason: item.failure_reason, dispatchStatus: item.dispatch_status,
         createdAt: item.created_at,
+        fat: item.fat,
+        snf: item.snf,
+        water: item.water
       }));
 
       return res.status(200).json(flattened);

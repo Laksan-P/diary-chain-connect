@@ -47,7 +47,10 @@ export default async function handler(req, res) {
 
       const updates = { 
         quality_result: resultValue, 
-        failure_reason: reasonValue 
+        failure_reason: reasonValue,
+        fat: fat,
+        snf: snf,
+        water: water
       };
       
       // Auto-approve only if tested by Nestle.
