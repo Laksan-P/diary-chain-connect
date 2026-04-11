@@ -21,27 +21,52 @@ router.get('/', authenticate, async (req, res) => {
       query = query.eq('farmer_id', req.query.farmerId);
     }
 
-    const { data, error } = await query.order('date', { ascending: false }).order('time', { ascending: false });
+    const { data: rawCollections, error: colErr } = await query.order('date', { ascending: false }).order('time', { ascending: false });
     
-    if (error) throw error;
+    if (colErr) throw colErr;
 
-    // Flatten for consistent API format
-    const flattened = data.map(item => ({
-      id: item.id,
-      farmerId: item.farmer_id,
-      farmerName: item.farmers?.name,
-      farmerCode: item.farmers?.farmer_id,
-      chillingCenterId: item.chilling_center_id,
-      date: item.date,
-      time: item.time,
-      temperature: item.temperature,
-      quantity: item.quantity,
-      milkType: item.milk_type,
-      qualityResult: item.quality_result,
-      failureReason: item.failure_reason,
-      dispatchStatus: item.dispatch_status,
-      createdAt: item.created_at
-    }));
+    // --- MANUAL JOIN FOR QUALITY TESTS ---
+    // Fetch all quality tests for these collections in a separate query to be 100% sure we get them
+    const collectionIds = rawCollections.map(c => c.id);
+    let testsByCollection = {};
+    
+    if (collectionIds.length > 0) {
+      const { data: allTests, error: testErr } = await supabase
+         .from('quality_tests')
+         .select('collection_id, fat, snf, water')
+         .in('collection_id', collectionIds);
+      
+      if (!testErr && allTests) {
+        allTests.forEach(t => {
+          testsByCollection[t.collection_id] = t;
+        });
+      }
+    }
+
+    // Flatten for consistent API format with the joined test data
+    const flattened = rawCollections.map(item => {
+      const test = testsByCollection[item.id] || {};
+      
+      return {
+        id: item.id,
+        farmerId: item.farmer_id,
+        farmerName: item.farmers?.name,
+        farmerCode: item.farmers?.farmer_id,
+        chillingCenterId: item.chilling_center_id,
+        date: item.date,
+        time: item.time,
+        temperature: item.temperature,
+        quantity: item.quantity,
+        milkType: item.milk_type,
+        qualityResult: item.quality_result,
+        failureReason: item.failure_reason,
+        dispatchStatus: item.dispatch_status,
+        createdAt: item.created_at,
+        fat: test.fat,
+        snf: test.snf,
+        water: test.water
+      };
+    });
 
     res.json(flattened);
   } catch (err) {

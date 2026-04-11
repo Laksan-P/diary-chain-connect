@@ -68,4 +68,24 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/quality-tests?collectionId=...
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const { collectionId } = req.query;
+    if (!collectionId) return res.status(400).json({ error: 'collectionId required' });
+
+    const { data: qts, error } = await supabase
+       .from('quality_tests')
+       .select('*')
+       .eq('collection_id', collectionId)
+       .order('tested_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(qts);
+  } catch (err) {
+    console.error('Get quality tests error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
