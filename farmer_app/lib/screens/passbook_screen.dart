@@ -379,7 +379,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
             _buildDetailRow(LucideIcons.droplets, Translations.get('milk_type', widget.locale), milkType, isDark),
             _buildDetailRow(LucideIcons.testTube2, Translations.get('quantity', widget.locale), '${c['quantity']} L', isDark, isHighlight: true),
             
-            if (c['fat'] != null || c['snf'] != null) ...[
+            if (c['fat'] != null || c['snf'] != null || c['water'] != null) ...[
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Divider(height: 1),
@@ -387,8 +387,10 @@ class _PassbookScreenState extends State<PassbookScreen> {
               Row(
                 children: [
                   Expanded(child: _buildQualityBox(Translations.get('fat', widget.locale), '${c['fat'] ?? '--'}%', isDark)),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(child: _buildQualityBox(Translations.get('snf', widget.locale), '${c['snf'] ?? '--'}%', isDark)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildQualityBox(Translations.get('water', widget.locale), '${c['water'] ?? '--'}%', isDark)),
                 ],
               ),
             ],
