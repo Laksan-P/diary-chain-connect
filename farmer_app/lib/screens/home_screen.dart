@@ -106,8 +106,9 @@ class _HomeScreenState extends State<HomeScreen> {
           // Smart merge: ensure we don't overwrite local "read" status with old server data
           for (var i = 0; i < notifs.length; i++) {
             final id = notifs[i]['id'].toString();
-            final localIdx =
-                _notifications.indexWhere((n) => n['id'].toString() == id);
+            final localIdx = _notifications.indexWhere(
+              (n) => n['id'].toString() == id,
+            );
             if (localIdx != -1 && _notifications[localIdx]['isRead'] == true) {
               notifs[i]['isRead'] = true;
             }
@@ -120,20 +121,34 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     try {
-      final cols = await _api.get('/collections?action=list&farmerId=$farmerId');
-      if (mounted) setState(() { _collections = cols; });
+      final cols = await _api.get(
+        '/collections?action=list&farmerId=$farmerId',
+      );
+      if (mounted) {
+        setState(() {
+          _collections = cols;
+        });
+      }
     } catch (e) {
       debugPrint("Collection refresh failed: $e");
     }
 
     try {
       final pays = await _api.get('/payments?action=list&farmerId=$farmerId');
-      if (mounted) setState(() { _payments = pays; });
+      if (mounted) {
+        setState(() {
+          _payments = pays;
+        });
+      }
     } catch (e) {
       debugPrint("Payment refresh failed: $e");
     }
 
-    if (mounted) setState(() { _updateBadges(); });
+    if (mounted) {
+      setState(() {
+        _updateBadges();
+      });
+    }
   }
 
   // ── Badge Management ──
@@ -248,7 +263,9 @@ class _HomeScreenState extends State<HomeScreen> {
             onRefresh: _fetchData,
             onRead: (id) {
               setState(() {
-                final index = _notifications.indexWhere((n) => n['id'].toString() == id);
+                final index = _notifications.indexWhere(
+                  (n) => n['id'].toString() == id,
+                );
                 if (index != -1) {
                   _notifications[index]['isRead'] = true;
                 }
