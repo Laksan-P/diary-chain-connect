@@ -12,7 +12,7 @@ class NotificationsScreen extends StatefulWidget {
   final String locale;
   final VoidCallback onBack;
   final VoidCallback onRefresh;
-  final VoidCallback? onRead;
+  final void Function(String id)? onRead;
 
   const NotificationsScreen({
     super.key,
@@ -44,10 +44,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void didUpdateWidget(NotificationsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!mounted) return;
-    // Sync local list if parent list changes (e.g. from background refresh)
+    
+    // Smart merge: Sync local list if parent list changes, but preserve local "read" status
     if (widget.notifications != oldWidget.notifications) {
       setState(() {
-        _localNotifications = List.from(widget.notifications);
+        final newList = List.from(widget.notifications);
+        for (var i = 0; i < newList.length; i++) {
+          final id = newList[i]['id'].toString();
+          // If we have this notification locally and it's marked as read, keep it read
+          final localIdx = _localNotifications.indexWhere((n) => n['id'].toString() == id);
+          if (localIdx != -1 && _localNotifications[localIdx]['isRead'] == true) {
+            newList[i]['isRead'] = true;
+          }
+        }
+        _localNotifications = newList;
       });
     }
   }
@@ -57,7 +67,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _markAsRead(String id) async {
-    // Optimistic UI update
+    // 1. Instant Local Update
     setState(() {
       final index = _localNotifications.indexWhere((n) => n['id'].toString() == id);
       if (index != -1) {
@@ -65,11 +75,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
     });
 
+    // 2. Instant Parent Update (Consistency)
+    widget.onRead?.call(id);
+
+    // 3. Background API sync
     try {
       await _api.patch('/notifications?action=mark-read&id=$id', {});
-      widget.onRead?.call();
     } catch (e) {
       debugPrint("Error marking read: $e");
+      // If API fails, we could revert but usually better to wait for next full refresh
       _fetchNotifications(showLoader: false);
     }
   }

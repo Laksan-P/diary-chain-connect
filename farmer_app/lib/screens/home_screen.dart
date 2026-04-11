@@ -101,7 +101,20 @@ class _HomeScreenState extends State<HomeScreen> {
     // Fetch each independently so one failure doesn't block the others
     try {
       final notifs = await _api.get('/notifications?action=list');
-      if (mounted) setState(() { _notifications = notifs; });
+      if (mounted) {
+        setState(() {
+          // Smart merge: ensure we don't overwrite local "read" status with old server data
+          for (var i = 0; i < notifs.length; i++) {
+            final id = notifs[i]['id'].toString();
+            final localIdx =
+                _notifications.indexWhere((n) => n['id'].toString() == id);
+            if (localIdx != -1 && _notifications[localIdx]['isRead'] == true) {
+              notifs[i]['isRead'] = true;
+            }
+          }
+          _notifications = notifs;
+        });
+      }
     } catch (e) {
       debugPrint("Notification refresh failed: $e");
     }
@@ -233,7 +246,15 @@ class _HomeScreenState extends State<HomeScreen> {
             notifications: _notifications,
             isLoading: _isLoading,
             onRefresh: _fetchData,
-            onRead: _fetchNotificationsSilently,
+            onRead: (id) {
+              setState(() {
+                final index = _notifications.indexWhere((n) => n['id'].toString() == id);
+                if (index != -1) {
+                  _notifications[index]['isRead'] = true;
+                }
+              });
+              _fetchNotificationsSilently();
+            },
             onBack: _handleBack,
             locale: locale,
             userId: user['id']?.toString() ?? '',

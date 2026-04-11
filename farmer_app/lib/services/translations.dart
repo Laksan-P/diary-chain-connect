@@ -119,6 +119,15 @@ class Translations {
       'cc_collection_rejected_nestle_title': 'Collection Rejected by Nestlé',
       'cc_collection_rejected_nestle_msg':
           'Milk collection #{id} from farmer {farmer} was REJECTED by Nestlé. Reason: {reason}',
+      'details': 'Details',
+      'fat': 'Fat %',
+      'snf': 'SNF %',
+      'date_label': 'Date',
+      'time_label': 'Time',
+      'status_label': 'Status',
+      'collections_included': 'Collections Included',
+      'total_amount': 'Total Amount',
+      'reason_label': 'Reason',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -241,6 +250,15 @@ class Translations {
           'එකතු කිරීම නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී',
       'cc_collection_rejected_nestle_msg':
           '{farmer} ගොවි මහතාගේ අංක #{id} දරන කිරි එකතු කිරීම නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී. හේතුව: {reason}',
+      'details': 'විස්තර',
+      'fat': 'මේද ප්‍රතිශතය (Fat %)',
+      'snf': 'SNF ප්‍රතිශතය',
+      'date_label': 'දිනය',
+      'time_label': 'වේලාව',
+      'status_label': 'තත්ත්වය',
+      'collections_included': 'ඇතුළත් එකතු කිරීම්',
+      'total_amount': 'මුළු මුදල',
+      'reason_label': 'හේතුව',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -364,6 +382,15 @@ class Translations {
           'சேகரிப்பு நெஸ்லேவால் நிராகரிக்கப்பட்டது',
       'cc_collection_rejected_nestle_msg':
           'விவசாயி {farmer} இன் பால் சேகரிப்பு #{id} நெஸ்லேயால் நிராகரிக்கப்பட்டது. காரணம்: {reason}',
+      'details': 'விவரங்கள்',
+      'fat': 'கொழுப்பு % (Fat %)',
+      'snf': 'SNF %',
+      'date_label': 'தேதி',
+      'time_label': 'நேரம்',
+      'status_label': 'நிலை',
+      'collections_included': 'சேர்க்கப்பட்ட சேகரிப்புகள்',
+      'total_amount': 'மொத்த தொகை',
+      'reason_label': 'காரணம்',
     },
   };
 

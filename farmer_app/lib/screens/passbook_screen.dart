@@ -330,6 +330,236 @@ class _PassbookScreenState extends State<PassbookScreen> {
     );
   }
 
+  void _showCollectionDetails(BuildContext context, dynamic c) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = isDark ? const Color(0xFFFFB000) : AppTheme.primary;
+    final milkType = Translations.get(c['milkType']?.toString().toLowerCase() ?? 'cow', widget.locale);
+    final date = DateFormat('EEEE, MMM dd, yyyy').format(DateTime.parse(c['date']).toLocal());
+    final time = c['time'] ?? '--:--';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.surfaceDark : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+        ),
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  Translations.get('details', widget.locale),
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                ),
+                _buildStatusBadge(c['qualityResult'] ?? 'Pending'),
+              ],
+            ),
+            const SizedBox(height: 32),
+            _buildDetailRow(LucideIcons.hash, Translations.get('collection_id', widget.locale), '#${c['id']}', isDark),
+            _buildDetailRow(LucideIcons.calendar, Translations.get('date_label', widget.locale), date, isDark),
+            _buildDetailRow(LucideIcons.clock, Translations.get('time_label', widget.locale), time, isDark),
+            _buildDetailRow(LucideIcons.droplets, Translations.get('milk_type', widget.locale), milkType, isDark),
+            _buildDetailRow(LucideIcons.testTube2, Translations.get('quantity', widget.locale), '${c['quantity']} L', isDark, isHighlight: true),
+            
+            if (c['fat'] != null || c['snf'] != null) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Divider(height: 1),
+              ),
+              Row(
+                children: [
+                  Expanded(child: _buildQualityBox(Translations.get('fat', widget.locale), '${c['fat'] ?? '--'}%', isDark)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildQualityBox(Translations.get('snf', widget.locale), '${c['snf'] ?? '--'}%', isDark)),
+                ],
+              ),
+            ],
+            
+            if (c['rejectReason'] != null && (c['qualityResult']?.toString().toLowerCase() == 'fail' || c['qualityResult']?.toString().toLowerCase() == 'rejected')) ...[
+               const SizedBox(height: 16),
+               Container(
+                 padding: const EdgeInsets.all(16),
+                 decoration: BoxDecoration(
+                   color: Colors.red.withOpacity(0.05),
+                   borderRadius: BorderRadius.circular(20),
+                   border: Border.all(color: Colors.red.withOpacity(0.1)),
+                 ),
+                 child: Row(
+                   children: [
+                     const Icon(LucideIcons.alertCircle, color: Colors.red, size: 20),
+                     const SizedBox(width: 12),
+                     Expanded(
+                       child: Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                           Text(Translations.get('reason_label', widget.locale), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                           Text(c['rejectReason'].toString(), style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13)),
+                         ],
+                       ),
+                     ),
+                   ],
+                 ),
+               ),
+            ],
+            const SizedBox(height: 48),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPaymentDetails(BuildContext context, dynamic p) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final date = DateFormat('EEEE, MMM dd, yyyy').format(DateTime.parse(p['paidAt'] ?? p['createdAt']).toLocal());
+    
+    // Find collections included in this payment
+    // Standard logic: payments often match collection IDs if they exist in the object
+    final List<dynamic> includedCollections = [];
+    if (p['collectionIds'] != null) {
+      final ids = (p['collectionIds'] as List).map((id) => id.toString()).toList();
+      includedCollections.addAll(widget.collections.where((c) => ids.contains(c['id'].toString())));
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.surfaceDark : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+        ),
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey.withOpacity(0.2), borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  Translations.get('details', widget.locale),
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                ),
+                _buildStatusBadge(p['status'] ?? 'Pending'),
+              ],
+            ),
+            const SizedBox(height: 32),
+            _buildDetailRow(LucideIcons.banknote, Translations.get('total_amount', widget.locale), 'Rs. ${p['amount']}', isDark, isHighlight: true),
+            _buildDetailRow(LucideIcons.calendarCheck, Translations.get('date_label', widget.locale), date, isDark),
+            
+            if (includedCollections.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(
+                Translations.get('collections_included', widget.locale),
+                style: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.grey.shade500,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...includedCollections.map((c) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100),
+                ),
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.droplets, size: 14, color: isDark ? AppTheme.primaryLight : AppTheme.primary),
+                    const SizedBox(width: 12),
+                    Text('#${c['id']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Spacer(),
+                    Text('${c['quantity']} L', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                  ],
+                ),
+              )),
+            ],
+            const SizedBox(height: 48),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value, bool isDark, {bool isHighlight = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: (isHighlight ? (isDark ? const Color(0xFFFFB000) : AppTheme.primary) : Colors.grey).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: isHighlight ? (isDark ? const Color(0xFFFFB000) : AppTheme.primary) : Colors.grey),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.bold)),
+              Text(value, style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87, 
+                fontSize: isHighlight ? 18 : 15, 
+                fontWeight: isHighlight ? FontWeight.w900 : FontWeight.bold
+              )),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQualityBox(String label, String value, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 10, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSupplyCard(BuildContext context, dynamic c) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final milkType = Translations.get(c['milkType']?.toString().toLowerCase() ?? 'cow', widget.locale);
@@ -343,6 +573,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
       trailing: '${c['quantity']} L',
       status: c['qualityResult'] ?? 'Pending',
       type: 'supply',
+      onTap: () => _showCollectionDetails(context, c),
     );
   }
 
@@ -357,6 +588,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
       trailing: 'Rs. ${p['amount']}',
       status: p['status'] ?? 'Pending',
       type: 'payment',
+      onTap: () => _showPaymentDetails(context, p),
     );
   }
 
@@ -369,71 +601,82 @@ class _PassbookScreenState extends State<PassbookScreen> {
     required String trailing,
     required String status,
     required String type,
+    required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.surfaceDark.withOpacity(0.5) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.surfaceDark.withOpacity(0.5) : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
           ),
-          const SizedBox(width: 16),
-           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          boxShadow: isDark ? [] : [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 16),
+             Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.grey.shade500,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  title,
+                  trailing,
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: isDark ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: type == 'supply' 
+                      ? (isDark ? AppTheme.primaryLight : AppTheme.primary) 
+                      : Colors.green,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: isDark ? Colors.white38 : Colors.grey.shade500,
-                    fontSize: 11,
-                  ),
-                ),
+                const SizedBox(height: 6),
+                _buildStatusBadge(status),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                trailing,
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  color: type == 'supply' 
-                    ? (isDark ? AppTheme.primaryLight : AppTheme.primary) 
-                    : Colors.green,
-                ),
-              ),
-              const SizedBox(height: 6),
-              _buildStatusBadge(status),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
