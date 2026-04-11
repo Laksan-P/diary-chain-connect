@@ -29,10 +29,16 @@ router.post('/', authenticate, async (req, res) => {
     if (qtErr) throw qtErr;
     const newId = qtRows.id;
 
-    // Update collection
+    // Update collection with quality result AND the specific metrics
     await supabase
        .from('milk_collections')
-       .update({ quality_result: resultValue, failure_reason: reasonValue })
+       .update({ 
+         quality_result: resultValue, 
+         failure_reason: reasonValue,
+         fat: fat,
+         snf: snf,
+         water: water
+       })
        .eq('id', collectionId);
 
     // Notification

@@ -12,6 +12,7 @@ router.get('/', authenticate, async (req, res) => {
       .select(`
         id, farmer_id, chilling_center_id, date, time, temperature, quantity, milk_type,
         quality_result, failure_reason, dispatch_status, created_at,
+        fat, snf, water,
         farmers (name, farmer_id)
       `);
 
@@ -21,32 +22,12 @@ router.get('/', authenticate, async (req, res) => {
       query = query.eq('farmer_id', req.query.farmerId);
     }
 
-    const { data: rawCollections, error: colErr } = await query.order('date', { ascending: false }).order('time', { ascending: false });
+    const { data, error } = await query.order('date', { ascending: false }).order('time', { ascending: false });
     
-    if (colErr) throw colErr;
+    if (error) throw error;
 
-    // --- MANUAL JOIN FOR QUALITY TESTS ---
-    // Fetch all quality tests for these collections in a separate query to be 100% sure we get them
-    const collectionIds = rawCollections.map(c => c.id);
-    let testsByCollection = {};
-    
-    if (collectionIds.length > 0) {
-      const { data: allTests, error: testErr } = await supabase
-         .from('quality_tests')
-         .select('collection_id, fat, snf, water')
-         .in('collection_id', collectionIds);
-      
-      if (!testErr && allTests) {
-        allTests.forEach(t => {
-          testsByCollection[t.collection_id] = t;
-        });
-      }
-    }
-
-    // Flatten for consistent API format with the joined test data
-    const flattened = rawCollections.map(item => {
-      const test = testsByCollection[item.id] || {};
-      
+    // Flatten for consistent API format
+    const flattened = data.map(item => {
       return {
         id: item.id,
         farmerId: item.farmer_id,
@@ -62,9 +43,9 @@ router.get('/', authenticate, async (req, res) => {
         failureReason: item.failure_reason,
         dispatchStatus: item.dispatch_status,
         createdAt: item.created_at,
-        fat: test.fat,
-        snf: test.snf,
-        water: test.water
+        fat: item.fat,
+        snf: item.snf,
+        water: item.water
       };
     });
 
