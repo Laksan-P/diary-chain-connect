@@ -333,7 +333,24 @@ class _PassbookScreenState extends State<PassbookScreen> {
     );
   }
 
+  Future<void> _fetchCollectionTestData(String collectionId, StateSetter setModalState) async {
+    try {
+      final results = await _api.get('/quality-tests?collectionId=$collectionId');
+      if (results != null && results is List && results.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _collectionTests[collectionId] = results[0];
+          });
+          setModalState(() {}); // Update modal UI
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching test data: $e");
+    }
+  }
+
   void _showCollectionDetails(BuildContext context, dynamic c) {
+    final collectionId = c['id'].toString();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final milkType = Translations.get(c['milkType']?.toString().toLowerCase() ?? 'cow', widget.locale);
     final date = DateFormat('EEEE, MMM dd, yyyy').format(DateTime.parse(c['date']).toLocal());
@@ -343,85 +360,98 @@ class _PassbookScreenState extends State<PassbookScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppTheme.surfaceDark : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-        ),
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey.withOpacity(0.2), borderRadius: BorderRadius.circular(2)),
-              ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          // Check if we have data locally or in cache
+          final testData = (c['fat'] != null) ? c : (_collectionTests[collectionId] ?? {});
+          
+          if (testData.isEmpty && 
+              c['qualityResult'] != null && 
+              c['qualityResult'].toString().toLowerCase() != 'pending') {
+            _fetchCollectionTestData(collectionId, setModalState);
+          }
+
+          return Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.surfaceDark : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
             ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  Translations.get('details', widget.locale),
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(color: Colors.grey.withOpacity(0.2), borderRadius: BorderRadius.circular(2)),
+                  ),
                 ),
-                _buildStatusBadge(c['qualityResult'] ?? 'Pending'),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      Translations.get('details', widget.locale),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                    ),
+                    _buildStatusBadge(c['qualityResult'] ?? 'Pending'),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                _buildDetailRow(LucideIcons.hash, Translations.get('collection_id', widget.locale), '#$collectionId', isDark),
+                _buildDetailRow(LucideIcons.calendar, Translations.get('date_label', widget.locale), date, isDark),
+                _buildDetailRow(LucideIcons.clock, Translations.get('time_label', widget.locale), time, isDark),
+                _buildDetailRow(LucideIcons.droplets, Translations.get('milk_type', widget.locale), milkType, isDark),
+                _buildDetailRow(LucideIcons.testTube2, Translations.get('quantity', widget.locale), '${c['quantity']} L', isDark, isHighlight: true),
+                
+                if (c['qualityResult'] != null && c['qualityResult'].toString().toLowerCase() != 'pending') ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Divider(height: 1),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(child: _buildQualityBox(Translations.get('fat', widget.locale), '${testData['fat'] ?? '--'}%', isDark)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildQualityBox(Translations.get('snf', widget.locale), '${testData['snf'] ?? '--'}%', isDark)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildQualityBox(Translations.get('water', widget.locale), '${testData['water'] ?? '--'}%', isDark)),
+                    ],
+                  ),
+                ],
+                
+                if (c['rejectReason'] != null && (c['qualityResult']?.toString().toLowerCase() == 'fail' || c['qualityResult']?.toString().toLowerCase() == 'rejected')) ...[
+                   const SizedBox(height: 16),
+                   Container(
+                     padding: const EdgeInsets.all(16),
+                     decoration: BoxDecoration(
+                       color: Colors.red.withOpacity(0.05),
+                       borderRadius: BorderRadius.circular(20),
+                       border: Border.all(color: Colors.red.withOpacity(0.1)),
+                     ),
+                     child: Row(
+                       children: [
+                         const Icon(LucideIcons.alertCircle, color: Colors.red, size: 20),
+                         const SizedBox(width: 12),
+                         Expanded(
+                           child: Column(
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             children: [
+                               Text(Translations.get('reason_label', widget.locale), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                               Text(c['rejectReason'].toString(), style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13)),
+                             ],
+                           ),
+                         ),
+                       ],
+                     ),
+                   ),
+                ],
+                const SizedBox(height: 48),
               ],
             ),
-            const SizedBox(height: 32),
-            _buildDetailRow(LucideIcons.hash, Translations.get('collection_id', widget.locale), '#${c['id']}', isDark),
-            _buildDetailRow(LucideIcons.calendar, Translations.get('date_label', widget.locale), date, isDark),
-            _buildDetailRow(LucideIcons.clock, Translations.get('time_label', widget.locale), time, isDark),
-            _buildDetailRow(LucideIcons.droplets, Translations.get('milk_type', widget.locale), milkType, isDark),
-            _buildDetailRow(LucideIcons.testTube2, Translations.get('quantity', widget.locale), '${c['quantity']} L', isDark, isHighlight: true),
-            
-            if (c['qualityResult'] != null && c['qualityResult'].toString().toLowerCase() != 'pending') ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Divider(height: 1),
-              ),
-              Row(
-                children: [
-                  Expanded(child: _buildQualityBox(Translations.get('fat', widget.locale), '${c['fat'] ?? '--'}%', isDark)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildQualityBox(Translations.get('snf', widget.locale), '${c['snf'] ?? '--'}%', isDark)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildQualityBox(Translations.get('water', widget.locale), '${c['water'] ?? '--'}%', isDark)),
-                ],
-              ),
-            ],
-            
-            if (c['rejectReason'] != null && (c['qualityResult']?.toString().toLowerCase() == 'fail' || c['qualityResult']?.toString().toLowerCase() == 'rejected')) ...[
-               const SizedBox(height: 16),
-               Container(
-                 padding: const EdgeInsets.all(16),
-                 decoration: BoxDecoration(
-                   color: Colors.red.withOpacity(0.05),
-                   borderRadius: BorderRadius.circular(20),
-                   border: Border.all(color: Colors.red.withOpacity(0.1)),
-                 ),
-                 child: Row(
-                   children: [
-                     const Icon(LucideIcons.alertCircle, color: Colors.red, size: 20),
-                     const SizedBox(width: 12),
-                     Expanded(
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           Text(Translations.get('reason_label', widget.locale), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
-                           Text(c['rejectReason'].toString(), style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13)),
-                         ],
-                       ),
-                     ),
-                   ],
-                 ),
-               ),
-            ],
-            const SizedBox(height: 48),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
