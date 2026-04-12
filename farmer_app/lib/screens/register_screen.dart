@@ -37,6 +37,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
   List<dynamic> _centers = [];
   bool _isLoading = false;
   bool _obscurePassword = true;
+  String? _selectedBank;
+
+  final Map<String, int> _bankRules = {
+    'Bank of Ceylon': 12,
+    'People\'s Bank': 15,
+    'Commercial Bank': 10,
+    'Hatton National Bank': 12,
+    'Sampath Bank': 12,
+    'Seylan Bank': 15,
+    'Nations Trust Bank': 15,
+    'DFCC Bank': 12,
+    'NDB Bank': 12,
+    'Pan Asia Bank': 12,
+    'Union Bank': 12,
+    'Amana Bank': 12,
+    'Cargills Bank': 12,
+  };
 
   @override
   void initState() {
@@ -150,8 +167,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
               const SizedBox(height: 24),
               _sectionTitle(Translations.get('bank_details', locale)),
-              _field('bankName', Translations.get('bank_name', locale), LucideIcons.landmark, locale, hint: 'e.g. Bank of Ceylon'),
-              _field('accountNumber', Translations.get('account_number', locale), LucideIcons.hash, locale, hint: 'e.g. 123456789'),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: DropdownButtonFormField<String>(
+                  value: _selectedBank,
+                  decoration: AppTheme.inputDecoration(Translations.get('bank_name', locale), LucideIcons.landmark, context: context),
+                  items: [..._bankRules.keys, 'Other'].map((bank) => DropdownMenuItem(value: bank, child: Text(bank))).toList(),
+                  onChanged: (v) {
+                    setState(() {
+                      _selectedBank = v;
+                      _controllers['bankName']!.text = v ?? '';
+                      _controllers['accountNumber']!.clear();
+                    });
+                  },
+                  validator: (v) => v == null ? Translations.get('required_field', locale) : null,
+                ),
+              ),
+              _field('accountNumber', Translations.get('account_number', locale), LucideIcons.hash, locale, hint: _selectedBank != null && _selectedBank != 'Other' ? 'Required: ${_bankRules[_selectedBank]} digits' : 'e.g. 123456789'),
               _field('branch', Translations.get('branch', locale), LucideIcons.gitBranch, locale, hint: 'e.g. Kandy Central'),
               const SizedBox(height: 40),
               _sectionTitle(Translations.get('account_credentials', locale)),
@@ -207,6 +239,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else if (key == 'nic') {
       maxLength = 12;
       formatters = [FilteringTextInputFormatter.allow(RegExp(r'[0-9vVxX]'))];
+    } else if (key == 'accountNumber') {
+      if (_selectedBank != null && _selectedBank != 'Other') {
+        maxLength = _bankRules[_selectedBank];
+      }
+      formatters = [FilteringTextInputFormatter.digitsOnly];
+      keyboardType = TextInputType.number;
     }
 
     return Padding(
@@ -228,6 +266,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) return 'Invalid phone number';
           }
           if (key == 'nic' && !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) return 'Invalid NIC (e.g. 123456789V or 12-digit)';
+          if (key == 'accountNumber' && _selectedBank != null && _selectedBank != 'Other') {
+            final requiredLength = _bankRules[_selectedBank];
+            if (v.length != requiredLength) return 'Account number must be $requiredLength digits for $_selectedBank';
+          }
           return null;
         },
       ),

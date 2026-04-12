@@ -23,6 +23,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isEditing = false;
   bool _isLoading = false;
+  String? _selectedBank;
+
+  final Map<String, int> _bankRules = {
+    'Bank of Ceylon': 12,
+    'People\'s Bank': 15,
+    'Commercial Bank': 10,
+    'Hatton National Bank': 12,
+    'Sampath Bank': 12,
+    'Seylan Bank': 15,
+    'Nations Trust Bank': 15,
+    'DFCC Bank': 12,
+    'NDB Bank': 12,
+    'Pan Asia Bank': 12,
+    'Union Bank': 12,
+    'Amana Bank': 12,
+    'Cargills Bank': 12,
+  };
 
   late TextEditingController _nameController;
   late TextEditingController _addressController;
@@ -61,6 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (mounted && bankData != null) {
           setState(() {
             _bankNameController.text = (bankData['bankName'] ?? bankData['bank_name'] ?? '').toString();
+            _selectedBank = _bankRules.containsKey(_bankNameController.text) ? _bankNameController.text : (_bankNameController.text.isNotEmpty ? 'Other' : null);
             _accountNumberController.text = (bankData['accountNumber'] ?? bankData['account_number'] ?? '').toString();
             _branchController.text = (bankData['branch'] ?? '').toString();
           });
@@ -82,6 +100,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _phoneController = TextEditingController(text: user['phone'] ?? '');
     _nicController = TextEditingController(text: user['nic'] ?? '');
     _bankNameController = TextEditingController(text: user['bankName'] ?? '');
+    _selectedBank = _bankRules.containsKey(_bankNameController.text) ? _bankNameController.text : (_bankNameController.text.isNotEmpty ? 'Other' : null);
     _accountNumberController = TextEditingController(text: user['accountNumber'] ?? '');
     _branchController = TextEditingController(text: user['branch'] ?? '');
   }
@@ -184,9 +203,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 32),
                 _sectionTitle(Translations.get('bank_details', locale)),
                 const SizedBox(height: 24),
-                _optionalField(_bankNameController, Translations.get('bank_name', locale), LucideIcons.landmark),
-                const SizedBox(height: 16),
-                _optionalField(_accountNumberController, Translations.get('account_number', locale), LucideIcons.hash),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedBank,
+                    decoration: AppTheme.inputDecoration(Translations.get('bank_name', locale), LucideIcons.landmark, context: context),
+                    items: [..._bankRules.keys, 'Other'].map((bank) => DropdownMenuItem(value: bank, child: Text(bank))).toList(),
+                    onChanged: (v) {
+                      setState(() {
+                        _selectedBank = v;
+                        _bankNameController.text = v ?? '';
+                        _accountNumberController.clear();
+                      });
+                    },
+                    validator: (v) => v == null ? Translations.get('required_field', locale) : null,
+                  ),
+                ),
+                _field(_accountNumberController, Translations.get('account_number', locale), LucideIcons.hash),
                 const SizedBox(height: 16),
                 _optionalField(_branchController, Translations.get('branch', locale), LucideIcons.gitBranch),
                 const SizedBox(height: 32),
@@ -479,6 +512,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else if (icon == LucideIcons.creditCard) {
       maxLength = 12;
       formatters = [FilteringTextInputFormatter.allow(RegExp(r'[0-9vVxX]'))];
+    } else if (icon == LucideIcons.hash) {
+      if (_selectedBank != null && _selectedBank != 'Other') {
+        maxLength = _bankRules[_selectedBank];
+      }
+      formatters = [FilteringTextInputFormatter.digitsOnly];
+      keyboardType = TextInputType.number;
     }
 
     return TextFormField(
@@ -499,6 +538,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
         if (icon == LucideIcons.creditCard && !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) {
           return Translations.get('invalid_nic', locale);
+        }
+        if (icon == LucideIcons.hash && _selectedBank != null && _selectedBank != 'Other') {
+          final requiredLength = _bankRules[_selectedBank];
+          if (v.length != requiredLength) return 'Must be $requiredLength digits';
         }
         return null;
       },

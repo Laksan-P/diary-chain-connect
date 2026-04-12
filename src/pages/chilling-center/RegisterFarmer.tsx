@@ -11,6 +11,22 @@ import { getChillingCenters, registerFarmerByCenter } from '@/services/api';
 import type { ChillingCenter } from '@/types';
 
 
+const SRI_LANKAN_BANKS = [
+  { name: 'Bank of Ceylon', length: 12 },
+  { name: 'People\'s Bank', length: 15 },
+  { name: 'Commercial Bank', length: 10 },
+  { name: 'Hatton National Bank', length: 12 },
+  { name: 'Sampath Bank', length: 12 },
+  { name: 'Seylan Bank', length: 15 },
+  { name: 'Nations Trust Bank', length: 15 },
+  { name: 'DFCC Bank', length: 12 },
+  { name: 'NDB Bank', length: 12 },
+  { name: 'Pan Asia Bank', length: 12 },
+  { name: 'Union Bank', length: 12 },
+  { name: 'Amana Bank', length: 12 },
+  { name: 'Cargills Bank', length: 12 },
+];
+
 const RegisterFarmer: React.FC = () => {
   const [centers, setCenters] = useState<ChillingCenter[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,8 +114,38 @@ const RegisterFarmer: React.FC = () => {
         <div className="border-t pt-4">
           <h3 className="font-display font-semibold text-foreground mb-3">Bank Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2"><Label>Bank Name</Label><Input value={form.bankName} onChange={e => update('bankName', e.target.value)} placeholder="e.g. Bank of Ceylon" required /></div>
-            <div className="space-y-2"><Label>Account Number</Label><Input value={form.accountNumber} onChange={e => update('accountNumber', e.target.value)} placeholder="e.g. 1234567890" required /></div>
+            <div className="space-y-2">
+              <Label>Bank Name</Label>
+              <Select 
+                value={form.bankName} 
+                onValueChange={v => {
+                  update('bankName', v);
+                  // Clear account number if bank changes to avoid invalid data
+                  update('accountNumber', '');
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select bank" /></SelectTrigger>
+                <SelectContent>
+                  {SRI_LANKAN_BANKS.map(b => (
+                    <SelectItem key={b.name} value={b.name}>{b.name}</SelectItem>
+                  ))}
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Account Number</Label>
+              <Input 
+                value={form.accountNumber} 
+                onChange={e => update('accountNumber', e.target.value.replace(/\D/g, ''))} 
+                placeholder={form.bankName ? `e.g. ${'1'.repeat(SRI_LANKAN_BANKS.find(b => b.name === form.bankName)?.length || 10)}` : "e.g. 1234567890"}
+                maxLength={SRI_LANKAN_BANKS.find(b => b.name === form.bankName)?.length || 20}
+                required 
+              />
+              {form.bankName && form.bankName !== 'Other' && (
+                <p className="text-[10px] text-muted-foreground">Required length: {SRI_LANKAN_BANKS.find(b => b.name === form.bankName)?.length} digits</p>
+              )}
+            </div>
             <div className="space-y-2"><Label>Branch</Label><Input value={form.branch} onChange={e => update('branch', e.target.value)} placeholder="e.g. Kandy" required /></div>
           </div>
         </div>
