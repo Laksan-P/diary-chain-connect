@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,6 +30,7 @@ const SRI_LANKAN_BANKS = [
 const RegisterFarmer: React.FC = () => {
   const [centers, setCenters] = useState<ChillingCenter[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const [form, setForm] = useState({
     name: '', address: '', phone: '', nic: '', chillingCenterId: '',
@@ -154,7 +155,24 @@ const RegisterFarmer: React.FC = () => {
           <h3 className="font-display font-semibold text-foreground mb-3">Login Credentials</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="e.g. sunil@example.com" required /></div>
-            <div className="space-y-2"><Label>Password</Label><Input type="password" value={form.password} onChange={e => update('password', e.target.value)} required /></div>
+            <div className="space-y-2">
+              <Label>Password</Label>
+              <div className="relative">
+                <Input 
+                  type={showPassword ? 'text' : 'password'} 
+                  value={form.password} 
+                  onChange={e => update('password', e.target.value)} 
+                  required 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
