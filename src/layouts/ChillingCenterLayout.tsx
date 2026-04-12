@@ -40,7 +40,7 @@ const ChillingCenterLayout: React.FC = () => {
             </div>
             <div>
               <h2 className="font-display font-bold text-sidebar-foreground text-sm">Chilling Center</h2>
-              <p className="text-xs text-sidebar-foreground/60">{user?.name}</p>
+              <p className="text-xs text-sidebar-foreground/60">{user?.chillingCenterName || user?.name}</p>
             </div>
           </div>
         </div>
