@@ -14,7 +14,7 @@ async function seed() {
     // ---- Users ----
     console.log('👤 Seeding users...');
     const users = [
-      { id: 1, email: 'cc@nestle.com', password_hash: hash, name: 'CC Staff', role: 'chilling_center' },
+      { id: 1, email: 'cc@nestle.com', password_hash: hash, name: 'Kandy Central CC', role: 'chilling_center' },
       { id: 2, email: 'nestle@nestle.com', password_hash: hash, name: 'Nestlé Officer', role: 'nestle' },
       { id: 10, email: 'anura@farmer.com', password_hash: hash, name: 'Anura Perera', role: 'farmer' },
       { id: 11, email: 'kumara@farmer.com', password_hash: hash, name: 'Kumara Silva', role: 'farmer' },

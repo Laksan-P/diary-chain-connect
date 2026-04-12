@@ -30,7 +30,7 @@ async function testLogin(email, password) {
 }
 
 async function runTests() {
-  console.log('--- Testing CC Staff ---');
+  console.log('--- Testing Kandy Central CC ---');
   await testLogin('cc@nestle.com', 'password');
   console.log('\n--- Testing Nestlé Officer ---');
   await testLogin('nestle@nestle.com', 'password');
