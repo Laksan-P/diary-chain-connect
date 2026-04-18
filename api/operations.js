@@ -400,11 +400,9 @@ export default async function handler(req, res) {
       if (items && items.length > 0) {
         const collectionIds = items.map(item => item.collection_id);
 
-        // 1. Bulk Update status — only for items that haven't been individually verified yet
-        await supabase.from('milk_collections')
-          .update({ dispatch_status: status })
-          .in('id', collectionIds)
-          .eq('dispatch_status', 'Dispatched');
+        // 1. Skip Bulk Update — We now track every item individually.
+        // If an item wasn't verified, it stays 'Dispatched' until tested.
+        // The transport status header and notifications handle the global result.
 
         // 2. Fetch collections to get farmer_ids and specific results
         const { data: mcData } = await supabase

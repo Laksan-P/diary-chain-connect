@@ -322,7 +322,7 @@ const DispatchMonitoring: React.FC = () => {
                                                   </span>
                                                 </div>
                                               </div>
-                                            ) : (dispatch.status === 'Dispatched' || dispatch.status === 'Rejected') ? (
+                                            ) : (
                                               <Button
                                                 size="sm"
                                                 variant="outline"
@@ -331,8 +331,6 @@ const DispatchMonitoring: React.FC = () => {
                                               >
                                                 Verify Quality
                                               </Button>
-                                            ) : (
-                                              <StatusBadge status={item.dispatchStatus || 'N/A'} />
                                             )}
                                           </td>
                                         </tr>
