@@ -116,15 +116,7 @@ const PaymentsPage: React.FC = () => {
     { 
       key: 'farmerName', 
       header: 'Farmer',
-      render: (v: any) => (
-        <button 
-          onClick={() => { setSelectedFarmer(v); setShowDetailDialog(true); }}
-          className="text-primary font-bold hover:underline underline-offset-4 flex items-center gap-1 group"
-        >
-          {v.farmerName} 
-          <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity translate-x-[-10px] group-hover:translate-x-0" />
-        </button>
-      )
+      render: (v: any) => <span className="text-primary font-bold">{v.farmerName}</span>
     },
     { key: 'farmerCode', header: 'Farmer ID' },
     { key: 'totalQty', header: 'Total Quantity', render: (v: any) => <span className="font-medium text-slate-700">{v.totalQty.toFixed(2)} L</span> },
@@ -309,7 +301,12 @@ const PaymentsPage: React.FC = () => {
             </div>
           </motion.div>
           
-          <DataTable columns={summaryColumns} data={cycleData?.summary || []} loading={loading} />
+          <DataTable 
+            columns={summaryColumns} 
+            data={cycleData?.summary || []} 
+            loading={loading} 
+            onRowClick={(row) => { setSelectedFarmer(row); setShowDetailDialog(true); }}
+          />
         </TabsContent>
 
         {/* STEP 8-11: HISTORY & RECORDED DETAILS */}
@@ -349,46 +346,50 @@ const PaymentsPage: React.FC = () => {
           </div>
 
           <div className="p-8 space-y-6">
-            <div className="bg-muted/30 rounded-2xl p-4 border grid grid-cols-2 gap-4">
-              <div className="space-y-0.5">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Quantity</p>
-                <p className="text-xl font-display font-black text-foreground">{selectedFarmer?.totalQty?.toFixed(2)} L</p>
+            <div className="bg-muted/30 rounded-2xl p-5 border grid grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none">Total Qty</p>
+                <p className="text-lg font-display font-black text-foreground leading-tight">{selectedFarmer?.totalQty?.toFixed(2)} L</p>
               </div>
-              <div className="space-y-0.5 text-right">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Calculated Payout</p>
-                <p className="text-xl font-display font-black text-primary">Rs. {selectedFarmer?.totalPayment}</p>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none">Payout Date</p>
+                <p className="text-lg font-display font-black text-emerald-600 leading-tight">{cycleData?.payoutDate ? formatDate(cycleData.payoutDate) : 'Pending'}</p>
+              </div>
+              <div className="space-y-1 text-right">
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none">Settlement</p>
+                <p className="text-lg font-display font-black text-primary leading-tight">Rs. {selectedFarmer?.totalPayment}</p>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-2">
                 <FileText className="w-4 h-4 text-primary" />
-                <h4 className="text-sm font-black uppercase tracking-tight">Included Collections</h4>
+                <h4 className="text-sm font-black uppercase tracking-tight">Approved Collection Details</h4>
               </div>
               
-              <div className="overflow-hidden border rounded-2xl bg-white">
+              <div className="overflow-hidden border rounded-2xl bg-white shadow-sm">
                 <table className="w-full text-left text-sm border-collapse">
                   <thead className="bg-muted/50 border-b">
                     <tr>
-                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground">ID</th>
-                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground">Date</th>
-                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground">Type</th>
-                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground text-right">Quantity</th>
+                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground">Col ID</th>
+                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground">Approved Date</th>
+                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground">Milk Type</th>
+                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground text-right">Qty</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {selectedFarmer?.collections?.map((col: any) => (
-                      <tr key={col.id} className="hover:bg-muted/10 transition-colors">
-                        <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">#{col.id}</td>
-                        <td className="px-4 py-3 font-bold">{formatDate(col.date)}</td>
-                        <td className="px-4 py-3 transition-all">
+                      <tr key={col.id} className="hover:bg-muted/5 transition-colors">
+                        <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground font-bold">#{col.id}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-700">{formatDate(col.date)}</td>
+                        <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${
                             col.milkType === 'Buffalo' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-amber-50 text-amber-700 border-amber-100'
                           }`}>
                             {col.milkType}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right font-black text-slate-700">{col.quantity?.toFixed(2)} L</td>
+                        <td className="px-4 py-3 text-right font-black text-primary">{col.quantity?.toFixed(2)} L</td>
                       </tr>
                     ))}
                     {(!selectedFarmer?.collections || selectedFarmer.collections.length === 0) && (
