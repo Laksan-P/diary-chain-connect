@@ -66,26 +66,7 @@ export default async function handler(req, res) {
         .update(updates)
         .eq('id', collectionId);
 
-      // Send immediate notification to farmer about quality test result
-      const { data: colData } = await supabase
-        .from('milk_collections')
-        .select('date, farmers(user_id)')
-        .eq('id', collectionId)
-        .single();
 
-      const farmerUserId = colData?.farmers?.user_id || (Array.isArray(colData?.farmers) ? colData?.farmers[0]?.user_id : null);
-      if (farmerUserId) {
-        const isPass = resultValue === 'Pass';
-        await supabase.from('notifications').insert({
-          user_id: farmerUserId,
-          title: isPass ? 'nestle_quality_pass_title' : 'nestle_quality_fail_title',
-          message: isPass
-            ? `nestle_quality_pass_msg|date:${colData.date}`
-            : `nestle_quality_fail_msg|date:${colData.date},reason:${reasonValue || 'N/A'}`,
-          type: 'quality_result',
-          is_read: false
-        });
-      }
 
       // Removed: Auto-approve the entire Dispatch if Nestle verification passes
       // Nestle now verifies each collection individually as requested.
@@ -154,10 +135,7 @@ export default async function handler(req, res) {
           : `date:${date},reason:${reasonValue || 'N/A'}`;
 
         if (userId) {
-          // 1. Send detailed Quality Result notification to Farmer
-          await supabase.from('notifications').insert({ user_id: userId, title: titleKey, message: `${msgKey}|${params}`, type: 'quality_result' });
-
-          // 2. If tested by Nestle, also send the Dispatch status update notification to Farmer (Separate Alert)
+          // 1. If tested by Nestle, send the Dispatch status alert immediately
           if (user.role === 'nestle_officer' || user.role === 'nestle') {
             const dispatchTitle = resultValue === 'Pass' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
             const dispatchMsg = resultValue === 'Pass' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
@@ -424,19 +402,18 @@ export default async function handler(req, res) {
               // 1. Approval: Everyone gets the good news.
               // 2. Individual Failure: Only the specific farmer whose milk failed gets notified.
               // 3. Global Failure: If the tanker was damaged/rejected as a whole (no individual fails), everyone gets the generic report.
-              const shouldNotify = (status === 'Approved') || 
-                                   (itemStatus === 'Approved') || 
-                                   (itemStatus === 'Rejected' && col.failure_reason) ||
-                                   (isGlobalRejection);
+              // Note: If they were already individually Approved or Rejected, they don't need another notification.
+              // This prevents duplicate messages in the farmer app.
+              const shouldNotify = (col.dispatch_status === 'Dispatched');
 
               if (shouldNotify) {
-                const titleKey = (itemStatus === 'Approved' || status === 'Approved') ? 'dispatch_approved_title' : 'dispatch_rejected_title';
-                const msgKey = (itemStatus === 'Approved' || status === 'Approved') ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
+                const titleKey = (status === 'Approved') ? 'dispatch_approved_title' : 'dispatch_rejected_title';
+                const msgKey = (status === 'Approved') ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
                 
-                // Show specific reason if available, or transport-level reason if it's a global issue
-                const displayReason = col.failure_reason || (isGlobalRejection ? reason : 'Batch quality standards not met');
+                // For bystanders, we use the global reason if it's a global rejection, otherwise generic
+                const displayReason = isGlobalRejection ? reason : 'Batch quality standards not met';
                 
-                const params = (itemStatus === 'Approved' || status === 'Approved')
+                const params = (status === 'Approved')
                   ? `date:${col.date}`
                   : `date:${col.date},reason:${displayReason}`;
 
