@@ -98,6 +98,7 @@ export interface DispatchItem {
   farmerName?: string;
   quantity?: number;
   qualityResult?: string;
+  dispatchStatus?: string;
 }
 
 export interface PricingRule {

@@ -64,9 +64,9 @@ export default async function handler(req, res) {
         .update(updates)
         .eq('id', collectionId);
 
-      // CRITICAL: Auto-approve the entire Dispatch if Nestle verification passes
+      // Removed: Auto-approve the entire Dispatch if Nestle verification passes
+      // Nestle now verifies each collection individually as requested.
       if (resultValue === 'Pass' && (user.role === 'nestle' || user.role === 'nestle_officer')) {
-        // Find which dispatch this collection belongs to
         const { data: itemLink } = await supabase
           .from('dispatch_items')
           .select('dispatch_id')
@@ -75,30 +75,33 @@ export default async function handler(req, res) {
         
         if (itemLink?.dispatch_id) {
           const dId = itemLink.dispatch_id;
-          // 1. Approve the Dispatch header
-          await supabase.from('dispatches').update({ status: 'Approved' }).eq('id', dId);
           
-          // 2. Approve ALL other collections in this same dispatch
-          const { data: siblingItems } = await supabase
+          // Check if all other items in this dispatch are also approved
+          const { data: allItems } = await supabase
             .from('dispatch_items')
-            .select('collection_id')
+            .select('collection_id, milk_collections(dispatch_status)')
             .eq('dispatch_id', dId);
           
-          if (siblingItems && siblingItems.length > 0) {
-            const sibIds = siblingItems.map(si => si.collection_id);
-            await supabase.from('milk_collections').update({ dispatch_status: 'Approved' }).in('id', sibIds);
-          }
-
-          // 3. Notify CC about the overall Dispatch Approval (New addition)
-          const { data: dInfo } = await supabase.from('dispatches').select('chilling_centers(user_id), vehicle_number, transporter_name').eq('id', dId).single();
-          const ccOwnerId = dInfo?.chilling_centers?.user_id;
-          if (ccOwnerId) {
-            await supabase.from('notifications').insert({
-              user_id: ccOwnerId,
-              title: 'dispatch_accepted_by_nestle_title',
-              message: `dispatch_accepted_by_nestle_msg|id:${dId},vehicle:${dInfo.vehicle_number},transporter:${dInfo.transporter_name}`,
-              type: 'dispatch'
-            });
+          if (allItems) {
+            const allApproved = allItems.every(item => 
+              item.collection_id === collectionId ? true : item.milk_collections?.dispatch_status === 'Approved'
+            );
+            
+            if (allApproved) {
+              await supabase.from('dispatches').update({ status: 'Approved' }).eq('id', dId);
+              
+              // Notify CC about the overall Dispatch Approval
+              const { data: dInfo } = await supabase.from('dispatches').select('chilling_centers(user_id), vehicle_number, transporter_name').eq('id', dId).single();
+              const ccOwnerId = dInfo?.chilling_centers?.user_id;
+              if (ccOwnerId) {
+                await supabase.from('notifications').insert({
+                  user_id: ccOwnerId,
+                  title: 'dispatch_accepted_by_nestle_title',
+                  message: `dispatch_accepted_by_nestle_msg|id:${dId},vehicle:${dInfo.vehicle_number},transporter:${dInfo.transporter_name}`,
+                  type: 'dispatch'
+                });
+              }
+            }
           }
         }
       }
@@ -196,7 +199,7 @@ export default async function handler(req, res) {
           .select(`
             id, dispatch_id, collection_id,
             milk_collections!inner (
-              quantity, quality_result,
+              quantity, quality_result, dispatch_status,
               farmers (name)
             )
           `)
@@ -216,6 +219,7 @@ export default async function handler(req, res) {
           id: item.id, dispatchId: item.dispatch_id, collectionId: item.collection_id,
           quantity: item.milk_collections?.quantity,
           qualityResult: item.milk_collections?.quality_result,
+          dispatchStatus: item.milk_collections?.dispatch_status,
           farmerName: item.milk_collections?.farmers?.name,
         }));
         d.totalQuantity = d.items.reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);

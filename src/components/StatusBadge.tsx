@@ -8,6 +8,7 @@ export const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     Rejected: 'status-rejected',
     Pending: 'status-pending',
     Dispatched: 'status-dispatched',
+    Verified: 'status-pending', // Using the golden/pending style as seen in the screenshot
     Paid: 'status-paid',
   };
 
