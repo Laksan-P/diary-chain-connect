@@ -80,6 +80,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
                 slivers: [
                   SliverToBoxAdapter(child: _buildScrollableHeader(context)),
                   SliverToBoxAdapter(child: _buildSummary(context)),
+                  if (widget.mode == 'payments')
+                    SliverToBoxAdapter(child: _buildPricingInfo(context)),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                     sliver: _buildSliverList(context),
@@ -997,6 +999,248 @@ class _PassbookScreenState extends State<PassbookScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPricingInfo(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = isDark ? const Color(0xFFFFB000) : AppTheme.primary;
+    final locale = widget.locale;
+
+    // Direct Hardcoded Maps to bypass translation service sync issues
+    final Map<String, dynamic> content = {
+      'en': {
+        'title': 'How we calculate your pay',
+        'sub': 'Better quality milk gets you a higher price!',
+        'baseL': 'Base Price',
+        'baseS': 'Standard: 3.5% Fat, 8.5% SNF',
+        'baseV': 'Base Price',
+        'bonusL': 'High Quality Bonus',
+        'bonusS': 'Extra Fat & Solids (SNF)',
+        'bonusV': '+ Bonus',
+        'math': 'Formula',
+        'formula': 'BASE + FAT BONUS + SNF BONUS',
+      },
+      'si': {
+        'title': 'ගෙවීම් ගණනය කරන ආකාරය',
+        'sub': 'කිරිවල ගුණාත්මකභාවය වැඩි වන විට ඔබට වැඩි මුදලක් ලැබේ!',
+        'baseL': 'මූලික මිල',
+        'baseS': 'සම්මතය: 3.5% මේදය, 8.5% SNF',
+        'baseV': 'මූලික මිල',
+        'bonusL': 'ගුණාත්මක ප්‍රසාද දීමනාව',
+        'bonusS': 'අමතර මේදය සහ SNF සඳහා',
+        'bonusV': '+ ප්‍රසාද',
+        'math': 'ගණනය කරන ක්‍රමය',
+        'formula': 'මූලික + FAT ප්‍රසාද + SNF ප්‍රසාද',
+      },
+      'ta': {
+        'title': 'கொடுப்பனவு எவ்வாறு கணக்கிடப்படுகிறது',
+        'sub':
+            'பாலின் தரம் சிறப்பாக இருந்தால் உங்களுக்கு அதிக பணம் கிடைக்கும்!',
+        'baseL': 'அடிப்படை விலை',
+        'baseS': 'நிலை: 3.5% கொழுப்பு, 8.5% SNF',
+        'baseV': 'அடிப்படை விலை',
+        'bonusL': 'உயர்தர போனஸ்',
+        'bonusS': 'கூடுதல் கொழுப்பு மற்றும் SNF க்காக',
+        'bonusV': '+ போனஸ்',
+        'math': 'கணக்கீட்டு முறை',
+        'formula': 'அடிப்படை + FAT போனஸ் + SNF போனஸ்',
+      },
+    };
+
+    final t = content[locale] ?? content['en'];
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.04) : Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  LucideIcons.helpCircle,
+                  size: 16,
+                  color: accentColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t['title'],
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Text(
+                      t['sub'],
+                      style: TextStyle(
+                        color: isDark ? Colors.white38 : Colors.grey.shade600,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.black26 : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.grey.shade200,
+              ),
+            ),
+            child: Column(
+              children: [
+                _buildComparisonRow(t['baseL'], t['baseS'], t['baseV'], isDark),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Divider(
+                    height: 1,
+                    color: isDark
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.grey.shade200,
+                  ),
+                ),
+                _buildComparisonRow(
+                  t['bonusL'],
+                  t['bonusS'],
+                  t['bonusV'],
+                  isDark,
+                  isBonus: true,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                t['math'].toString().toUpperCase(),
+                style: TextStyle(
+                  color: isDark ? Colors.white24 : Colors.grey.shade400,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  t['formula'],
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: isDark ? accentColor : const Color(0xFF1E293B),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComparisonRow(
+    String label,
+    String sub,
+    String value,
+    bool isDark, {
+    bool isBonus = false,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13,
+                  color: isBonus
+                      ? (isDark
+                            ? const Color(0xFF34D399)
+                            : const Color(0xFF0D9488))
+                      : (isDark ? Colors.white70 : Colors.black87),
+                ),
+              ),
+              Text(
+                sub,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? Colors.white24 : Colors.grey.shade500,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isBonus
+                ? (isDark
+                      ? const Color(0xFF10B981).withOpacity(0.1)
+                      : const Color(0xFF10B981).withOpacity(0.08))
+                : (isDark ? Colors.white.withOpacity(0.05) : Colors.white),
+            borderRadius: BorderRadius.circular(10),
+            border: isDark ? null : Border.all(color: Colors.grey.shade100),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+              color: isBonus
+                  ? (isDark ? const Color(0xFF34D399) : const Color(0xFF10B981))
+                  : (isDark ? Colors.white70 : Colors.black54),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
