@@ -101,10 +101,15 @@ const DispatchMonitoring: React.FC = () => {
         setTestForm({ snf: '', fat: '', water: '' });
       } else {
         // Automatically route to rejection flow with pre-filled reason
+        // Find the farmer info for the failing collection
+        const dispatch = dispatches.find(d => d.id === testDialog.dispatchId);
+        const item = dispatch?.items.find(i => i.collectionId === testDialog.collectionId);
+        const farmerInfo = item ? ` (ID: ${item.collectionId} - ${item.farmerName})` : '';
+
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
         setRejectDialog({ open: true, id: testDialog.dispatchId });
-        setRejectReason(`Quality Check Failed: ${res.reason}`);
-        toast({ title: 'Quality Check Failed', description: `Routing to rejection for: ${res.reason}`, variant: 'destructive' });
+        setRejectReason(`Quality Check Failed: ${res.reason}${farmerInfo}`);
+        toast({ title: 'Quality Check Failed', description: `Routing to rejection for: ${res.reason}${farmerInfo}`, variant: 'destructive' });
       }
     } catch (error) {
       toast({ title: 'System Error', description: 'Failed to submit quality test.', variant: 'destructive' });
@@ -201,7 +206,13 @@ const DispatchMonitoring: React.FC = () => {
                       {formatQuantity(dispatch.totalQuantity || 0)}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <StatusBadge status={dispatch.status} />
+                      <StatusBadge 
+                        status={
+                          dispatch.status === 'Rejected' && dispatch.items.some(i => i.qualityResult === 'Pass')
+                            ? 'Rejected (Mixed)'
+                            : dispatch.status
+                        } 
+                      />
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                       {dispatch.status === 'Dispatched' ? (
@@ -308,7 +319,7 @@ const DispatchMonitoring: React.FC = () => {
                                                   </span>
                                                 </div>
                                               </div>
-                                            ) : dispatch.status === 'Dispatched' ? (
+                                            ) : (dispatch.status === 'Dispatched' || dispatch.status === 'Rejected') ? (
                                               <Button
                                                 size="sm"
                                                 variant="outline"
