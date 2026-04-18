@@ -305,9 +305,9 @@ const DispatchMonitoring: React.FC = () => {
                                             <StatusBadge status={item.qualityResult || 'N/A'} />
                                           </td>
                                           <td className="px-3 py-2 text-right">
-                                            {item.qualityResult === 'Pass' ? (
+                                            {item.dispatchStatus === 'Approved' ? (
                                               <StatusBadge status="Verified" />
-                                            ) : item.qualityResult === 'Fail' ? (
+                                            ) : item.dispatchStatus === 'Rejected' ? (
                                               <div className="flex flex-col items-end">
                                                 <StatusBadge status="Rejected" />
                                                 <div className="flex flex-col items-end gap-0.5 mt-1 border-r-2 border-destructive/20 pr-1.5 grayscale-[0.5]">
