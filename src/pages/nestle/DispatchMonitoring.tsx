@@ -294,16 +294,19 @@ const DispatchMonitoring: React.FC = () => {
                                             <StatusBadge status={item.qualityResult || 'N/A'} />
                                           </td>
                                           <td className="px-3 py-2 text-right">
-                                            {item.dispatchStatus === 'Approved' ? (
+                                            {item.qualityResult === 'Pass' ? (
                                               <StatusBadge status="Verified" />
-                                            ) : item.dispatchStatus === 'Rejected' ? (
+                                            ) : item.qualityResult === 'Fail' ? (
                                               <div className="flex flex-col items-end">
                                                 <StatusBadge status="Rejected" />
-                                                {item.failureReason && (
-                                                  <span className="text-[9px] text-destructive font-bold uppercase tracking-tighter mt-0.5 leading-none">
-                                                    {item.failureReason}
+                                                <div className="flex flex-col items-end gap-0.5 mt-1 border-r-2 border-destructive/20 pr-1.5 grayscale-[0.5]">
+                                                  <span className="text-[9px] text-destructive font-extrabold uppercase tracking-tighter whitespace-nowrap">
+                                                    {item.failureReason || 'Quality Fail'}
                                                   </span>
-                                                )}
+                                                  <span className="text-[8px] text-muted-foreground font-medium flex items-center gap-1 opacity-70">
+                                                    ID: {item.collectionId} • {item.farmerName}
+                                                  </span>
+                                                </div>
                                               </div>
                                             ) : dispatch.status === 'Dispatched' ? (
                                               <Button
