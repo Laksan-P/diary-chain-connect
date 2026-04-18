@@ -283,7 +283,12 @@ const PricingRules: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-xl font-display font-bold text-foreground">Live Pricing Simulator</h3>
-                <p className="text-sm text-muted-foreground">Example earnings based on the **{rules.find(r => r.isActive)?.basePricePerLiter ? `Rs. ${rules.find(r => r.isActive)?.basePricePerLiter}` : 'Current'} Active** strategy</p>
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm text-muted-foreground">Example earnings based on the **{rules.find(r => r.isActive)?.basePricePerLiter ? `Rs. ${rules.find(r => r.isActive)?.basePricePerLiter}` : 'Current'} Active** strategy</p>
+                  <p className="text-[10px] font-mono text-primary font-bold bg-primary/5 w-max px-2 py-0.5 rounded border border-primary/10">
+                    METHOD: Base + (ActualFat - 3.5) × FatRate + (ActualSNF - 8.5) × SNFRate
+                  </p>
+                </div>
               </div>
             </div>
             <div className="px-4 py-2 rounded-lg bg-primary/5 border border-primary/20 text-[10px] font-black uppercase text-primary tracking-widest">

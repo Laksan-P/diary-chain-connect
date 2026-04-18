@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       // Step 1: Identify only approved milk collections
       const { data: collections, error: colErr } = await supabase
         .from('milk_collections')
-        .select(`id, farmer_id, quantity, quality_result, dispatch_status, date, milk_type, created_at`)
+        .select(`id, farmer_id, quantity, quality_result, dispatch_status, date, milk_type, created_at, fat, snf`)
         .eq('dispatch_status', 'Approved');
 
       if (colErr) throw colErr;
@@ -96,7 +96,9 @@ export default async function handler(req, res) {
           id: c.id,
           date: c.date,
           quantity: parseFloat(c.quantity || 0),
-          milkType: c.milk_type || 'Cow'
+          milkType: c.milk_type || 'Cow',
+          fat: parseFloat(c.fat || 0),
+          snf: parseFloat(c.snf || 0)
         });
         acc[fid].collectionIds.push(c.id);
         acc[fid].totalQty += parseFloat(c.quantity || 0);
@@ -118,12 +120,26 @@ export default async function handler(req, res) {
       console.log(`Using base price: Rs. ${basePrice}`);
 
       // Step 5: Generate payment summary
-      const summary = Object.values(farmerGroups).map(f => ({
-        ...f,
-        unitPrice: basePrice,
-        totalPayment: (f.totalQty * basePrice).toFixed(2),
-        status: 'Pending'
-      }));
+      const summary = Object.values(farmerGroups).map(f => {
+        let farmerTotal = 0;
+        f.collections.forEach(col => {
+          const fatRate = rule ? parseFloat(rule.fat_bonus || 0) : 0;
+          const snfRate = rule ? parseFloat(rule.snf_bonus || 0) : 0;
+          
+          const fBonus = Math.max(0, (col.fat - 3.5) * fatRate);
+          const sBonus = Math.max(0, (col.snf - 8.5) * snfRate);
+          const finalRate = basePrice + fBonus + sBonus;
+          
+          farmerTotal += col.quantity * finalRate;
+        });
+
+        return {
+          ...f,
+          unitPrice: basePrice,
+          totalPayment: farmerTotal.toFixed(2),
+          status: 'Pending'
+        };
+      });
 
       return res.status(200).json({ 
         cycleReached: isCycleReached, 
