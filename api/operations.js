@@ -411,28 +411,43 @@ export default async function handler(req, res) {
           .in('id', collectionIds);
 
         if (mcData && mcData.length > 0) {
+          // Determine if this is a global transport rejection (e.g., damage)
+          // vs an individual quality-based rejection.
+          const isGlobalRejection = status === 'Rejected' && mcData.every(c => !c.failure_reason);
+
           for (const col of mcData) {
             const userId = col.farmers?.user_id || (Array.isArray(col.farmers) ? col.farmers[0]?.user_id : null);
             if (userId) {
               const itemStatus = col.dispatch_status;
-              const titleKey = itemStatus === 'Approved' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
-              const msgKey = itemStatus === 'Approved' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
               
-              // Only show the specific reason if it belongs to this individual collection (lab fail).
-              // Otherwise, use a generic reason for the batch-level rejection to protect privacy.
-              const displayReason = col.failure_reason || 'Batch quality standards not met';
-              
-              const params = itemStatus === 'Approved'
-                ? `date:${col.date}`
-                : `date:${col.date},reason:${displayReason}`;
+              // Notification Logic:
+              // 1. Approval: Everyone gets the good news.
+              // 2. Individual Failure: Only the specific farmer whose milk failed gets notified.
+              // 3. Global Failure: If the tanker was damaged/rejected as a whole (no individual fails), everyone gets the generic report.
+              const shouldNotify = (status === 'Approved') || 
+                                   (itemStatus === 'Approved') || 
+                                   (itemStatus === 'Rejected' && col.failure_reason) ||
+                                   (isGlobalRejection);
 
-              await supabase.from('notifications').insert({
-                user_id: userId,
-                title: titleKey,
-                message: `${msgKey}|${params}`,
-                type: 'quality_result',
-                is_read: false
-              });
+              if (shouldNotify) {
+                const titleKey = (itemStatus === 'Approved' || status === 'Approved') ? 'dispatch_approved_title' : 'dispatch_rejected_title';
+                const msgKey = (itemStatus === 'Approved' || status === 'Approved') ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
+                
+                // Show specific reason if available, or transport-level reason if it's a global issue
+                const displayReason = col.failure_reason || (isGlobalRejection ? reason : 'Batch quality standards not met');
+                
+                const params = (itemStatus === 'Approved' || status === 'Approved')
+                  ? `date:${col.date}`
+                  : `date:${col.date},reason:${displayReason}`;
+
+                await supabase.from('notifications').insert({
+                  user_id: userId,
+                  title: titleKey,
+                  message: `${msgKey}|${params}`,
+                  type: 'quality_result',
+                  is_read: false
+                });
+              }
             }
           }
         }
