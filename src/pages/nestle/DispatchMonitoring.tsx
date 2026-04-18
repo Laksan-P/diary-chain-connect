@@ -100,12 +100,15 @@ const DispatchMonitoring: React.FC = () => {
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
         setTestForm({ snf: '', fat: '', water: '' });
       } else {
-        // Automatically route to rejection flow with pre-filled reason
         // Find the farmer info for the failing collection
         const dispatch = dispatches.find(d => d.id === testDialog.dispatchId);
         const item = dispatch?.items.find(i => i.collectionId === testDialog.collectionId);
         const farmerInfo = item ? ` (ID: ${item.collectionId} - ${item.farmerName})` : '';
 
+        // Immediately fetch to show the "Fail" state in the background
+        await fetchDispatches();
+
+        // Automatically route to rejection flow with pre-filled reason
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
         setRejectDialog({ open: true, id: testDialog.dispatchId });
         setRejectReason(`Quality Check Failed: ${res.reason}${farmerInfo}`);
@@ -206,12 +209,12 @@ const DispatchMonitoring: React.FC = () => {
                       {formatQuantity(dispatch.totalQuantity || 0)}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <StatusBadge 
+                      <StatusBadge
                         status={
                           dispatch.status === 'Rejected' && dispatch.items.some(i => i.qualityResult === 'Pass')
                             ? 'Mixed'
                             : dispatch.status
-                        } 
+                        }
                       />
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
