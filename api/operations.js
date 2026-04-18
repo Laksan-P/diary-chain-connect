@@ -57,6 +57,8 @@ export default async function handler(req, res) {
       // Chilling center testing should keep status as Pending so it can be dispatched.
       if (resultValue === 'Pass' && (user.role === 'nestle' || user.role === 'nestle_officer')) {
         updates.dispatch_status = 'Approved';
+      } else if (resultValue === 'Fail' && (user.role === 'nestle' || user.role === 'nestle_officer')) {
+        updates.dispatch_status = 'Rejected';
       }
 
       await supabase
@@ -199,7 +201,7 @@ export default async function handler(req, res) {
           .select(`
             id, dispatch_id, collection_id,
             milk_collections!inner (
-              quantity, quality_result, dispatch_status,
+              quantity, quality_result, dispatch_status, failure_reason,
               farmers (name)
             )
           `)
@@ -220,6 +222,7 @@ export default async function handler(req, res) {
           quantity: item.milk_collections?.quantity,
           qualityResult: item.milk_collections?.quality_result,
           dispatchStatus: item.milk_collections?.dispatch_status,
+          failureReason: item.milk_collections?.failure_reason,
           farmerName: item.milk_collections?.farmers?.name,
         }));
         d.totalQuantity = d.items.reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
@@ -376,8 +379,11 @@ export default async function handler(req, res) {
       if (items && items.length > 0) {
         const collectionIds = items.map(item => item.collection_id);
         
-        // 1. Bulk Update status
-        await supabase.from('milk_collections').update({ dispatch_status: status }).in('id', collectionIds);
+        // 1. Bulk Update status — only for items that haven't been individually verified yet
+        await supabase.from('milk_collections')
+          .update({ dispatch_status: status })
+          .in('id', collectionIds)
+          .eq('dispatch_status', 'Dispatched');
 
         // 2. Fetch collections to get farmer_ids
         const { data: mcData } = await supabase

@@ -296,6 +296,15 @@ const DispatchMonitoring: React.FC = () => {
                                           <td className="px-3 py-2 text-right">
                                             {item.dispatchStatus === 'Approved' ? (
                                               <StatusBadge status="Verified" />
+                                            ) : item.dispatchStatus === 'Rejected' ? (
+                                              <div className="flex flex-col items-end">
+                                                <StatusBadge status="Rejected" />
+                                                {item.failureReason && (
+                                                  <span className="text-[9px] text-destructive font-bold uppercase tracking-tighter mt-0.5 leading-none">
+                                                    {item.failureReason}
+                                                  </span>
+                                                )}
+                                              </div>
                                             ) : dispatch.status === 'Dispatched' ? (
                                               <Button
                                                 size="sm"

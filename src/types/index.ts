@@ -99,6 +99,7 @@ export interface DispatchItem {
   quantity?: number;
   qualityResult?: string;
   dispatchStatus?: string;
+  failureReason?: string;
 }
 
 export interface PricingRule {
