@@ -45,14 +45,14 @@ export default async function handler(req, res) {
       if (qtErr) throw qtErr;
       const newId = qtRows.id;
 
-      const updates = { 
-        quality_result: resultValue, 
+      const updates = {
+        quality_result: resultValue,
         failure_reason: reasonValue,
         fat: fat,
         snf: snf,
         water: water
       };
-      
+
       // Auto-approve only if tested by Nestle.
       // Chilling center testing should keep status as Pending so it can be dispatched.
       if (resultValue === 'Pass' && (user.role === 'nestle' || user.role === 'nestle_officer')) {
@@ -66,6 +66,27 @@ export default async function handler(req, res) {
         .update(updates)
         .eq('id', collectionId);
 
+      // Send immediate notification to farmer about quality test result
+      const { data: colData } = await supabase
+        .from('milk_collections')
+        .select('date, farmers(user_id)')
+        .eq('id', collectionId)
+        .single();
+
+      const farmerUserId = colData?.farmers?.user_id || (Array.isArray(colData?.farmers) ? colData?.farmers[0]?.user_id : null);
+      if (farmerUserId) {
+        const isPass = resultValue === 'Pass';
+        await supabase.from('notifications').insert({
+          user_id: farmerUserId,
+          title: isPass ? 'nestle_quality_pass_title' : 'nestle_quality_fail_title',
+          message: isPass
+            ? `nestle_quality_pass_msg|date:${colData.date}`
+            : `nestle_quality_fail_msg|date:${colData.date},reason:${reasonValue || 'N/A'}`,
+          type: 'quality_result',
+          is_read: false
+        });
+      }
+
       // Removed: Auto-approve the entire Dispatch if Nestle verification passes
       // Nestle now verifies each collection individually as requested.
       if (resultValue === 'Pass' && (user.role === 'nestle' || user.role === 'nestle_officer')) {
@@ -74,24 +95,24 @@ export default async function handler(req, res) {
           .select('dispatch_id')
           .eq('collection_id', collectionId)
           .maybeSingle();
-        
+
         if (itemLink?.dispatch_id) {
           const dId = itemLink.dispatch_id;
-          
+
           // Check if all other items in this dispatch are also approved
           const { data: allItems } = await supabase
             .from('dispatch_items')
             .select('collection_id, milk_collections(dispatch_status)')
             .eq('dispatch_id', dId);
-          
+
           if (allItems) {
-            const allApproved = allItems.every(item => 
+            const allApproved = allItems.every(item =>
               item.collection_id === collectionId ? true : item.milk_collections?.dispatch_status === 'Approved'
             );
-            
+
             if (allApproved) {
               await supabase.from('dispatches').update({ status: 'Approved' }).eq('id', dId);
-              
+
               // Notify CC about the overall Dispatch Approval
               const { data: dInfo } = await supabase.from('dispatches').select('chilling_centers(user_id), vehicle_number, transporter_name').eq('id', dId).single();
               const ccOwnerId = dInfo?.chilling_centers?.user_id;
@@ -121,7 +142,7 @@ export default async function handler(req, res) {
         const date = col.date;
         let titleKey = resultValue === 'Pass' ? 'quality_test_passed_title' : 'quality_test_failed_title';
         let msgKey = resultValue === 'Pass' ? 'quality_test_passed_msg' : 'quality_test_failed_msg';
-        
+
         // Special mention for Nestle's final check
         if (user.role === 'nestle_officer' || user.role === 'nestle') {
           titleKey = resultValue === 'Pass' ? 'nestle_quality_test_passed_title' : 'nestle_quality_test_failed_title';
@@ -131,19 +152,19 @@ export default async function handler(req, res) {
         const params = resultValue === 'Pass'
           ? `date:${date}`
           : `date:${date},reason:${reasonValue || 'N/A'}`;
-        
+
         if (userId) {
           // 1. Send detailed Quality Result notification to Farmer
           await supabase.from('notifications').insert({ user_id: userId, title: titleKey, message: `${msgKey}|${params}`, type: 'quality_result' });
-          
+
           // 2. If tested by Nestle, also send the Dispatch status update notification to Farmer (Separate Alert)
           if (user.role === 'nestle_officer' || user.role === 'nestle') {
             const dispatchTitle = resultValue === 'Pass' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
             const dispatchMsg = resultValue === 'Pass' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
-            await supabase.from('notifications').insert({ 
-              user_id: userId, 
-              title: dispatchTitle, 
-              message: `${dispatchMsg}|${params}`, 
+            await supabase.from('notifications').insert({
+              user_id: userId,
+              title: dispatchTitle,
+              message: `${dispatchMsg}|${params}`,
               type: 'dispatch' // Changed to dispatch type for better differentiation
             });
 
@@ -259,10 +280,10 @@ export default async function handler(req, res) {
       // 1. Insert dispatch items and update statuses
       const collectionIds = items.map(i => i.collectionId || i.collection_id).filter(id => id != null);
       await Promise.all([
-        ...items.map(item => 
-          supabase.from('dispatch_items').insert({ 
-            dispatch_id: dispatchId, 
-            collection_id: item.collectionId || item.collection_id 
+        ...items.map(item =>
+          supabase.from('dispatch_items').insert({
+            dispatch_id: dispatchId,
+            collection_id: item.collectionId || item.collection_id
           })
         ),
         supabase.from('milk_collections')
@@ -350,7 +371,7 @@ export default async function handler(req, res) {
         .select('chilling_center_id, transporter_name, vehicle_number, chilling_centers(user_id)')
         .eq('id', id)
         .single();
-      
+
       if (dFetchErr) throw dFetchErr;
 
       await supabase.from('dispatches').update({ status, rejection_reason: reason || null }).eq('id', id);
@@ -363,8 +384,8 @@ export default async function handler(req, res) {
         await supabase.from('notifications').insert({
           user_id: ccUserId,
           title: status === 'Approved' ? 'dispatch_accepted_by_nestle_title' : 'dispatch_rejected_by_nestle_title',
-          message: status === 'Approved' 
-            ? `dispatch_accepted_by_nestle_msg|id:${id},vehicle:${vehicle},transporter:${transporter}` 
+          message: status === 'Approved'
+            ? `dispatch_accepted_by_nestle_msg|id:${id},vehicle:${vehicle},transporter:${transporter}`
             : `dispatch_rejected_by_nestle_msg|id:${id},vehicle:${vehicle},transporter:${transporter},reason:${reason || 'N/A'}`,
           type: 'dispatch'
         });
@@ -378,28 +399,29 @@ export default async function handler(req, res) {
 
       if (items && items.length > 0) {
         const collectionIds = items.map(item => item.collection_id);
-        
+
         // 1. Bulk Update status — only for items that haven't been individually verified yet
         await supabase.from('milk_collections')
           .update({ dispatch_status: status })
           .in('id', collectionIds)
           .eq('dispatch_status', 'Dispatched');
 
-        // 2. Fetch collections to get farmer_ids
+        // 2. Fetch collections to get farmer_ids and specific results
         const { data: mcData } = await supabase
           .from('milk_collections')
-          .select('id, date, farmer_id, farmers (user_id)')
+          .select('id, date, farmer_id, dispatch_status, failure_reason, farmers (user_id)')
           .in('id', collectionIds);
 
         if (mcData && mcData.length > 0) {
           for (const col of mcData) {
             const userId = col.farmers?.user_id || (Array.isArray(col.farmers) ? col.farmers[0]?.user_id : null);
             if (userId) {
-              const titleKey = status === 'Approved' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
-              const msgKey = status === 'Approved' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
-              const params = status === 'Approved' 
-                ? `date:${col.date}` 
-                : `date:${col.date},reason:${reason || 'N/A'}`;
+              const itemStatus = col.dispatch_status;
+              const titleKey = itemStatus === 'Approved' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
+              const msgKey = itemStatus === 'Approved' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
+              const params = itemStatus === 'Approved'
+                ? `date:${col.date}`
+                : `date:${col.date},reason:${col.failure_reason || reason || 'N/A'}`;
 
               await supabase.from('notifications').insert({
                 user_id: userId,
@@ -483,7 +505,7 @@ export default async function handler(req, res) {
     if (!id) return res.status(400).json({ error: 'id is required' });
     try {
       const { isActive } = getBody(req);
-      
+
       // If we are activating this rule, deactivate ALL others first
       if (isActive) {
         await supabase.from('pricing_rules').update({ is_active: false }).neq('id', id);
@@ -493,7 +515,7 @@ export default async function handler(req, res) {
         .from('pricing_rules')
         .update({ is_active: isActive })
         .eq('id', id);
-      
+
       if (error) throw error;
       return res.status(200).json({ success: true });
     } catch (err) {
@@ -510,7 +532,7 @@ export default async function handler(req, res) {
         .from('pricing_rules')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
       return res.status(200).json({ success: true });
     } catch (err) {
