@@ -9,7 +9,7 @@ export const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     Pending: 'status-pending',
     Dispatched: 'status-dispatched',
     Verified: 'status-pending',
-    'Rejected (Mixed)': 'status-pending',
+    Mixed: 'status-pending',
     Paid: 'status-paid',
   };
 

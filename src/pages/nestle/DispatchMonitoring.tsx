@@ -209,7 +209,7 @@ const DispatchMonitoring: React.FC = () => {
                       <StatusBadge 
                         status={
                           dispatch.status === 'Rejected' && dispatch.items.some(i => i.qualityResult === 'Pass')
-                            ? 'Rejected (Mixed)'
+                            ? 'Mixed'
                             : dispatch.status
                         } 
                       />
