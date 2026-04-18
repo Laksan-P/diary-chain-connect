@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       // Step 1: Identify only approved milk collections
       const { data: collections, error: colErr } = await supabase
         .from('milk_collections')
-        .select(`id, farmer_id, quantity, quality_result, dispatch_status, date, created_at`)
+        .select(`id, farmer_id, quantity, quality_result, dispatch_status, date, milk_type, created_at`)
         .eq('dispatch_status', 'Approved');
 
       if (colErr) throw colErr;
@@ -38,10 +38,8 @@ export default async function handler(req, res) {
         return res.status(200).json({ cycleReached: false, summary: [], message: 'No unpaid approved collections found at this time.' });
       }
 
-      // Step 2: Determine cycle based on the earliest unpaid collection (to prevent jumping cycles)
+      // Step 2: Determine cycle based on the earliest unpaid collection
       const now = new Date();
-      
-      // Find the earliest unpaid collection date
       const earliestUnpaid = unpaid.reduce((prev, curr) => {
         const d = new Date(curr.date);
         return d < prev ? d : prev;
@@ -53,25 +51,18 @@ export default async function handler(req, res) {
 
       let targetDate;
       if (earliestDay <= 15) {
-        // Earliest unpaid data is in Period 1 (1st-15th). Target settlement is 16th.
         targetDate = new Date(earliestYear, earliestMonth, 16);
       } else {
-        // Earliest unpaid data is in Period 2 (16th-End). Target settlement is 1st of next month.
         targetDate = new Date(earliestYear, earliestMonth + 1, 1);
       }
 
-      // Check if the current time has passed the target settlement date
       const timeDiff = targetDate.getTime() - now.getTime();
       let daysUntilCycle = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-      
-      // Standardize: If it's today (the target date), daysUntilCycle should be 0 (Ready)
       if (daysUntilCycle < 0) daysUntilCycle = 0; 
 
       const skipCycle = req.query.skipCycle === 'true';
       const isCycleReached = daysUntilCycle <= 0 || skipCycle;
 
-      // Ensure we only include summary items that BELONG to the current active period
-      // (Farmers shouldn't be paid for P2 collections if we are still processing P1)
       const activePeriodSummaryEnd = targetDate;
       const filteredUnpaid = unpaid.filter(u => new Date(u.date) < activePeriodSummaryEnd);
 
@@ -88,7 +79,6 @@ export default async function handler(req, res) {
       }, {});
 
       // Step 3: Group collections by farmer
-      console.log('Grouping by farmer...');
       const farmerGroups = filteredUnpaid.reduce((acc, c) => {
         const fid = c.farmer_id;
         const fData = farmerMap[fid] || {};
@@ -98,10 +88,17 @@ export default async function handler(req, res) {
             farmerName: fData.name || 'Unknown', 
             farmerCode: fData.farmer_id || 'N/A',
             collections: [], 
+            collectionIds: [],
             totalQty: 0 
           };
         }
-        acc[fid].collections.push(c.id);
+        acc[fid].collections.push({
+          id: c.id,
+          date: c.date,
+          quantity: parseFloat(c.quantity || 0),
+          milkType: c.milk_type || 'Cow'
+        });
+        acc[fid].collectionIds.push(c.id);
         acc[fid].totalQty += parseFloat(c.quantity || 0);
         return acc;
       }, {});
@@ -146,38 +143,33 @@ export default async function handler(req, res) {
       if (!summaryItems || !Array.isArray(summaryItems)) return res.status(400).json({ error: 'summaryItems required' });
 
       for (const item of summaryItems) {
-        const { farmerId, collections, totalPayment, totalQty } = item;
+        const { farmerId, collections, collectionIds, totalPayment, totalQty } = item;
+        const targetCollections = collectionIds || (Array.isArray(collections) && typeof collections[0] === 'number' ? collections : []);
 
-        // Step 10: Record payment details (Create individual payments for tracking)
-        // Note: For simplicity, creating one combined record or 1:1. 
-        // Flow says "Group collections by farmer" -> "Record payment details".
-        // We'll create one payment entry for the batch of collections.
         const { data: payRecord, error: pErr } = await supabase
           .from('payments')
           .insert({
             farmer_id: farmerId,
-            collection_id: collections[0], // Linking to primary collection
+            collection_id: targetCollections[0] || (collections[0]?.id),
             quantity: totalQty,
             amount: totalPayment,
             base_pay: totalPayment,
-            status: 'Pending' // Will mark as Paid instantly in step 8
+            status: 'Pending'
           })
           .select('id')
           .single();
         
         if (pErr) throw pErr;
 
-        // Step 8: Process & Step 9: Update status to Paid
         await supabase
           .from('payments')
           .update({ status: 'Paid', paid_at: new Date().toISOString() })
           .eq('id', payRecord.id);
 
-        // Update all associated collections status (Simulated with dispatch_status or ideally a payment_status)
         await supabase
           .from('milk_collections')
           .update({ dispatch_status: 'Paid' })
-          .in('id', collections);
+          .in('id', targetCollections);
 
         // Step 11: Trigger notification to farmer
         const { data: farmerData } = await supabase.from('farmers').select('user_id').eq('id', farmerId).single();

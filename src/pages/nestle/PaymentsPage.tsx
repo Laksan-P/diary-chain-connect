@@ -11,6 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/components/StatusBadge';
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, 
+  DialogDescription, DialogFooter 
+} from '@/components/ui/dialog';
 
 /**
  * REQUIRED FLOW IMPLEMENTATION
@@ -37,6 +41,8 @@ const PaymentsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [cycleData, setCycleData] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [selectedFarmer, setSelectedFarmer] = useState<any>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('cycle');
 
@@ -107,9 +113,21 @@ const PaymentsPage: React.FC = () => {
   };
 
   const summaryColumns = [
-    { key: 'farmerName', header: 'Farmer' },
+    { 
+      key: 'farmerName', 
+      header: 'Farmer',
+      render: (v: any) => (
+        <button 
+          onClick={() => { setSelectedFarmer(v); setShowDetailDialog(true); }}
+          className="text-primary font-bold hover:underline underline-offset-4 flex items-center gap-1 group"
+        >
+          {v.farmerName} 
+          <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity translate-x-[-10px] group-hover:translate-x-0" />
+        </button>
+      )
+    },
     { key: 'farmerCode', header: 'Farmer ID' },
-    { key: 'totalQty', header: 'Total Quantity', render: (v: any) => <span className="font-medium">{v.totalQty.toFixed(2)} L</span> },
+    { key: 'totalQty', header: 'Total Quantity', render: (v: any) => <span className="font-medium text-slate-700">{v.totalQty.toFixed(2)} L</span> },
     { key: 'unitPrice', header: 'Applied Rate', render: (v: any) => `Rs. ${v.unitPrice}/L` },
     { key: 'totalPayment', header: 'Settlement Amount', render: (v: any) => <span className="font-bold text-primary">Rs. {v.totalPayment}</span> },
     { key: 'status', header: 'Process Status', render: () => <StatusBadge status="Pending" /> },
@@ -309,6 +327,91 @@ const PaymentsPage: React.FC = () => {
           <DataTable columns={historyColumns} data={history} loading={loading} />
         </TabsContent>
       </Tabs>
+
+      {/* Collection Details Drill-down Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="max-w-2xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+          <div className="bg-primary p-8 text-white relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
+            <DialogHeader>
+              <div className="flex items-center gap-4 mb-2">
+                <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                  <Receipt className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl font-black font-display tracking-tight leading-none">Settlement Breakdown</DialogTitle>
+                  <DialogDescription className="text-white/70 font-medium text-sm mt-1 uppercase tracking-wider">
+                    {selectedFarmer?.farmerCode} • {selectedFarmer?.farmerName}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          <div className="p-8 space-y-6">
+            <div className="bg-muted/30 rounded-2xl p-4 border grid grid-cols-2 gap-4">
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Quantity</p>
+                <p className="text-xl font-display font-black text-foreground">{selectedFarmer?.totalQty?.toFixed(2)} L</p>
+              </div>
+              <div className="space-y-0.5 text-right">
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Calculated Payout</p>
+                <p className="text-xl font-display font-black text-primary">Rs. {selectedFarmer?.totalPayment}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-2">
+                <FileText className="w-4 h-4 text-primary" />
+                <h4 className="text-sm font-black uppercase tracking-tight">Included Collections</h4>
+              </div>
+              
+              <div className="overflow-hidden border rounded-2xl bg-white">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead className="bg-muted/50 border-b">
+                    <tr>
+                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground">ID</th>
+                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground">Date</th>
+                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground">Type</th>
+                      <th className="px-4 py-3 font-black text-[10px] uppercase tracking-wider text-muted-foreground text-right">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {selectedFarmer?.collections?.map((col: any) => (
+                      <tr key={col.id} className="hover:bg-muted/10 transition-colors">
+                        <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">#{col.id}</td>
+                        <td className="px-4 py-3 font-bold">{formatDate(col.date)}</td>
+                        <td className="px-4 py-3 transition-all">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${
+                            col.milkType === 'Buffalo' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                          }`}>
+                            {col.milkType}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-black text-slate-700">{col.quantity?.toFixed(2)} L</td>
+                      </tr>
+                    ))}
+                    {(!selectedFarmer?.collections || selectedFarmer.collections.length === 0) && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground italic">No individual collection records found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="bg-muted/20 p-6 border-t">
+            <Button 
+              className="w-full h-12 font-bold rounded-xl btn-press bg-primary text-white"
+              onClick={() => setShowDetailDialog(false)}
+            >
+              Close Breakdown
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
