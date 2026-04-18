@@ -126,7 +126,13 @@ const NestleDashboard: React.FC = () => {
                     <td className="px-4 py-3 text-xs">{d.chillingCenterName}</td>
                     <td className="px-4 py-3 text-xs">{d.transporterName}</td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={d.status} />
+                      <StatusBadge 
+                        status={
+                          d.status === 'Rejected' && d.items?.some((i: any) => i.qualityResult === 'Pass')
+                            ? 'Mixed'
+                            : d.status
+                        } 
+                      />
                     </td>
                   </tr>
                 )) : (

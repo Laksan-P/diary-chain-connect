@@ -398,13 +398,10 @@ export default async function handler(req, res) {
             if (userId) {
               const itemStatus = col.dispatch_status;
               
-              // Notification Logic:
-              // 1. Approval: Everyone gets the good news.
-              // 2. Individual Failure: Only the specific farmer whose milk failed gets notified.
-              // 3. Global Failure: If the tanker was damaged/rejected as a whole (no individual fails), everyone gets the generic report.
-              // Note: If they were already individually Approved or Rejected, they don't need another notification.
-              // This prevents duplicate messages in the farmer app.
-              const shouldNotify = (col.dispatch_status === 'Dispatched');
+              // If it's a quality-led rejection (!isGlobalRejection), we ONLY notify the culprit (done in quality-test).
+              // Bystanders (still 'Dispatched') should NOT be notified in quality-led rejections.
+              const shouldNotify = (status === 'Approved' && itemStatus === 'Dispatched') || 
+                                   (isGlobalRejection && itemStatus === 'Dispatched');
 
               if (shouldNotify) {
                 const titleKey = (status === 'Approved') ? 'dispatch_approved_title' : 'dispatch_rejected_title';

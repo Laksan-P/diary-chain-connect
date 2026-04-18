@@ -123,7 +123,19 @@ const DispatchPage: React.FC = () => {
     { key: 'vehicleNumber', header: 'Vehicle' },
     { key: 'dispatchDate', header: 'Date & Time', render: (r: Dispatch) => new Date(r.dispatchDate).toLocaleString() },
     { key: 'totalQuantity', header: 'Qty (L)', render: (r: Dispatch) => `${r.totalQuantity} L` },
-    { key: 'status', header: 'Status', render: (r: Dispatch) => <StatusBadge status={r.status} /> },
+    { 
+      key: 'status', 
+      header: 'Status', 
+      render: (r: Dispatch) => (
+        <StatusBadge 
+          status={
+            r.status === 'Rejected' && r.items?.some(i => i.qualityResult === 'Pass')
+              ? 'Mixed'
+              : r.status
+          } 
+        />
+      ) 
+    },
   ];
 
   return (
