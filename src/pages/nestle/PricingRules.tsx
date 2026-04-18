@@ -267,6 +267,99 @@ const PricingRules: React.FC = () => {
           <DataTable columns={columns} data={rules} loading={loading} />
         </div>
       </div>
+
+      {/* PRICING SIMULATOR / EXAMPLE TABLE */}
+      {(rules.length > 0 || !loading) && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-8 space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-xl font-display font-bold text-foreground">Live Pricing Simulator</h3>
+                <p className="text-sm text-muted-foreground">Example earnings based on the **{rules.find(r => r.isActive)?.basePricePerLiter ? `Rs. ${rules.find(r => r.isActive)?.basePricePerLiter}` : 'Current'} Active** strategy</p>
+              </div>
+            </div>
+            <div className="px-4 py-2 rounded-lg bg-primary/5 border border-primary/20 text-[10px] font-black uppercase text-primary tracking-widest">
+              Live Preview
+            </div>
+          </div>
+
+          <div className="glass-card overflow-hidden border-primary/20">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-primary/5 border-b border-primary/10">
+                <tr className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <th className="px-6 py-4">Scenario / Milk Quality</th>
+                  <th className="px-6 py-4 text-center">Fat %</th>
+                  <th className="px-6 py-4 text-center">SNF %</th>
+                  <th className="px-6 py-4 text-center">Base Rate</th>
+                  <th className="px-6 py-4 text-center">Quality Bonus</th>
+                  <th className="px-6 py-4 text-right">Final Rate / L</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-primary/5">
+                {[
+                  { name: 'Premium (Buffalo)', fat: 7.0, snf: 9.5, labelColor: 'bg-indigo-500' },
+                  { name: 'Choice (Cow)', fat: 4.5, snf: 8.8, labelColor: 'bg-emerald-500' },
+                  { name: 'Standard (Cow)', fat: 3.5, snf: 8.5, labelColor: 'bg-amber-500' },
+                  { name: 'Below Standard', fat: 3.0, snf: 8.0, labelColor: 'bg-rose-500' },
+                ].map((scenario, idx) => {
+                  const activeRule = rules.find(r => r.isActive) || rules[0] || { basePricePerLiter: 0, fatBonus: 0, snfBonus: 0 };
+                  
+                  // Logic: 
+                  // bonus = (Actual - Minimum) * BonusRate
+                  // Minimums: Fat 3.5, SNF 8.5
+                  const fBonus = Math.max(0, (scenario.fat - 3.5) * activeRule.fatBonus);
+                  const sBonus = Math.max(0, (scenario.snf - 8.5) * activeRule.snfBonus);
+                  const totalBonus = fBonus + sBonus;
+                  const finalRate = activeRule.basePricePerLiter + totalBonus;
+
+                  return (
+                    <tr key={idx} className="hover:bg-primary/[0.02] transition-colors group">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-1.5 h-8 rounded-full ${scenario.labelColor}`} />
+                          <div>
+                            <p className="font-bold text-foreground leading-none mb-1">{scenario.name}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">Quality Tier {4-idx}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-center font-mono font-medium">{scenario.fat.toFixed(1)}%</td>
+                      <td className="px-6 py-5 text-center font-mono font-medium">{scenario.snf.toFixed(1)}%</td>
+                      <td className="px-6 py-5 text-center text-muted-foreground font-medium">Rs. {activeRule.basePricePerLiter.toFixed(2)}</td>
+                      <td className="px-6 py-5 text-center">
+                        {totalBonus > 0 ? (
+                          <span className="inline-flex items-center gap-1 font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-xs border border-emerald-100">
+                            +Rs. {totalBonus.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex flex-col items-end">
+                          <span className="text-lg font-display font-black text-primary">Rs. {finalRate.toFixed(2)}</span>
+                          <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-tight">Est. Rs. {(finalRate * 100).toLocaleString()} for 100L</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] text-muted-foreground italic px-2">
+            * Note: These are simulated examples. Actual payouts are calculated based on precise lab results and the active pricing strategy at the time of collection.
+          </p>
+        </motion.div>
+      )}
     </div>
   );
 };
