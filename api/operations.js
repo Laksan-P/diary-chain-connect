@@ -417,9 +417,14 @@ export default async function handler(req, res) {
               const itemStatus = col.dispatch_status;
               const titleKey = itemStatus === 'Approved' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
               const msgKey = itemStatus === 'Approved' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
+              
+              // Only show the specific reason if it belongs to this individual collection (lab fail).
+              // Otherwise, use a generic reason for the batch-level rejection to protect privacy.
+              const displayReason = col.failure_reason || 'Batch quality standards not met';
+              
               const params = itemStatus === 'Approved'
                 ? `date:${col.date}`
-                : `date:${col.date},reason:${col.failure_reason || reason || 'N/A'}`;
+                : `date:${col.date},reason:${displayReason}`;
 
               await supabase.from('notifications').insert({
                 user_id: userId,
