@@ -21,11 +21,11 @@ const CollectionHistory: React.FC = () => {
 
         try {
           serverCols = await getCollections(user.chillingCenterId);
-          localStorage.setItem('cache_collection_history', JSON.stringify(serverCols));
+          saveCache('cache_collection_history', serverCols);
+          saveCache('dispatch_all_collections', serverCols);
         } catch (err) {
           console.error('Failed to load history:', err);
-          const cached = localStorage.getItem('cache_collection_history');
-          if (cached) serverCols = JSON.parse(cached);
+          serverCols = getCache('cache_collection_history') || [];
         }
 
         // Always show unsync'd offline records on top (they disappear after sync)
