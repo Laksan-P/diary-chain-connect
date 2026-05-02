@@ -62,11 +62,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _fetchCenters() async {
+    // Try cache first if offline
+    if (!OfflineService().isOnline) {
+      final cached = OfflineService().getCachedData('chilling_centers');
+      if (cached != null && mounted) {
+        setState(() => _centers = List<dynamic>.from(cached));
+      }
+      return;
+    }
+
     try {
       final res = await _api.get('/chilling-centers?action=list');
-      setState(() => _centers = res);
+      if (mounted) {
+        setState(() => _centers = res);
+        // Save to cache
+        await OfflineService().saveCachedData('chilling_centers', res);
+      }
     } catch (e) {
-      // Handle error
+      // If error, try loading from cache as fallback
+      final cached = OfflineService().getCachedData('chilling_centers');
+      if (cached != null && mounted) {
+        setState(() => _centers = List<dynamic>.from(cached));
+      }
     }
   }
 
@@ -82,6 +99,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final data = _controllers.map((k, v) => MapEntry(k, v.text.trim()));
       data['chillingCenterId'] = _selectedCenter!.toString();
       
+      if (!OfflineService().isOnline) {
+        await OfflineService().addPendingAction(
+          '/auth?action=register-farmer',
+          'POST',
+          data,
+        );
+        if (mounted) {
+          ToastService.show(context, 'Signed up offline! We will finalize your registration when you are back online.');
+          Navigator.pop(context);
+        }
+        return;
+      }
+
       await context.read<AuthProvider>().register(data);
       if (mounted) {
         ToastService.show(context, 'Registration Successful! Welcome to Nestlé Farmer App.');

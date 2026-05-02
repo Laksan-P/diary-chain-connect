@@ -63,16 +63,50 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> login(String email, String password) async {
-    final res = await _api.post('/auth?action=login', {'email': email, 'password': password});
-    await _storage.write(key: 'auth_token', value: res['token']);
-    _user = res['user'];
-    notifyListeners();
+    final box = Hive.box('auth_cache');
+    
+    if (!OfflineService().isOnline) {
+      final cachedEmail = box.get('login_email');
+      final cachedPass = box.get('login_password');
+      
+      if (email == cachedEmail && password == cachedPass) {
+        final cachedUser = box.get('user');
+        if (cachedUser != null) {
+          _user = Map<String, dynamic>.from(cachedUser as Map);
+          notifyListeners();
+          return;
+        }
+      }
+      throw Exception('Offline: Credentials do not match the last signed-in user.');
+    }
+
+    try {
+      final res = await _api.post('/auth?action=login', {'email': email, 'password': password});
+      await _storage.write(key: 'auth_token', value: res['token']);
+      _user = res['user'];
+      
+      // Save credentials for future offline login
+      await box.put('login_email', email);
+      await box.put('login_password', password);
+      await box.put('user', _user);
+      
+      notifyListeners();
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<void> register(Map<String, dynamic> data) async {
     final res = await _api.post('/auth?action=register-farmer', data);
     await _storage.write(key: 'auth_token', value: res['token']);
     _user = res['user'];
+    
+    // Also save these for offline login later
+    final box = Hive.box('auth_cache');
+    await box.put('login_email', data['email']);
+    await box.put('login_password', data['password']);
+    await box.put('user', _user);
+    
     notifyListeners();
   }
 
