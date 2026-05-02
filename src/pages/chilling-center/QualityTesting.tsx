@@ -131,7 +131,27 @@ const QualityTestingPage: React.FC = () => {
       toast({ title: `Quality: ${res.result}`, description: res.reason || 'All parameters within range' });
       setForm({ collectionId: '', snf: '', fat: '', water: '' });
     } catch {
-      toast({ title: 'Error', description: 'Failed to submit test', variant: 'destructive' });
+      // API failed — compute locally and save offline
+      const fat = parseFloat(form.fat);
+      const snf = parseFloat(form.snf);
+      const water = parseFloat(form.water);
+      const reasons: string[] = [];
+      if (fat < 3.5) reasons.push('Low FAT');
+      if (snf < 8.5) reasons.push('Low SNF');
+      if (water > 0.5) reasons.push('Excess Water');
+      const localResult = reasons.length === 0 ? 'Pass' : 'Fail';
+      const localReason = reasons.join(', ') || undefined;
+
+      savePendingAction('quality', { ...testData, result: localResult, reason: localReason });
+      setResult({
+        id: 0, collectionId: testData.collectionId,
+        snf, fat, water,
+        result: localResult as 'Pass' | 'Fail',
+        reason: localReason,
+        testedAt: new Date().toISOString(),
+      });
+      toast({ title: `Quality: ${localResult}`, description: localReason || 'All parameters within range' });
+      setForm({ collectionId: '', snf: '', fat: '', water: '' });
     } finally {
       setLoading(false);
     }

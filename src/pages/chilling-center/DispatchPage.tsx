@@ -205,7 +205,15 @@ const DispatchPage: React.FC = () => {
       setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
       loadData();
     } catch {
-      toast({ title: 'Error', description: 'Database configuration missing for dispatches. Please run the SQL schema script.', variant: 'destructive' });
+      // API failed — save offline as fallback
+      savePendingAction('dispatch', dispatchData);
+      toast({ 
+        title: 'Saved Offline', 
+        description: 'Network unavailable. Dispatch saved locally and will sync when online.' 
+      });
+      setSelected([]);
+      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
+      loadData();
     } finally {
       setLoading(false);
     }

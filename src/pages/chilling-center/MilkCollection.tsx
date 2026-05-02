@@ -85,7 +85,13 @@ const MilkCollectionPage: React.FC = () => {
       toast({ title: 'Collection Recorded', description: 'Milk collection saved successfully' });
       setForm({ farmerId: '', date: form.date, time: new Date().toTimeString().slice(0, 5), temperature: '', quantity: '', milkType: 'Cow' });
     } catch {
-      toast({ title: 'Error', description: 'Failed to record collection', variant: 'destructive' });
+      // API failed — save offline as fallback
+      savePendingAction('collection', collectionData);
+      toast({ 
+        title: 'Saved Offline', 
+        description: 'Network unavailable. Record saved locally and will sync when online.' 
+      });
+      setForm({ farmerId: '', date: form.date, time: new Date().toTimeString().slice(0, 5), temperature: '', quantity: '', milkType: 'Cow' });
     } finally {
       setLoading(false);
     }
