@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export interface PendingAction {
   id: string;
-  type: 'collection' | 'quality' | 'dispatch';
+  type: 'collection' | 'quality' | 'dispatch' | 'farmer_registration';
   data: any;
   timestamp: number;
   syncedServerId?: number; // Set after successful sync
@@ -36,17 +36,35 @@ export const syncActions = async () => {
 
   const remainingActions: PendingAction[] = [];
 
-  // Sync in order: collection → quality → dispatch
+  // Sync in order: farmer_registration → collection → quality → dispatch
+  const farmers = actions.filter(a => a.type === 'farmer_registration');
   const collections = actions.filter(a => a.type === 'collection');
   const qualities = actions.filter(a => a.type === 'quality');
   const dispatches = actions.filter(a => a.type === 'dispatch');
 
-  // Map offlineId → real server ID for linking quality tests
+  // Map offlineId → real server ID
   const collectionIdMap: Record<string, number> = {};
+  const farmerIdMap: Record<number, number> = {};
+  
+  // We need api import for farmer registration
+  const { registerFarmerByCenter } = await import('@/services/api');
+
+  for (const action of farmers) {
+    try {
+      const result = await registerFarmerByCenter({ ...action.data, offline_id: action.id });
+      if (result?.id && action.data.tempId) {
+        farmerIdMap[action.data.tempId] = result.id;
+      }
+    } catch (error) {
+      console.error(`Failed to sync farmer ${action.id}:`, error);
+      remainingActions.push(action);
+    }
+  }
 
   for (const action of collections) {
     try {
-      const result = await createCollection({ ...action.data, offline_id: action.id });
+      const resolvedFarmerId = farmerIdMap[action.data.farmerId] || action.data.farmerId;
+      const result = await createCollection({ ...action.data, farmerId: resolvedFarmerId, offline_id: action.id });
       // Store mapping: offlineId → real DB id
       if (result?.id) collectionIdMap[action.id] = result.id;
       // Success — do NOT keep in remaining

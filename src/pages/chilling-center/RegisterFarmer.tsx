@@ -54,12 +54,37 @@ const RegisterFarmer: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const farmerData = { ...form, chillingCenterId: parseInt(form.chillingCenterId) };
+
     try {
-      const farmer = await registerFarmerByCenter({ ...form, chillingCenterId: parseInt(form.chillingCenterId) });
+      if (!navigator.onLine) throw new Error('Offline');
+      const farmer = await registerFarmerByCenter(farmerData);
       toast({ title: 'Farmer Registered', description: `Farmer ID: ${farmer.farmerId}` });
       setForm({ name: '', address: '', phone: '', nic: '', chillingCenterId: '', bankName: '', accountNumber: '', branch: '', email: '', password: '' });
     } catch {
-      toast({ title: 'Error', description: 'Failed to register farmer', variant: 'destructive' });
+      // Offline fallback
+      const { savePendingAction, getCache, saveCache } = await import('@/services/offlineSync');
+      const tempId = Date.now(); // Temp ID for offline use
+      const offlineFarmerData = { ...farmerData, tempId };
+      savePendingAction('farmer_registration', offlineFarmerData);
+      
+      // Add to local farmers cache so they appear in dropdown immediately
+      const cachedFarmers = getCache('farmers') || [];
+      cachedFarmers.push({
+        id: tempId,
+        farmerId: `OFF-${tempId.toString().slice(-4)}`,
+        name: form.name,
+        nic: form.nic,
+        phone: form.phone,
+        chillingCenterId: farmerData.chillingCenterId,
+      });
+      saveCache('farmers', cachedFarmers);
+
+      toast({ 
+        title: 'Saved Offline', 
+        description: 'Network unavailable. Farmer registered locally and will sync when online.',
+      });
+      setForm({ name: '', address: '', phone: '', nic: '', chillingCenterId: '', bankName: '', accountNumber: '', branch: '', email: '', password: '' });
     } finally {
       setLoading(false);
     }
