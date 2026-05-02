@@ -294,9 +294,13 @@ const DispatchPage: React.FC = () => {
       {
         key: 'status',
         header: 'Status',
-        render: (r: Dispatch) => (
-          <StatusBadge status={r.status} />
-        )
+        render: (r: Dispatch) => {
+          const hasPass = r.items?.some(i => i.qualityResult === 'Pass');
+          const hasFail = r.items?.some(i => i.qualityResult === 'Fail');
+          return (
+            <StatusBadge status={hasPass && hasFail ? 'Mixed' : r.status} />
+          );
+        }
       },
     ];
 
