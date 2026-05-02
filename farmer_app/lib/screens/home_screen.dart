@@ -92,9 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
   }
-
-
-
+  
   // ── Badge Management ──
   Future<void> _loadSeenCounts() async {
     try {
@@ -153,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _collections = results[0];
         _payments = results[1];
-        
+
         final notifs = results[2] as List<dynamic>;
         // Preserve read status from local state
         for (var i = 0; i < notifs.length; i++) {
@@ -166,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
         _notifications = notifs;
-        
+
         _updateBadges();
       });
 
@@ -465,7 +463,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final totalBalance = _payments.fold(0.0, (sum, p) {
       return sum + (double.tryParse(p['amount'].toString()) ?? 0.0);
     });
-    
+
     final now = DateTime.now();
     final currentMonthPayments = _payments.where((p) {
       try {
@@ -480,16 +478,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return sum + (double.tryParse(p['amount'].toString()) ?? 0.0);
     });
 
-    final monthlyLiters = _collections.where((c) {
-      try {
-        final date = DateTime.parse(c['createdAt']);
-        return date.month == now.month && date.year == now.year;
-      } catch (_) {
-        return false;
-      }
-    }).fold(0.0, (sum, c) {
-      return sum + (double.tryParse(c['quantity'].toString()) ?? 0.0);
-    });
+    final monthlyLiters = _collections
+        .where((c) {
+          try {
+            final date = DateTime.parse(c['createdAt']);
+            return date.month == now.month && date.year == now.year;
+          } catch (_) {
+            return false;
+          }
+        })
+        .fold(0.0, (sum, c) {
+          return sum + (double.tryParse(c['quantity'].toString()) ?? 0.0);
+        });
 
     return SafeArea(
       bottom: false,
@@ -557,7 +557,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSummaryStats(double earnings, double liters, String locale) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final currencyFormat = NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 0);
+    final currencyFormat = NumberFormat.currency(
+      symbol: 'Rs. ',
+      decimalDigits: 0,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -589,7 +592,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _summaryCard(String title, String value, IconData icon, Color color, bool isDark, VoidCallback onTap) {
+  Widget _summaryCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    bool isDark,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -598,16 +608,20 @@ class _HomeScreenState extends State<HomeScreen> {
           color: isDark ? AppTheme.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.grey.shade100,
             width: 1.5,
           ),
-          boxShadow: isDark ? [] : [
-            BoxShadow(
-              color: color.withValues(alpha: 0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          boxShadow: isDark
+              ? []
+              : [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -652,10 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
     for (int i = 0; i < 3; i++) {
       final date = DateTime(now.year, now.month - i, 1);
       final stats = _getStatsForMonth(date.month, date.year);
-      history.add({
-        'date': date,
-        'val': stats[type],
-      });
+      history.add({'date': date, 'val': stats[type]});
     }
 
     showModalBottomSheet(
@@ -686,16 +697,31 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     return {
-      'earnings': payments.fold(0.0, (s, p) => s + (double.tryParse(p['amount'].toString()) ?? 0.0)),
-      'liters': collections.fold(0.0, (s, c) => s + (double.tryParse(c['quantity'].toString()) ?? 0.0)),
+      'earnings': payments.fold(
+        0.0,
+        (s, p) => s + (double.tryParse(p['amount'].toString()) ?? 0.0),
+      ),
+      'liters': collections.fold(
+        0.0,
+        (s, c) => s + (double.tryParse(c['quantity'].toString()) ?? 0.0),
+      ),
     };
   }
 
-  Widget _buildMonthlyBreakdownSheet(String type, List<Map<String, dynamic>> history, String locale) {
+  Widget _buildMonthlyBreakdownSheet(
+    String type,
+    List<Map<String, dynamic>> history,
+    String locale,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = type == 'earnings' ? Colors.green : Colors.blue;
-    final currencyFormat = NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 2);
-    final title = type == 'earnings' ? Translations.get('monthly_earnings', locale) : Translations.get('monthly_liters', locale);
+    final currencyFormat = NumberFormat.currency(
+      symbol: 'Rs. ',
+      decimalDigits: 2,
+    );
+    final title = type == 'earnings'
+        ? Translations.get('monthly_earnings', locale)
+        : Translations.get('monthly_liters', locale);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -731,14 +757,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '3 Months',
-                  style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -748,17 +781,23 @@ class _HomeScreenState extends State<HomeScreen> {
             final date = item['date'] as DateTime;
             final val = item['val'] as double;
             final monthName = DateFormat('MMMM', locale).format(date);
-            final displayVal = type == 'earnings' ? currencyFormat.format(val) : '${val.toStringAsFixed(1)} L';
-            
+            final displayVal = type == 'earnings'
+                ? currencyFormat.format(val)
+                : '${val.toStringAsFixed(1)} L';
+
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.03)
+                      : Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.grey.shade200,
                   ),
                 ),
                 child: Row(
@@ -771,7 +810,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        type == 'earnings' ? LucideIcons.trendingUp : LucideIcons.droplets,
+                        type == 'earnings'
+                            ? LucideIcons.trendingUp
+                            : LucideIcons.droplets,
                         color: color,
                         size: 20,
                       ),
