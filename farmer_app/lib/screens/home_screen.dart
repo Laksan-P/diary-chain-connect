@@ -86,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
       if (mounted && _auth?.isAuthenticated == true) {
         _fetchData();
       }
@@ -138,7 +138,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = _auth!.user!;
     final farmerId = user['farmerId'];
 
-    setState(() => _isLoading = true);
+    // Only show loader if we have NO data yet (first load)
+    if (_collections.isEmpty && _payments.isEmpty) {
+      setState(() => _isLoading = true);
+    }
+    
     try {
       final results = await Future.wait([
         _api.get('/collections?action=list&farmerId=$farmerId'),

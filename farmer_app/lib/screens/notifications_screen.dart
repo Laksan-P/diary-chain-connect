@@ -31,13 +31,31 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final _api = ApiService();
-  // We'll use a local copy for optimistic updates, then sync with parent
   late List<dynamic> _localNotifications;
+  late List<dynamic> _filteredNotifications;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
 
   @override
   void initState() {
     super.initState();
     _localNotifications = List.from(widget.notifications);
+    _filteredNotifications = List.from(_localNotifications);
+  }
+
+  void _onSearch(String query) {
+    setState(() {
+      _searchQuery = query;
+      if (query.isEmpty) {
+        _filteredNotifications = List.from(_localNotifications);
+      } else {
+        _filteredNotifications = _localNotifications.where((n) {
+          final title = _translate(n['title']).toLowerCase();
+          final message = _translate(n['message']).toLowerCase();
+          return title.contains(query.toLowerCase()) || message.contains(query.toLowerCase());
+        }).toList();
+      }
+    });
   }
 
   @override
@@ -58,8 +76,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
         }
         _localNotifications = newList;
+        _onSearch(_searchQuery);
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchNotifications({bool showLoader = true}) async {
@@ -182,24 +207,87 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             SliverToBoxAdapter(
               child: _buildScrollableHeader(context, isDark),
             ),
+            SliverToBoxAdapter(
+              child: _buildSearchBar(isDark),
+            ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
               sliver: widget.isLoading 
                 ? const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
-                : _localNotifications.isEmpty
+                : _filteredNotifications.isEmpty
                   ? SliverFillRemaining(
                       hasScrollBody: false,
                       child: _buildEmptyState(),
                     )
                   : SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildNotificationCard(_localNotifications[index], isDark),
-                        childCount: _localNotifications.length,
+                        (context, index) => _buildNotificationCard(_filteredNotifications[index], isDark),
+                        childCount: _filteredNotifications.length,
                       ),
                     ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
+              ),
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearch,
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+              decoration: InputDecoration(
+                hintText: 'Search Archive...',
+                hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.grey),
+                border: InputBorder.none,
+                icon: Icon(LucideIcons.search, size: 18, color: isDark ? Colors.white24 : Colors.grey),
+                suffixIcon: _searchQuery.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        _onSearch('');
+                      },
+                    )
+                  : null,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                Icon(LucideIcons.database, size: 12, color: isDark ? Colors.white24 : Colors.grey),
+                const SizedBox(width: 6),
+                Text(
+                  'LOCAL ARCHIVE',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                    color: isDark ? Colors.white24 : Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -7,10 +7,14 @@ import 'screens/home_screen.dart';
 import 'screens/app_theme.dart';
 import 'screens/splash_screen.dart';
 
+import 'package:intl/date_symbol_data_local.dart';
 import 'services/offline_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('en', null);
+  await initializeDateFormatting('si', null);
+  await initializeDateFormatting('ta', null);
   await OfflineService().init();
   
   runApp(
