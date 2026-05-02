@@ -34,11 +34,13 @@ const QualityTestingPage: React.FC = () => {
         }
 
         // Server collections that still need quality testing
-        const pendingQuality = serverCols.filter(c => !c.qualityResult);
+        const allPendingQuality = getPendingByType('quality');
+        const alreadyTestedOnlineIds = allPendingQuality.map(q => String(q.data.collectionId));
+        const pendingQuality = serverCols.filter(c => !c.qualityResult && !alreadyTestedOnlineIds.includes(String(c.id)));
 
         // Offline collections that haven't been quality-tested yet
         const cachedFarmers = getCache('farmers') || [];
-        const alreadyTestedOfflineIds = getPendingByType('quality').map(q => q.data.offlineCollectionId);
+        const alreadyTestedOfflineIds = allPendingQuality.map(q => q.data.offlineCollectionId);
 
         const offlinePending = getPendingByType('collection')
           .filter(a => !alreadyTestedOfflineIds.includes(a.id)) // hide if already tested offline
