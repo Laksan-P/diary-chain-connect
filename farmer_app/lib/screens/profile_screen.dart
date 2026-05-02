@@ -58,12 +58,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _fetchFarmerDetails() async {
+    final auth = context.read<AuthProvider>();
+    final farmerId = auth.user?['farmerId'];
+    if (farmerId == null) return;
+
+    // If offline, just use the data already in auth provider (which is cached)
+    if (!OfflineService().isOnline) {
+      if (mounted && auth.user != null) {
+        setState(() {
+          _nameController.text = auth.user!['name']?.toString() ?? '';
+          _nicController.text = auth.user!['nic']?.toString() ?? '';
+          _addressController.text = auth.user!['address']?.toString() ?? '';
+          _phoneController.text = auth.user!['phone']?.toString() ?? '';
+          _bankNameController.text = (auth.user!['bankName'] ?? '').toString();
+          _selectedBank = _bankRules.containsKey(_bankNameController.text) ? _bankNameController.text : (_bankNameController.text.isNotEmpty ? 'Other' : null);
+          _accountNumberController.text = (auth.user!['accountNumber'] ?? '').toString();
+          _branchController.text = (auth.user!['branch'] ?? '').toString();
+        });
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      final auth = context.read<AuthProvider>();
-      final farmerId = auth.user?['farmerId'];
-      if (farmerId == null) return;
-
       final data = await _api.get('/farmers?action=get&id=$farmerId');
       if (mounted) {
         setState(() {
@@ -88,7 +105,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         debugPrint("BANK FETCH ERROR: $bankErr");
       }
     } catch (e) {
-      if (mounted) ToastService.show(context, e.toString(), isError: true);
+      debugPrint("Farmer details fetch failed: $e");
+      // Fallback to cached auth user data if API fails
+      if (mounted && auth.user != null) {
+        setState(() {
+          _nameController.text = auth.user!['name']?.toString() ?? '';
+          _nicController.text = auth.user!['nic']?.toString() ?? '';
+          _addressController.text = auth.user!['address']?.toString() ?? '';
+          _phoneController.text = auth.user!['phone']?.toString() ?? '';
+          _bankNameController.text = (auth.user!['bankName'] ?? '').toString();
+          _selectedBank = _bankRules.containsKey(_bankNameController.text) ? _bankNameController.text : (_bankNameController.text.isNotEmpty ? 'Other' : null);
+          _accountNumberController.text = (auth.user!['accountNumber'] ?? '').toString();
+          _branchController.text = (auth.user!['branch'] ?? '').toString();
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

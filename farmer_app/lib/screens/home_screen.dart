@@ -88,12 +88,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _startAutoRefresh() {
     _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted && _auth?.isAuthenticated == true) {
-        _fetchNotificationsSilently();
+        _fetchData();
       }
     });
   }
 
-  Future<void> _fetchNotificationsSilently() async {
+  Future<void> _fetchData() async {
     if (!mounted || _auth?.user == null) return;
     if (!OfflineService().isOnline) return;
 
