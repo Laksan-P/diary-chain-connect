@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Truck, RefreshCcw } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,7 +95,6 @@ const DispatchPage: React.FC = () => {
       // Always merge offline collections that passed quality testing
       const cachedFarmers = getCache('farmers') || [];
       const allQuality = getPendingByType('quality');
-      const allDispatches = getPendingByType('dispatch');
       
       // IDs already dispatched offline
       const alreadyDispatchedIds = allDispatches
