@@ -17,36 +17,28 @@ const CollectionHistory: React.FC = () => {
   useEffect(() => { 
     const loadHistory = async () => {
       if (user?.chillingCenterId) {
-        const online = navigator.onLine;
         let serverCols: any[] = [];
 
         try {
           serverCols = await getCollections(user.chillingCenterId);
-          // Cache for offline use
           localStorage.setItem('cache_collection_history', JSON.stringify(serverCols));
         } catch (err) {
           console.error('Failed to load history:', err);
-          // Offline — use cached server data
           const cached = localStorage.getItem('cache_collection_history');
           if (cached) serverCols = JSON.parse(cached);
         }
 
-        if (online) {
-          // Online: only server records — no duplicates
-          setCollections(serverCols);
-        } else {
-          // Offline: show locally saved records on top
-          const pending = getPendingActions()
-            .filter(a => a.type === 'collection')
-            .map(a => ({ 
-              ...a.data, 
-              id: a.id, 
-              qualityResult: 'Pending Sync', 
-              dispatchStatus: 'Pending Sync',
-              isOffline: true 
-            }));
-          setCollections([...pending, ...serverCols]);
-        }
+        // Always show unsync'd offline records on top (they disappear after sync)
+        const pending = getPendingActions()
+          .filter(a => a.type === 'collection')
+          .map(a => ({ 
+            ...a.data, 
+            id: a.id, 
+            qualityResult: 'Pending Sync', 
+            dispatchStatus: 'Pending Sync',
+            isOffline: true 
+          }));
+        setCollections([...pending, ...serverCols]);
 
         setLoading(false); 
       }

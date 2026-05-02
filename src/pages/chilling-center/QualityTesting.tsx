@@ -23,7 +23,6 @@ const QualityTestingPage: React.FC = () => {
   useEffect(() => { 
     const loadCollections = async () => {
       if (user?.chillingCenterId) {
-        const online = navigator.onLine;
         let serverCols: MilkCollection[] = [];
 
         try {
@@ -34,33 +33,30 @@ const QualityTestingPage: React.FC = () => {
           serverCols = getCache('pending_quality_collections') || [];
         }
 
+        // Server collections that still need quality testing
         const pendingQuality = serverCols.filter(c => !c.qualityResult);
 
-        if (online) {
-          // Online: only show server records (no duplicates)
-          setCollections(pendingQuality);
-        } else {
-          // Offline: show locally saved records that haven't been quality-tested yet
-          const cachedFarmers = getCache('farmers') || [];
-          const alreadyTestedOfflineIds = getPendingByType('quality').map(q => q.data.offlineCollectionId);
+        // Offline collections that haven't been quality-tested yet
+        const cachedFarmers = getCache('farmers') || [];
+        const alreadyTestedOfflineIds = getPendingByType('quality').map(q => q.data.offlineCollectionId);
 
-          const offlinePending = getPendingByType('collection')
-            .filter(a => !alreadyTestedOfflineIds.includes(a.id)) // hide if already tested
-            .map(a => {
-              const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
-              const name = a.data.farmerName || farmer?.name || 'Unknown Farmer';
-              return {
-                ...a.data,
-                id: a.id,
-                displayId: `OFF-${a.id.substring(0, 4).toUpperCase()}`,
-                isOffline: true,
-                farmerName: name,
-                qualityResult: undefined,
-              } as MilkCollection;
-            });
+        const offlinePending = getPendingByType('collection')
+          .filter(a => !alreadyTestedOfflineIds.includes(a.id)) // hide if already tested offline
+          .map(a => {
+            const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
+            const name = a.data.farmerName || farmer?.name || 'Unknown Farmer';
+            return {
+              ...a.data,
+              id: a.id,
+              displayId: `OFF-${a.id.substring(0, 4).toUpperCase()}`,
+              isOffline: true,
+              farmerName: name,
+              qualityResult: undefined,
+            } as MilkCollection;
+          });
 
-          setCollections([...offlinePending, ...pendingQuality]);
-        }
+        // Combine: offline pending first, then server pending
+        setCollections([...offlinePending, ...pendingQuality]);
       }
     };
     loadCollections();
