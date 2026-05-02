@@ -1,14 +1,14 @@
-const CACHE_NAME = 'dairy-chain-v2';
+const CACHE_NAME = 'dairy-chain-v3';
 const OFFLINE_URL = '/index.html';
 
 const INITIAL_CACHED_RESOURCES = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.png'
+  '/favicon.png',
+  '/favicon.ico'
 ];
 
-// On install, cache the basics
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -34,9 +34,21 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+
+  // For navigation requests, try network first, fallback to cached index.html
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match(OFFLINE_URL);
+      })
+    );
+    return;
+  }
+
+  // For other assets (JS, CSS, images), use cache-first strategy
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -44,23 +56,17 @@ self.addEventListener('fetch', (event) => {
       }
 
       return fetch(event.request).then((response) => {
-        // Don't cache if not a success response or if it's a cross-origin request
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
+        // Cache success responses from our own origin
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-
-        // Cache successful asset requests (JS, CSS, images)
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-
         return response;
       }).catch(() => {
-        // If fetch fails (offline) and it's a navigation request, return index.html
-        if (event.request.mode === 'navigate') {
-          return caches.match(OFFLINE_URL);
-        }
+        // If it's an image that failed, we could return a placeholder here
+        return new Response('Offline', { status: 503, statusText: 'Offline' });
       });
     })
   );
