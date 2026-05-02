@@ -40,6 +40,17 @@ const CollectionHistory: React.FC = () => {
       }
     };
     loadHistory();
+
+    const handleUpdate = () => loadHistory();
+    window.addEventListener('offline-action-saved', handleUpdate);
+    window.addEventListener('offline-sync-complete', handleUpdate);
+    window.addEventListener('online', handleUpdate);
+
+    return () => {
+      window.removeEventListener('offline-action-saved', handleUpdate);
+      window.removeEventListener('offline-sync-complete', handleUpdate);
+      window.removeEventListener('online', handleUpdate);
+    };
   }, [user]);
 
   const columns = [

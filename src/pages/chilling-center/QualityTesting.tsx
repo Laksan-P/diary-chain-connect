@@ -45,6 +45,17 @@ const QualityTestingPage: React.FC = () => {
       }
     };
     loadCollections();
+
+    const handleUpdate = () => loadCollections();
+    window.addEventListener('offline-action-saved', handleUpdate);
+    window.addEventListener('offline-sync-complete', handleUpdate);
+    window.addEventListener('online', handleUpdate);
+
+    return () => {
+      window.removeEventListener('offline-action-saved', handleUpdate);
+      window.removeEventListener('offline-sync-complete', handleUpdate);
+      window.removeEventListener('online', handleUpdate);
+    };
   }, [user]);
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));

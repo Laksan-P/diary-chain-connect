@@ -127,6 +127,17 @@ const DispatchPage: React.FC = () => {
 
   useEffect(() => {
     if (centerId) loadData();
+
+    const handleUpdate = () => { if (centerId) loadData(); };
+    window.addEventListener('offline-action-saved', handleUpdate);
+    window.addEventListener('offline-sync-complete', handleUpdate);
+    window.addEventListener('online', handleUpdate);
+
+    return () => {
+      window.removeEventListener('offline-action-saved', handleUpdate);
+      window.removeEventListener('offline-sync-complete', handleUpdate);
+      window.removeEventListener('online', handleUpdate);
+    };
   }, [centerId]);
 
 

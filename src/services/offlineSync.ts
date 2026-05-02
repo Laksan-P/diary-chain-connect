@@ -25,6 +25,7 @@ export const savePendingAction = (type: PendingAction['type'], data: any) => {
   };
   actions.push(newAction);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(actions));
+  window.dispatchEvent(new CustomEvent('offline-action-saved', { detail: newAction }));
   return newAction.id;
 };
 
@@ -51,6 +52,7 @@ export const syncActions = async () => {
   }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(remainingActions));
+  window.dispatchEvent(new CustomEvent('offline-sync-complete'));
 };
 
 export const isOnline = () => navigator.onLine;
