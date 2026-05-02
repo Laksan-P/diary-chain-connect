@@ -43,7 +43,16 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(() => {
-        return caches.match('/index.html') || caches.match('/');
+        // When offline, always return index.html for navigation requests
+        return caches.match('/index.html')
+          .then((response) => response || caches.match('/'))
+          .then((response) => {
+            if (response) return response;
+            // Last resort: if nothing is in cache, return a simple offline page
+            return new Response('<h1>Offline</h1><p>Please connect to the internet to load this page for the first time.</p>', {
+              headers: { 'Content-Type': 'text/html' }
+            });
+          });
       })
     );
     return;
