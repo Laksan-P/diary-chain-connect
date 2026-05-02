@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
@@ -63,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
           if (cols != null) _collections = List<dynamic>.from(cols);
           if (pays != null) _payments = List<dynamic>.from(pays);
           if (notifs != null) _notifications = List<dynamic>.from(notifs);
-          
+
           if (_collections.isNotEmpty || _payments.isNotEmpty) {
             _isLoading = false;
           }
@@ -123,7 +122,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     try {
-      final cols = await _api.get('/collections?action=list&farmerId=$farmerId');
+      final cols = await _api.get(
+        '/collections?action=list&farmerId=$farmerId',
+      );
       if (mounted) {
         setState(() {
           _collections = cols;
@@ -188,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchData() async {
     if (!mounted || _auth?.user == null) return;
-    
+
     // If offline, don't even try to fetch, just use what we have
     if (!OfflineService().isOnline) {
       if (mounted) setState(() => _isLoading = false);
@@ -205,9 +206,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _api.get('/payments?action=list&farmerId=$farmerId'),
         _api.get('/notifications?action=list'),
       ]);
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _collections = results[0];
         _payments = results[1];
@@ -220,7 +221,6 @@ class _HomeScreenState extends State<HomeScreen> {
       await offline.saveCachedData('collections', _collections);
       await offline.saveCachedData('payments', _payments);
       await offline.saveCachedData('notifications', _notifications);
-      
     } catch (e) {
       debugPrint("Fetch data failed: $e");
     } finally {
@@ -249,7 +249,10 @@ class _HomeScreenState extends State<HomeScreen> {
               if (isOnline) return const SizedBox.shrink();
               return Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 16,
+                ),
                 color: Colors.red.withValues(alpha: 0.1),
                 child: Row(
                   children: [
@@ -273,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               );
-            }
+            },
           ),
           Expanded(
             child: IndexedStack(
