@@ -36,7 +36,7 @@ const CollectionHistory: React.FC = () => {
           .filter(a => a.type === 'collection')
           .map(a => {
             // Look up farmer code
-            const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
+            const farmer = cachedFarmers.find((f: any) => String(f.id) === String(a.data.farmerId));
             
             // Check if quality tested offline
             const qualityTest = allQuality.find(q => q.data.offlineCollectionId === a.id);
@@ -49,11 +49,15 @@ const CollectionHistory: React.FC = () => {
               d.data.items?.some((i: any) => i.offlineCollectionId === a.id)
             );
 
+            // Strict fallbacks
+            const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
+            const finalFarmerCode = farmer?.farmerId?.trim() || (a.data.farmerId ? String(a.data.farmerId) : 'OFF-F');
+
             return { 
               ...a.data, 
               id: a.id,
-              farmerCode: farmer?.farmerId || a.data.farmerId || '—',
-              farmerName: a.data.farmerName || farmer?.name || 'Unknown',
+              farmerCode: finalFarmerCode,
+              farmerName: finalFarmerName,
               qualityResult: qualityResult,
               failureReason: failureReason || '—',
               dispatchStatus: dispatched ? 'Dispatched' : 'Pending',

@@ -43,14 +43,14 @@ const QualityTestingPage: React.FC = () => {
         const offlinePending = getPendingByType('collection')
           .filter(a => !alreadyTestedOfflineIds.includes(a.id)) // hide if already tested offline
           .map(a => {
-            const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
-            const name = a.data.farmerName || farmer?.name || 'Unknown Farmer';
+            const farmer = cachedFarmers.find((f: any) => String(f.id) === String(a.data.farmerId));
+            const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
             return {
               ...a.data,
               id: a.id,
               displayId: `OFF-${a.id.substring(0, 4).toUpperCase()}`,
               isOffline: true,
-              farmerName: name,
+              farmerName: finalFarmerName,
               qualityResult: undefined,
             } as MilkCollection;
           });
