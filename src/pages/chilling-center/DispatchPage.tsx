@@ -301,6 +301,7 @@ const DispatchPage: React.FC = () => {
       },
     ];
 
+  try {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
@@ -322,7 +323,7 @@ const DispatchPage: React.FC = () => {
             <div className="space-y-2"><Label>Tanker Capacity (L)</Label><Input type="number" min="0" value={form.tankerCapacity} onChange={e => setForm(f => ({ ...f, tankerCapacity: e.target.value }))} placeholder="e.g. 5000" required /></div>
           </div>
 
-          {collections.length > 0 && (
+          {(collections || []).length > 0 && (
             <div>
               <Label className="mb-2 block">Select Collections to Dispatch</Label>
               <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
@@ -371,7 +372,7 @@ const DispatchPage: React.FC = () => {
           </div>
           <DataTable
             columns={dispatchColumns}
-            data={dispatches.filter(d => d.chillingCenterId === centerId)}
+            data={(dispatches || []).filter(d => d && String(d.chillingCenterId) === String(centerId))}
             onRowClick={(row) => setViewingDispatch(row)}
           />
         </div>
@@ -398,7 +399,7 @@ const DispatchPage: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Dispatch Date</p>
-                    <p className="font-semibold">{new Date(viewingDispatch.dispatchDate).toLocaleString()}</p>
+                    <p className="font-semibold">{viewingDispatch.dispatchDate ? new Date(viewingDispatch.dispatchDate).toLocaleString() : '—'}</p>
                   </div>
                 </div>
 
@@ -450,6 +451,16 @@ const DispatchPage: React.FC = () => {
 
       </div>
     );
-  };
+  } catch (renderError) {
+    console.error('Render error in DispatchPage:', renderError);
+    return (
+      <div className="p-10 text-center">
+        <h2 className="text-xl font-bold text-red-600 mb-4">Something went wrong</h2>
+        <p className="text-muted-foreground mb-6">The dispatch page encountered an error while rendering.</p>
+        <Button onClick={() => window.location.reload()}>Reload Page</Button>
+      </div>
+    );
+  }
+};
 
   export default DispatchPage;

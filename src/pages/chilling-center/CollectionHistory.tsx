@@ -14,7 +14,7 @@ const CollectionHistory: React.FC = () => {
   const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { 
+  useEffect(() => {
     const loadHistory = async () => {
       if (user?.chillingCenterId) {
         let serverCols: any[] = [];
@@ -22,7 +22,7 @@ const CollectionHistory: React.FC = () => {
         try {
           serverCols = await getCollections(user.chillingCenterId);
           saveCache('cache_collection_history', serverCols);
-          saveCache('dispatch_all_collections', serverCols);
+          saveCache('dispatch_all_collections', serverCols); // Sync for Dispatch page
         } catch (err) {
           console.error('Failed to load history:', err);
           serverCols = getCache('cache_collection_history') || [];
@@ -37,15 +37,15 @@ const CollectionHistory: React.FC = () => {
           .map(a => {
             // Look up farmer code
             const farmer = cachedFarmers.find((f: any) => String(f.id) === String(a.data.farmerId));
-            
+
             // Check if quality tested offline
             const qualityTest = allQuality.find(q => q.data.offlineCollectionId === a.id);
             const qualityResult = qualityTest ? qualityTest.data.result : 'Pending';
             const failureReason = qualityTest ? qualityTest.data.reason : undefined;
-            
+
             // Check if dispatched offline
             const allDispatches = getPendingActions().filter(d => d.type === 'dispatch');
-            const dispatched = allDispatches.some(d => 
+            const dispatched = allDispatches.some(d =>
               d.data.items?.some((i: any) => i.offlineCollectionId === a.id)
             );
 
@@ -53,8 +53,8 @@ const CollectionHistory: React.FC = () => {
             const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
             const finalFarmerCode = farmer?.farmerId?.trim() || (a.data.farmerId ? String(a.data.farmerId) : 'OFF-F');
 
-            return { 
-              ...a.data, 
+            return {
+              ...a.data,
               id: a.id,
               farmerCode: finalFarmerCode,
               farmerName: finalFarmerName,
@@ -64,7 +64,7 @@ const CollectionHistory: React.FC = () => {
               isOffline: true,
             };
           });
-          
+
         // Apply offline actions to server collections
         const allDispatches = getPendingActions().filter(d => d.type === 'dispatch');
         const updatedServerCols = serverCols.map(col => {
@@ -72,12 +72,12 @@ const CollectionHistory: React.FC = () => {
           const qualityTest = allQuality.find(q => String(q.data.collectionId) === String(col.id));
           const qualityResult = qualityTest ? qualityTest.data.result : col.qualityResult;
           const failureReason = qualityTest ? qualityTest.data.reason : col.failureReason;
-          
+
           // Check if dispatched offline
-          const dispatched = allDispatches.some(d => 
+          const dispatched = allDispatches.some(d =>
             d.data.items?.some((i: any) => String(i.collectionId) === String(col.id))
           );
-          
+
           return {
             ...col,
             qualityResult,
@@ -88,7 +88,7 @@ const CollectionHistory: React.FC = () => {
 
         setCollections([...pending, ...updatedServerCols]);
 
-        setLoading(false); 
+        setLoading(false);
       }
     };
     loadHistory();

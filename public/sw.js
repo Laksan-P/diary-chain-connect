@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dairy-chain-v7';
+const CACHE_NAME = 'dairy-chain-v8';
 
 // Assets to cache immediately on install
 const PRECACHE_ASSETS = [
