@@ -150,6 +150,8 @@ class Translations {
       'formula_literal': 'BASE + FAT BONUS + SNF BONUS',
       'offline_mode_msg': 'Offline Mode – Data will sync when connection is restored',
       'pending_sync': 'Pending Sync',
+      'monthly_earnings': 'Monthly Earnings',
+      'monthly_liters': 'Monthly Liters',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -303,6 +305,8 @@ class Translations {
       'formula_literal': 'මූලික + FAT ප්‍රසාද + SNF ප්‍රසාද',
       'offline_mode_msg': 'නොබැඳි මාදිලිය - සම්බන්ධතාවය ලැබුණු පසු දත්ත සමමුහුර්ත වනු ඇත',
       'pending_sync': 'සමමුහුර්ත වීමට ඇත',
+      'monthly_earnings': 'මාසික ආදායම',
+      'monthly_liters': 'මාසික ලීටර්',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -457,6 +461,8 @@ class Translations {
       'formula_literal': 'அடிப்படை + FAT போனஸ் + SNF போனஸ்',
       'offline_mode_msg': 'ஆஃப்லைன் பயன்முறை - இணைப்பு திரும்பியதும் தரவு ஒத்திசைக்கப்படும்',
       'pending_sync': 'ஒத்திசைவு நிலுவையில் உள்ளது',
+      'monthly_earnings': 'மாத வருமானம்',
+      'monthly_liters': 'மாதாந்திர லிட்டர்',
     },
   };
 

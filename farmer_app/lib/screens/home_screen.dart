@@ -465,6 +465,31 @@ class _HomeScreenState extends State<HomeScreen> {
     final totalBalance = _payments.fold(0.0, (sum, p) {
       return sum + (double.tryParse(p['amount'].toString()) ?? 0.0);
     });
+    
+    final now = DateTime.now();
+    final currentMonthPayments = _payments.where((p) {
+      try {
+        final date = DateTime.parse(p['createdAt']);
+        return date.month == now.month && date.year == now.year;
+      } catch (_) {
+        return false;
+      }
+    });
+
+    final monthlyEarnings = currentMonthPayments.fold(0.0, (sum, p) {
+      return sum + (double.tryParse(p['amount'].toString()) ?? 0.0);
+    });
+
+    final monthlyLiters = _collections.where((c) {
+      try {
+        final date = DateTime.parse(c['createdAt']);
+        return date.month == now.month && date.year == now.year;
+      } catch (_) {
+        return false;
+      }
+    }).fold(0.0, (sum, c) {
+      return sum + (double.tryParse(c['quantity'].toString()) ?? 0.0);
+    });
 
     return SafeArea(
       bottom: false,
@@ -474,6 +499,8 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(user, totalBalance, prefs),
+            const SizedBox(height: 24),
+            _buildSummaryStats(monthlyEarnings, monthlyLiters, locale),
             const SizedBox(height: 32),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -524,6 +551,91 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 120),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryStats(double earnings, double liters, String locale) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currencyFormat = NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 0);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _summaryCard(
+              Translations.get('monthly_earnings', locale),
+              currencyFormat.format(earnings),
+              LucideIcons.trendingUp,
+              Colors.green,
+              isDark,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _summaryCard(
+              Translations.get('monthly_liters', locale),
+              '${liters.toStringAsFixed(1)} L',
+              LucideIcons.droplets,
+              Colors.blue,
+              isDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryCard(String title, String value, IconData icon, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+          width: 1.5,
+        ),
+        boxShadow: isDark ? [] : [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white60 : Colors.grey.shade500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
       ),
     );
   }
