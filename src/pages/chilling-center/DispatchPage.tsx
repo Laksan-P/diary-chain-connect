@@ -236,7 +236,10 @@ const DispatchPage: React.FC = () => {
   };
 
   const dispatchColumns = [
-    { key: 'id', header: 'ID', render: (r: Dispatch) => `#${r.id}` },
+    { key: 'id', header: 'ID', render: (r: any) => {
+      const idStr = String(r.id);
+      return isNaN(Number(r.id)) || idStr.includes('-') ? `#OFF-${idStr.substring(0, 4).toUpperCase()}` : `#${r.id}`;
+    }},
     { key: 'transporterName', header: 'Transporter' },
     { key: 'vehicleNumber', header: 'Vehicle' },
     { key: 'dispatchDate', header: 'Date & Time', render: (r: Dispatch) => new Date(r.dispatchDate).toLocaleString() },
