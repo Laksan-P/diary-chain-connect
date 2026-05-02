@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -56,10 +57,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     'Cargills Bank': 12,
   };
 
+  StreamSubscription<bool>? _connectivitySub;
+
   @override
   void initState() {
     super.initState();
     _fetchCenters();
+    _connectivitySub = OfflineService().connectivityStream.listen((isOnline) {
+      if (isOnline && _centers.isEmpty) {
+        _fetchCenters();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    for (var c in _controllers.values) {
+      c.dispose();
+    }
+    super.dispose();
   }
 
   Future<void> _fetchCenters() async {

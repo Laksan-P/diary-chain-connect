@@ -34,6 +34,7 @@ class OfflineService {
 
     if (_isOnline) {
       syncPendingActions();
+      preCacheLookupData();
     }
 
     // Listen for changes
@@ -44,8 +45,19 @@ class OfflineService {
       
       if (_isOnline && wasOffline) {
         syncPendingActions();
+        preCacheLookupData();
       }
     });
+  }
+
+  Future<void> preCacheLookupData() async {
+    if (!_isOnline) return;
+    try {
+      final centers = await _api.get('/chilling-centers?action=list');
+      await saveCachedData('chilling_centers', centers);
+    } catch (e) {
+      debugPrint("Lookup pre-cache failed: $e");
+    }
   }
 
   // --- Caching Logic ---
