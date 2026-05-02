@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection } from '@/types';
 import { formatDate, formatQuantity } from '@/lib/utils';
 
-import { getPendingActions } from '@/services/offlineSync';
+import { getPendingActions, saveCache, getCache } from '@/services/offlineSync';
 
 const CollectionHistory: React.FC = () => {
   const { user } = useAuth();
