@@ -12,7 +12,7 @@ import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, Dispatch } from '@/types';
-import { savePendingAction, isOnline, saveCache, getCache } from '@/services/offlineSync';
+import { savePendingAction, isOnline, saveCache, getCache, getPendingByType } from '@/services/offlineSync';
 import {
   Dialog,
   DialogContent,
@@ -38,11 +38,11 @@ const DispatchPage: React.FC = () => {
     const hours = Math.floor(absOffset / 60);
     const mins = absOffset % 60;
     const sign = offset <= 0 ? '+' : '-';
-    
+
     // Naive local ISO: 2026-04-11T00:42
     const pad = (n: number) => String(n).padStart(2, '0');
     const localISO = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    
+
     // We'll return just the local ISO digits for the datetime-local input
     return localISO;
   };
@@ -57,12 +57,12 @@ const DispatchPage: React.FC = () => {
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${dt}:00${sign}${pad(Math.floor(absOffset / 60))}:${pad(absOffset % 60)}`;
   };
-  const [form, setForm] = useState({ 
-    transporterName: '', 
-    vehicleNumber: '', 
-    driverContact: '', 
-    dispatchDate: getLocalDateTime(), 
-    tankerCapacity: '' 
+  const [form, setForm] = useState({
+    transporterName: '',
+    vehicleNumber: '',
+    driverContact: '',
+    dispatchDate: getLocalDateTime(),
+    tankerCapacity: ''
   });
 
   const selectedTotal = selected.reduce((sum, id) => {
@@ -89,7 +89,7 @@ const DispatchPage: React.FC = () => {
         // Check if there's a corresponding offline quality test
         const qualityTest = getPendingByType('quality').find(q => q.data.offlineCollectionId === a.id);
         const passed = qualityTest && qualityTest.data.fat >= 3.5 && qualityTest.data.snf >= 8.5 && qualityTest.data.water <= 0.5;
-        
+
         return {
           ...a.data,
           id: a.id,
@@ -117,7 +117,7 @@ const DispatchPage: React.FC = () => {
         return { ...a.data, id: a.id, isOffline: true, qualityResult: passed ? 'Pass' : (qualityTest ? 'Fail' : 'Pending'), dispatchStatus: 'Pending' };
       });
       setCollections([...offlineCollections.filter(c => c.qualityResult === 'Pass'), ...cachedCols]);
-      
+
       const cachedDispatches = getCache('dispatch_history');
       if (cachedDispatches) setDispatches(cachedDispatches);
     } finally {
@@ -146,16 +146,16 @@ const DispatchPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selected.length === 0) { toast({ title: 'Error', description: 'Select at least one collection', variant: 'destructive' }); return; }
-    
+
     const dispatchData = {
       chillingCenterId: centerId,
       ...form,
       dispatchDate: toISOWithOffset(form.dispatchDate),
       items: selected.map(id => {
         const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
-        return { 
-          id: 0, 
-          dispatchId: 0, 
+        return {
+          id: 0,
+          dispatchId: 0,
           collectionId: isOfflineId ? 0 : Number(id),
           offlineCollectionId: isOfflineId ? String(id) : undefined
         };
@@ -164,9 +164,9 @@ const DispatchPage: React.FC = () => {
 
     if (!isOnline() || dispatchData.items.some(i => i.offlineCollectionId)) {
       savePendingAction('dispatch', dispatchData);
-      toast({ 
-        title: 'Saved Offline', 
-        description: 'Dispatch record saved locally. Will sync once online.' 
+      toast({
+        title: 'Saved Offline',
+        description: 'Dispatch record saved locally. Will sync once online.'
       });
       setSelected([]);
       setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
@@ -193,18 +193,18 @@ const DispatchPage: React.FC = () => {
     { key: 'vehicleNumber', header: 'Vehicle' },
     { key: 'dispatchDate', header: 'Date & Time', render: (r: Dispatch) => new Date(r.dispatchDate).toLocaleString() },
     { key: 'totalQuantity', header: 'Qty (L)', render: (r: Dispatch) => `${r.totalQuantity} L` },
-    { 
-      key: 'status', 
-      header: 'Status', 
+    {
+      key: 'status',
+      header: 'Status',
       render: (r: Dispatch) => (
-        <StatusBadge 
+        <StatusBadge
           status={
             r.status === 'Rejected' && r.items?.some(i => i.qualityResult === 'Pass')
               ? 'Mixed'
               : r.status
-          } 
+          }
         />
-      ) 
+      )
     },
   ];
 
@@ -250,9 +250,9 @@ const DispatchPage: React.FC = () => {
               <span className="font-bold">{selectedTotal} L / {capacityNum} L</span>
             </div>
             <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
-              <div 
-                className={`h-full ${isOverCapacity ? 'bg-red-500' : 'bg-primary'} transition-all duration-300 ease-out`} 
-                style={{ width: `${Math.min(100, (selectedTotal / capacityNum) * 100)}%` }} 
+              <div
+                className={`h-full ${isOverCapacity ? 'bg-red-500' : 'bg-primary'} transition-all duration-300 ease-out`}
+                style={{ width: `${Math.min(100, (selectedTotal / capacityNum) * 100)}%` }}
               />
             </div>
             {isOverCapacity && (
@@ -276,9 +276,9 @@ const DispatchPage: React.FC = () => {
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
-        <DataTable 
-          columns={dispatchColumns} 
-          data={dispatches.filter(d => d.chillingCenterId === centerId)} 
+        <DataTable
+          columns={dispatchColumns}
+          data={dispatches.filter(d => d.chillingCenterId === centerId)}
           onRowClick={(row) => setViewingDispatch(row)}
         />
       </div>
@@ -343,7 +343,7 @@ const DispatchPage: React.FC = () => {
                   </table>
                 </div>
               </div>
-              
+
               {viewingDispatch.status === 'Rejected' && viewingDispatch.rejectionReason && (
                 <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
                   <p className="font-bold mb-1 uppercase tracking-tight text-[10px]">Rejection Reason</p>
