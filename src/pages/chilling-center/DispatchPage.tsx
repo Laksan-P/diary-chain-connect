@@ -82,8 +82,16 @@ const DispatchPage: React.FC = () => {
       saveCache('dispatch_pending_collections', filteredCols);
 
       const d = await getDispatches(centerId);
-      setDispatches(d);
       saveCache('dispatch_history', d);
+
+      const allDispatches = getPendingByType('dispatch');
+      const offlinePendingDispatches = allDispatches.map(a => ({
+        ...a.data,
+        id: a.id,
+        status: 'Pending Sync', // Offline dispatch status
+        isOffline: true
+      }));
+      setDispatches([...offlinePendingDispatches, ...d]);
 
       // Always merge offline collections that passed quality testing
       const cachedFarmers = getCache('farmers') || [];
@@ -99,13 +107,14 @@ const DispatchPage: React.FC = () => {
         .map(a => {
           const qualityTest = allQuality.find(q => q.data.offlineCollectionId === a.id);
           if (!qualityTest || qualityTest.data.result !== 'Pass') return null; // Only passed
-          const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
+          const farmer = cachedFarmers.find((f: any) => String(f.id) === String(a.data.farmerId));
+          const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
           return {
             ...a.data,
             id: a.id,
             displayId: `OFF-${a.id.substring(0, 4).toUpperCase()}`,
             isOffline: true,
-            farmerName: a.data.farmerName || farmer?.name || 'Unknown Farmer',
+            farmerName: finalFarmerName,
             qualityResult: 'Pass',
             dispatchStatus: 'Pending'
           };
@@ -128,13 +137,14 @@ const DispatchPage: React.FC = () => {
         .map(a => {
           const qualityTest = allQuality.find(q => q.data.offlineCollectionId === a.id);
           if (!qualityTest || qualityTest.data.result !== 'Pass') return null;
-          const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
+          const farmer = cachedFarmers.find((f: any) => String(f.id) === String(a.data.farmerId));
+          const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
           return {
             ...a.data,
             id: a.id,
             displayId: `OFF-${a.id.substring(0, 4).toUpperCase()}`,
             isOffline: true,
-            farmerName: a.data.farmerName || farmer?.name || 'Unknown Farmer',
+            farmerName: finalFarmerName,
             qualityResult: 'Pass',
             dispatchStatus: 'Pending'
           };
@@ -142,8 +152,15 @@ const DispatchPage: React.FC = () => {
         .filter(Boolean);
       setCollections([...offlineCollections, ...cachedCols]);
 
-      const cachedDispatches = getCache('dispatch_history');
-      if (cachedDispatches) setDispatches(cachedDispatches);
+      const cachedDispatches = getCache('dispatch_history') || [];
+      const offlinePendingDispatches = allDispatches.map(d => ({
+        ...d.data,
+        id: d.id,
+        status: 'Pending Sync', // Per user request: offline shows as "Pending" instead of "Dispatched"
+        isOffline: true
+      }));
+      setDispatches([...offlinePendingDispatches, ...cachedDispatches]);
+
     } finally {
       setIsRefreshing(false);
     }
@@ -175,6 +192,7 @@ const DispatchPage: React.FC = () => {
       chillingCenterId: centerId,
       ...form,
       dispatchDate: toISOWithOffset(form.dispatchDate),
+      totalQuantity: selectedTotal,
       items: selected.map(id => {
         const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
         return {
