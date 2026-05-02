@@ -65,7 +65,7 @@ const DispatchPage: React.FC = () => {
   });
 
   const selectedTotal = selected.reduce((sum, id) => {
-    const col = collections.find(c => String(c.id) === String(id));
+    const col = collections.find(c => c.id === id);
     return sum + (col ? Number(col.quantity) : 0);
   }, 0);
   const capacityNum = Number(form.tankerCapacity) || 0;
@@ -76,383 +76,380 @@ const DispatchPage: React.FC = () => {
     setIsRefreshing(true);
 
     try {
-      try {
-        const c = await getCollections(centerId);
-        
-        const allQuality = getPendingByType('quality');
-        const allDispatches = getPendingByType('dispatch');
+      const c = await getCollections(centerId);
+      
+      const allQuality = getPendingByType('quality');
+      const allDispatches = getPendingByType('dispatch');
 
-        // Update server collections with local quality/dispatch tests first
-        const updatedC = c.map(col => {
-          if (!col) return null;
-          const qualityTest = allQuality.find(q => q.data && String(q.data.collectionId) === String(col.id));
-          const dispatchedLocally = allDispatches.some(d => d.data?.items?.some((i: any) => String(i.collectionId) === String(col.id)));
-          return {
-            ...col,
-            qualityResult: qualityTest ? qualityTest.data.result : col.qualityResult,
-            dispatchStatus: dispatchedLocally ? 'Dispatched' : col.dispatchStatus
-          };
-        }).filter(Boolean) as MilkCollection[];
+      // Update server collections with local quality/dispatch tests first
+      const updatedC = c.map(col => {
+        if (!col) return null;
+        const qualityTest = allQuality.find(q => q.data && String(q.data.collectionId) === String(col.id));
+        const dispatchedLocally = allDispatches.some(d => d.data?.items?.some((i: any) => String(i.collectionId) === String(col.id)));
+        return {
+          ...col,
+          qualityResult: qualityTest ? qualityTest.data.result : col.qualityResult,
+          dispatchStatus: dispatchedLocally ? 'Dispatched' : col.dispatchStatus
+        };
+      }).filter(Boolean) as MilkCollection[];
 
-        const filteredCols = updatedC.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
-        saveCache('dispatch_pending_collections', filteredCols);
-        saveCache('cache_collection_history', c); // Unify with History page cache
-        saveCache('dispatch_all_collections', c);
+      const filteredCols = updatedC.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
+      saveCache('dispatch_pending_collections', filteredCols);
+      saveCache('dispatch_all_collections', c); // Save ALL for offline mapping
 
-        const d = await getDispatches(centerId);
-        saveCache('dispatch_history', d);
+      const d = await getDispatches(centerId);
+      saveCache('dispatch_history', d);
 
-        const maxId = d.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
-        
-        const offlinePendingDispatches = allDispatches.map((a, index) => {
+      const maxId = d.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
+      
+      const offlinePendingDispatches = allDispatches.map((a, index) => {
+        if (!a.data) return null;
+        return {
+          ...a.data,
+          id: maxId + index + 1,
+          realOfflineId: a.id,
+          status: 'Pending Sync',
+          isOffline: true
+        };
+      }).filter(Boolean) as Dispatch[];
+      setDispatches([...offlinePendingDispatches, ...d]);
+
+      // Always merge offline collections that passed quality testing
+      const cachedFarmers = getCache('farmers') || [];
+      
+      // IDs already dispatched offline
+      const alreadyDispatchedIds = allDispatches
+        .flatMap(d => d.data?.items?.map((i: any) => i.offlineCollectionId).filter(Boolean) || []);
+
+      const offlineCollections = getPendingByType('collection')
+        .filter(a => a && !alreadyDispatchedIds.includes(a.id)) // skip already dispatched
+        .map(a => {
           if (!a.data) return null;
+          const qualityTest = allQuality.find(q => q.data && String(q.data.offlineCollectionId) === String(a.id));
+          if (!qualityTest || qualityTest.data.result !== 'Pass') return null; // Only passed
+          const farmer = cachedFarmers.find((f: any) => f && String(f.id) === String(a.data.farmerId));
+          const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
           return {
             ...a.data,
-            id: maxId + index + 1,
-            realOfflineId: a.id,
-            status: 'Pending Sync',
-            isOffline: true
+            id: a.id,
+            displayId: `OFF-${String(a.id).substring(0, 4).toUpperCase()}`,
+            isOffline: true,
+            farmerName: finalFarmerName,
+            qualityResult: 'Pass',
+            dispatchStatus: 'Pending'
           };
-        }).filter(Boolean) as Dispatch[];
-        setDispatches([...offlinePendingDispatches, ...d]);
+        })
+        .filter(Boolean) as MilkCollection[];
+      setCollections([...offlineCollections, ...filteredCols]);
 
-        const cachedFarmers = getCache('farmers') || [];
-        const alreadyDispatchedIds = allDispatches
-          .flatMap(d => d.data?.items?.map((i: any) => i.offlineCollectionId).filter(Boolean) || []);
+      await new Promise(resolve => setTimeout(resolve, 300));
+    } catch (err) {
+      console.error('Load data error:', err);
+      let cachedCols = getCache('dispatch_all_collections') || getCache('dispatch_pending_collections') || [];
+      if (!Array.isArray(cachedCols)) cachedCols = [];
+      
+      const cachedFarmers = getCache('farmers') || [];
+      const allQuality = getPendingByType('quality');
+      const allDispatches = getPendingByType('dispatch');
+      
+      const updatedCachedCols = cachedCols.map((col: any) => {
+        if (!col) return null;
+        const qualityTest = allQuality.find(q => q.data && String(q.data.collectionId) === String(col.id));
+        const dispatchedLocally = allDispatches.some(d => d.data?.items?.some((i: any) => String(i.collectionId) === String(col.id)));
+        return {
+          ...col,
+          qualityResult: qualityTest ? qualityTest.data.result : col.qualityResult,
+          dispatchStatus: dispatchedLocally ? 'Dispatched' : col.dispatchStatus
+        };
+      }).filter(Boolean) as MilkCollection[];
 
-        const offlineCollections = getPendingByType('collection')
-          .filter(a => a && !alreadyDispatchedIds.includes(a.id))
-          .map(a => {
-            if (!a.data) return null;
-            const qualityTest = allQuality.find(q => q.data && String(q.data.offlineCollectionId) === String(a.id));
-            if (!qualityTest || qualityTest.data.result !== 'Pass') return null;
-            const farmer = cachedFarmers.find((f: any) => f && String(f.id) === String(a.data.farmerId));
-            const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
-            return {
-              ...a.data,
-              id: a.id,
-              displayId: `OFF-${String(a.id).substring(0, 4).toUpperCase()}`,
-              isOffline: true,
-              farmerName: finalFarmerName,
-              qualityResult: 'Pass',
-              dispatchStatus: 'Pending'
-            };
-          })
-          .filter(Boolean) as MilkCollection[];
-        setCollections([...offlineCollections, ...filteredCols]);
+      const filteredCachedCols = updatedCachedCols.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
+      
+      const alreadyDispatchedIds = allDispatches
+        .flatMap(d => d.data?.items?.map((i: any) => i.offlineCollectionId).filter(Boolean) || []);
 
-        await new Promise(resolve => setTimeout(resolve, 300));
-      } catch (err) {
-        console.error('Load data error:', err);
-        // Fallback to ALL collections cache (including history cache)
-        let cachedCols = getCache('dispatch_all_collections') || getCache('cache_collection_history') || getCache('dispatch_pending_collections') || [];
-        if (!Array.isArray(cachedCols)) cachedCols = [];
-        
-        const cachedFarmers = getCache('farmers') || [];
-        const allQuality = getPendingByType('quality');
-        const allDispatches = getPendingByType('dispatch');
-        
-        const updatedCachedCols = cachedCols.map((col: any) => {
-          if (!col) return null;
-          const qualityTest = allQuality.find(q => q.data && String(q.data.collectionId) === String(col.id));
-          const dispatchedLocally = allDispatches.some(d => d.data?.items?.some((i: any) => String(i.collectionId) === String(col.id)));
+      const offlineCollections = getPendingByType('collection')
+        .filter(a => a && !alreadyDispatchedIds.includes(a.id))
+        .map(a => {
+          if (!a.data) return null;
+          const qualityTest = allQuality.find(q => q.data && String(q.data.offlineCollectionId) === String(a.id));
+          if (!qualityTest || qualityTest.data.result !== 'Pass') return null;
+          const farmer = cachedFarmers.find((f: any) => f && String(f.id) === String(a.data.farmerId));
+          const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
           return {
-            ...col,
-            qualityResult: qualityTest ? qualityTest.data.result : col.qualityResult,
-            dispatchStatus: dispatchedLocally ? 'Dispatched' : col.dispatchStatus
+            ...a.data,
+            id: a.id,
+            displayId: `OFF-${String(a.id).substring(0, 4).toUpperCase()}`,
+            isOffline: true,
+            farmerName: finalFarmerName,
+            qualityResult: 'Pass',
+            dispatchStatus: 'Pending'
           };
-        }).filter(Boolean) as MilkCollection[];
+        })
+        .filter(Boolean) as MilkCollection[];
+      setCollections([...offlineCollections, ...filteredCachedCols]);
 
-        const filteredCachedCols = updatedCachedCols.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
-        
-        const alreadyDispatchedIds = allDispatches
-          .flatMap(d => d.data?.items?.map((i: any) => i.offlineCollectionId).filter(Boolean) || []);
+      let cachedDispatches = getCache('dispatch_history') || [];
+      if (!Array.isArray(cachedDispatches)) cachedDispatches = [];
+      const maxId = cachedDispatches.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
 
-        const offlineCollections = getPendingByType('collection')
-          .filter(a => a && !alreadyDispatchedIds.includes(a.id))
-          .map(a => {
-            if (!a.data) return null;
-            const qualityTest = allQuality.find(q => q.data && String(q.data.offlineCollectionId) === String(a.id));
-            if (!qualityTest || qualityTest.data.result !== 'Pass') return null;
-            const farmer = cachedFarmers.find((f: any) => f && String(f.id) === String(a.data.farmerId));
-            const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
-            return {
-              ...a.data,
-              id: a.id,
-              displayId: `OFF-${String(a.id).substring(0, 4).toUpperCase()}`,
-              isOffline: true,
-              farmerName: finalFarmerName,
-              qualityResult: 'Pass',
-              dispatchStatus: 'Pending'
-            };
-          })
-          .filter(Boolean) as MilkCollection[];
-        setCollections([...offlineCollections, ...filteredCachedCols]);
-
-        let cachedDispatches = getCache('dispatch_history') || [];
-        if (!Array.isArray(cachedDispatches)) cachedDispatches = [];
-        const maxId = cachedDispatches.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
-
-        const offlinePendingDispatches = allDispatches.map((d, index) => {
-          if (!d.data) return null;
-          return {
-            ...d.data,
-            id: maxId + index + 1,
-            realOfflineId: d.id,
-            status: 'Pending Sync',
-            isOffline: true
-          };
-        }).filter(Boolean) as Dispatch[];
-        setDispatches([...offlinePendingDispatches, ...cachedDispatches]);
-      }
-    } catch (criticalError) {
-      console.error('CRITICAL ERROR in loadData:', criticalError);
+      const offlinePendingDispatches = allDispatches.map((d, index) => {
+        if (!d.data) return null;
+        return {
+          ...d.data,
+          id: maxId + index + 1,
+          realOfflineId: d.id,
+          status: 'Pending Sync',
+          isOffline: true
+        };
+      }).filter(Boolean) as Dispatch[];
+      setDispatches([...offlinePendingDispatches, ...cachedDispatches]);
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    if (centerId) loadData();
+    useEffect(() => {
+      if (centerId) loadData();
 
-    const handleUpdate = () => { if (centerId) loadData(); };
-    window.addEventListener('offline-action-saved', handleUpdate);
-    window.addEventListener('offline-sync-complete', handleUpdate);
-    window.addEventListener('online', handleUpdate);
+      const handleUpdate = () => { if (centerId) loadData(); };
+      window.addEventListener('offline-action-saved', handleUpdate);
+      window.addEventListener('offline-sync-complete', handleUpdate);
+      window.addEventListener('online', handleUpdate);
 
-    return () => {
-      window.removeEventListener('offline-action-saved', handleUpdate);
-      window.removeEventListener('offline-sync-complete', handleUpdate);
-      window.removeEventListener('online', handleUpdate);
+      return () => {
+        window.removeEventListener('offline-action-saved', handleUpdate);
+        window.removeEventListener('offline-sync-complete', handleUpdate);
+        window.removeEventListener('online', handleUpdate);
+      };
+    }, [centerId]);
+
+
+    const toggleSelect = (id: number) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (selected.length === 0) { toast({ title: 'Error', description: 'Select at least one collection', variant: 'destructive' }); return; }
+
+      const dispatchData = {
+        chillingCenterId: centerId,
+        ...form,
+        dispatchDate: toISOWithOffset(form.dispatchDate),
+        totalQuantity: selectedTotal,
+        items: selected.map(id => {
+          const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
+          return {
+            id: 0,
+            dispatchId: 0,
+            collectionId: isOfflineId ? 0 : Number(id),
+            offlineCollectionId: isOfflineId ? String(id) : undefined
+          };
+        }),
+      };
+
+      if (!isOnline() || dispatchData.items.some(i => i.offlineCollectionId)) {
+        savePendingAction('dispatch', dispatchData);
+        toast({
+          title: 'Saved Offline',
+          description: 'Dispatch record saved locally. Will sync once online.'
+        });
+        setSelected([]);
+        setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await createDispatch(dispatchData);
+        toast({ title: 'Dispatch Created', description: `${selected.length} collections dispatched` });
+        setSelected([]);
+        setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
+        loadData();
+      } catch {
+        // API failed — save offline as fallback
+        savePendingAction('dispatch', dispatchData);
+        toast({
+          title: 'Saved Offline',
+          description: 'Network unavailable. Dispatch saved locally and will sync when online.'
+        });
+        setSelected([]);
+        setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
+        loadData();
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [centerId]);
 
+    const dispatchColumns = [
+      { key: 'id', header: 'ID', render: (r: Dispatch) => `#${r.id}` },
+      { key: 'transporterName', header: 'Transporter' },
+      { key: 'vehicleNumber', header: 'Vehicle' },
+      { key: 'dispatchDate', header: 'Date & Time', render: (r: Dispatch) => new Date(r.dispatchDate).toLocaleString() },
+      { key: 'totalQuantity', header: 'Qty (L)', render: (r: Dispatch) => `${r.totalQuantity} L` },
+      {
+        key: 'status',
+        header: 'Status',
+        render: (r: Dispatch) => (
+          <StatusBadge
+            status={
+              r.status === 'Rejected' && r.items?.some(i => i.qualityResult === 'Pass')
+                ? 'Mixed'
+                : r.status
+            }
+          />
+        )
+      },
+    ];
 
-  const toggleSelect = (id: number) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selected.length === 0) { toast({ title: 'Error', description: 'Select at least one collection', variant: 'destructive' }); return; }
-
-    const dispatchData = {
-      chillingCenterId: centerId,
-      ...form,
-      dispatchDate: toISOWithOffset(form.dispatchDate),
-      totalQuantity: selectedTotal,
-      items: selected.map(id => {
-        const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
-        return {
-          id: 0,
-          dispatchId: 0,
-          collectionId: isOfflineId ? 0 : Number(id),
-          offlineCollectionId: isOfflineId ? String(id) : undefined
-        };
-      }),
-    };
-
-    if (!isOnline() || dispatchData.items.some(i => i.offlineCollectionId)) {
-      savePendingAction('dispatch', dispatchData);
-      toast({
-        title: 'Saved Offline',
-        description: 'Dispatch record saved locally. Will sync once online.'
-      });
-      setSelected([]);
-      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await createDispatch(dispatchData);
-      toast({ title: 'Dispatch Created', description: `${selected.length} collections dispatched` });
-      setSelected([]);
-      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
-      loadData();
-    } catch {
-      // API failed — save offline as fallback
-      savePendingAction('dispatch', dispatchData);
-      toast({ 
-        title: 'Saved Offline', 
-        description: 'Network unavailable. Dispatch saved locally and will sync when online.' 
-      });
-      setSelected([]);
-      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
-      loadData();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const dispatchColumns = [
-    { key: 'id', header: 'ID', render: (r: Dispatch) => `#${r.id}` },
-    { key: 'transporterName', header: 'Transporter' },
-    { key: 'vehicleNumber', header: 'Vehicle' },
-    { key: 'dispatchDate', header: 'Date & Time', render: (r: Dispatch) => new Date(r.dispatchDate).toLocaleString() },
-    { key: 'totalQuantity', header: 'Qty (L)', render: (r: Dispatch) => `${r.totalQuantity} L` },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (r: Dispatch) => (
-        <StatusBadge
-          status={
-            r.status === 'Rejected' && r.items?.some(i => i.qualityResult === 'Pass')
-              ? 'Mixed'
-              : r.status
-          }
-        />
-      )
-    },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Truck className="w-5 h-5 text-primary" />
-        </div>
-        <div>
-          <h2 className="text-xl font-display font-bold text-foreground">Milk Dispatch</h2>
-          <p className="text-sm text-muted-foreground">Create and track dispatches</p>
-        </div>
-      </div>
-
-      <motion.form onSubmit={handleSubmit} className="glass-card p-6 space-y-5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div className="space-y-2"><Label>Transporter Name</Label><Input value={form.transporterName} maxLength={50} onChange={e => setForm(f => ({ ...f, transporterName: e.target.value }))} placeholder="e.g. Lanka Logistics" required /></div>
-          <div className="space-y-2"><Label>Vehicle Number</Label><Input value={form.vehicleNumber} maxLength={15} onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value.toUpperCase() }))} placeholder="e.g. WP LV-1234" required /></div>
-          <div className="space-y-2"><Label>Driver Contact</Label><Input value={form.driverContact} type="tel" maxLength={10} onChange={e => { const val = e.target.value.replace(/\D/g, ''); if (val.length <= 10) setForm(f => ({ ...f, driverContact: val })); }} placeholder="e.g. 0771234567" required /></div>
-          <div className="space-y-2"><Label>Date & Time</Label><Input type="datetime-local" value={form.dispatchDate} onChange={e => setForm(f => ({ ...f, dispatchDate: e.target.value }))} required /></div>
-          <div className="space-y-2"><Label>Tanker Capacity (L)</Label><Input type="number" min="0" value={form.tankerCapacity} onChange={e => setForm(f => ({ ...f, tankerCapacity: e.target.value }))} placeholder="e.g. 5000" required /></div>
-        </div>
-
-        {collections.length > 0 && (
-          <div>
-            <Label className="mb-2 block">Select Collections to Dispatch</Label>
-            <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
-              {collections.map(c => (
-                <label key={c.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors">
-                  <Checkbox checked={selected.includes(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
-                  <span className="text-sm text-foreground">#{c.displayId || c.id} — {c.farmerName} — {c.quantity}L — {c.date}</span>
-                </label>
-              ))}
-            </div>
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Truck className="w-5 h-5 text-primary" />
           </div>
-        )}
-
-        {capacityNum > 0 && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className={`p-4 rounded-lg border ${isOverCapacity ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950/50 dark:border-red-900 dark:text-red-300' : 'bg-primary/5 border-primary/20 text-foreground'}`}>
-            <div className="flex justify-between items-center mb-3">
-              <span className="font-semibold text-sm tracking-wide uppercase">Tanker Capacity Status</span>
-              <span className="font-bold">{selectedTotal} L / {capacityNum} L</span>
-            </div>
-            <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className={`h-full ${isOverCapacity ? 'bg-red-500' : 'bg-primary'} transition-all duration-300 ease-out`}
-                style={{ width: `${Math.min(100, (selectedTotal / capacityNum) * 100)}%` }}
-              />
-            </div>
-            {isOverCapacity && (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs mt-3 font-semibold flex items-center gap-1">
-                ⚠️ Tanker limit exceeded! Please deselect some collections.
-              </motion.p>
-            )}
-          </motion.div>
-        )}
-
-        <Button type="submit" className="btn-press mt-2" disabled={loading || selected.length === 0 || isOverCapacity}>
-          {loading ? 'Creating...' : `Dispatch ${selected.length} Collection(s)`}
-        </Button>
-      </motion.form>
-
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-display font-semibold text-foreground">Dispatch History</h3>
-          <Button variant="ghost" size="sm" onClick={loadData} className="gap-2 text-primary hover:text-primary hover:bg-primary/5" disabled={isRefreshing}>
-            <RefreshCcw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          <div>
+            <h2 className="text-xl font-display font-bold text-foreground">Milk Dispatch</h2>
+            <p className="text-sm text-muted-foreground">Create and track dispatches</p>
+          </div>
         </div>
-        <DataTable
-          columns={dispatchColumns}
-          data={dispatches.filter(d => d.chillingCenterId === centerId)}
-          onRowClick={(row) => setViewingDispatch(row)}
-        />
-      </div>
 
-      <Dialog open={!!viewingDispatch} onOpenChange={() => setViewingDispatch(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Dispatch Details — #{viewingDispatch?.id}</DialogTitle>
-          </DialogHeader>
-          {viewingDispatch && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Transporter</p>
-                  <p className="font-semibold">{viewingDispatch.transporterName}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Vehicle Number</p>
-                  <p className="font-semibold">{viewingDispatch.vehicleNumber}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Driver Contact</p>
-                  <p className="font-semibold">{viewingDispatch.driverContact}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Dispatch Date</p>
-                  <p className="font-semibold">{new Date(viewingDispatch.dispatchDate).toLocaleString()}</p>
-                </div>
+        <motion.form onSubmit={handleSubmit} className="glass-card p-6 space-y-5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="space-y-2"><Label>Transporter Name</Label><Input value={form.transporterName} maxLength={50} onChange={e => setForm(f => ({ ...f, transporterName: e.target.value }))} placeholder="e.g. Lanka Logistics" required /></div>
+            <div className="space-y-2"><Label>Vehicle Number</Label><Input value={form.vehicleNumber} maxLength={15} onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value.toUpperCase() }))} placeholder="e.g. WP LV-1234" required /></div>
+            <div className="space-y-2"><Label>Driver Contact</Label><Input value={form.driverContact} type="tel" maxLength={10} onChange={e => { const val = e.target.value.replace(/\D/g, ''); if (val.length <= 10) setForm(f => ({ ...f, driverContact: val })); }} placeholder="e.g. 0771234567" required /></div>
+            <div className="space-y-2"><Label>Date & Time</Label><Input type="datetime-local" value={form.dispatchDate} onChange={e => setForm(f => ({ ...f, dispatchDate: e.target.value }))} required /></div>
+            <div className="space-y-2"><Label>Tanker Capacity (L)</Label><Input type="number" min="0" value={form.tankerCapacity} onChange={e => setForm(f => ({ ...f, tankerCapacity: e.target.value }))} placeholder="e.g. 5000" required /></div>
+          </div>
+
+          {collections.length > 0 && (
+            <div>
+              <Label className="mb-2 block">Select Collections to Dispatch</Label>
+              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+                {collections.map(c => (
+                  <label key={c.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors">
+                    <Checkbox checked={selected.includes(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
+                    <span className="text-sm text-foreground">#{c.displayId || c.id} — {c.farmerName} — {c.quantity}L — {c.date}</span>
+                  </label>
+                ))}
               </div>
-
-              <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold mb-3">Associated Collections</h4>
-                <div className="glass-card overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-muted/50 border-b">
-                        <th className="px-4 py-2 text-left">Coll ID</th>
-                        <th className="px-4 py-2 text-left">Farmer</th>
-                        <th className="px-4 py-2 text-right">Qty (L)</th>
-                        <th className="px-4 py-2 text-center">Result</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {viewingDispatch.items?.map((item) => (
-                        <tr key={item.id}>
-                          <td className="px-4 py-2 text-muted-foreground">#{item.collectionId}</td>
-                          <td className="px-4 py-2 font-medium">{item.farmerName}</td>
-                          <td className="px-4 py-2 text-right">{item.quantity} L</td>
-                          <td className="px-4 py-2 text-center">
-                            <StatusBadge status={item.qualityResult || 'Pass'} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-muted/30 font-bold border-t">
-                        <td colSpan={2} className="px-4 py-2 text-right">Total Quantity:</td>
-                        <td className="px-4 py-2 text-right">{viewingDispatch.totalQuantity} L</td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-
-              {viewingDispatch.status === 'Rejected' && viewingDispatch.rejectionReason && (
-                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
-                  <p className="font-bold mb-1 uppercase tracking-tight text-[10px]">Rejection Reason</p>
-                  <p>{viewingDispatch.rejectionReason}</p>
-                </div>
-              )}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
 
-    </div>
-  );
-};
+          {capacityNum > 0 && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className={`p-4 rounded-lg border ${isOverCapacity ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950/50 dark:border-red-900 dark:text-red-300' : 'bg-primary/5 border-primary/20 text-foreground'}`}>
+              <div className="flex justify-between items-center mb-3">
+                <span className="font-semibold text-sm tracking-wide uppercase">Tanker Capacity Status</span>
+                <span className="font-bold">{selectedTotal} L / {capacityNum} L</span>
+              </div>
+              <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${isOverCapacity ? 'bg-red-500' : 'bg-primary'} transition-all duration-300 ease-out`}
+                  style={{ width: `${Math.min(100, (selectedTotal / capacityNum) * 100)}%` }}
+                />
+              </div>
+              {isOverCapacity && (
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs mt-3 font-semibold flex items-center gap-1">
+                  ⚠️ Tanker limit exceeded! Please deselect some collections.
+                </motion.p>
+              )}
+            </motion.div>
+          )}
 
-export default DispatchPage;
+          <Button type="submit" className="btn-press mt-2" disabled={loading || selected.length === 0 || isOverCapacity}>
+            {loading ? 'Creating...' : `Dispatch ${selected.length} Collection(s)`}
+          </Button>
+        </motion.form>
+
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-display font-semibold text-foreground">Dispatch History</h3>
+            <Button variant="ghost" size="sm" onClick={loadData} className="gap-2 text-primary hover:text-primary hover:bg-primary/5" disabled={isRefreshing}>
+              <RefreshCcw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
+          <DataTable
+            columns={dispatchColumns}
+            data={dispatches.filter(d => d.chillingCenterId === centerId)}
+            onRowClick={(row) => setViewingDispatch(row)}
+          />
+        </div>
+
+        <Dialog open={!!viewingDispatch} onOpenChange={() => setViewingDispatch(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Dispatch Details — #{viewingDispatch?.id}</DialogTitle>
+            </DialogHeader>
+            {viewingDispatch && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Transporter</p>
+                    <p className="font-semibold">{viewingDispatch.transporterName}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Vehicle Number</p>
+                    <p className="font-semibold">{viewingDispatch.vehicleNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Driver Contact</p>
+                    <p className="font-semibold">{viewingDispatch.driverContact}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Dispatch Date</p>
+                    <p className="font-semibold">{new Date(viewingDispatch.dispatchDate).toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold mb-3">Associated Collections</h4>
+                  <div className="glass-card overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-muted/50 border-b">
+                          <th className="px-4 py-2 text-left">Coll ID</th>
+                          <th className="px-4 py-2 text-left">Farmer</th>
+                          <th className="px-4 py-2 text-right">Qty (L)</th>
+                          <th className="px-4 py-2 text-center">Result</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {viewingDispatch.items?.map((item) => (
+                          <tr key={item.id}>
+                            <td className="px-4 py-2 text-muted-foreground">#{item.collectionId}</td>
+                            <td className="px-4 py-2 font-medium">{item.farmerName}</td>
+                            <td className="px-4 py-2 text-right">{item.quantity} L</td>
+                            <td className="px-4 py-2 text-center">
+                              <StatusBadge status={item.qualityResult || 'Pass'} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-muted/30 font-bold border-t">
+                          <td colSpan={2} className="px-4 py-2 text-right">Total Quantity:</td>
+                          <td className="px-4 py-2 text-right">{viewingDispatch.totalQuantity} L</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+
+                {viewingDispatch.status === 'Rejected' && viewingDispatch.rejectionReason && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+                    <p className="font-bold mb-1 uppercase tracking-tight text-[10px]">Rejection Reason</p>
+                    <p>{viewingDispatch.rejectionReason}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+      </div>
+    );
+  };
+
+  export default DispatchPage;
