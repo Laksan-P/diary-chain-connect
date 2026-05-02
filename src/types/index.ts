@@ -60,6 +60,7 @@ export interface MilkCollection {
   quantity: number;
   milkType?: 'Buffalo' | 'Cow' | 'Goat';
   qualityResult?: 'Pass' | 'Fail';
+  displayId?: string;
   failureReason?: string;
   dispatchStatus?: 'Pending' | 'Dispatched' | 'Approved' | 'Rejected';
   createdAt: string;
