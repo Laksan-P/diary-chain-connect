@@ -40,8 +40,12 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
+      final isOnline = OfflineService().isOnline;
       if (mounted) {
-        ToastService.show(context, 'Login Successful! Welcome back.');
+        ToastService.show(
+          context, 
+          isOnline ? 'Login Successful! Welcome back.' : 'Logged in offline! Showing cached data.',
+        );
       }
     } catch (e) {
       if (mounted) {
