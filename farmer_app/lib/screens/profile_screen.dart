@@ -145,15 +145,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
       
       // Optimistic update of local user state
-      if (auth.user != null) {
-        auth.user!['name'] = _nameController.text.trim();
-        auth.user!['address'] = _addressController.text.trim();
-        auth.user!['phone'] = _phoneController.text.trim();
-        auth.user!['nic'] = _nicController.text.trim();
-        auth.user!['bankName'] = _bankNameController.text.trim();
-        auth.user!['accountNumber'] = _accountNumberController.text.trim();
-        auth.user!['branch'] = _branchController.text.trim();
-      }
+      auth.updateLocalUser({
+        'name': _nameController.text.trim(),
+        'address': _addressController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'nic': _nicController.text.trim(),
+        'bankName': _bankNameController.text.trim(),
+        'accountNumber': _accountNumberController.text.trim(),
+        'branch': _branchController.text.trim(),
+      });
 
       if (mounted && !silent) {
         ToastService.show(context, 'Profile changes saved offline. Will sync when online.');
@@ -166,15 +166,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await _api.patch('/farmers?action=update&id=$farmerId', updateData);
 
-      if (auth.user != null) {
-        auth.user!['name'] = _nameController.text.trim();
-        auth.user!['address'] = _addressController.text.trim();
-        auth.user!['phone'] = _phoneController.text.trim();
-        auth.user!['nic'] = _nicController.text.trim();
-        auth.user!['bankName'] = _bankNameController.text.trim();
-        auth.user!['accountNumber'] = _accountNumberController.text.trim();
-        auth.user!['branch'] = _branchController.text.trim();
-      }
+      auth.updateLocalUser({
+        'name': _nameController.text.trim(),
+        'address': _addressController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'nic': _nicController.text.trim(),
+        'bankName': _bankNameController.text.trim(),
+        'accountNumber': _accountNumberController.text.trim(),
+        'branch': _branchController.text.trim(),
+      });
 
       if (mounted && !silent) {
         ToastService.show(context, 'Profile updated successfully');

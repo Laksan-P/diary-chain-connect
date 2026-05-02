@@ -32,6 +32,10 @@ class OfflineService {
     _isOnline = !result.contains(ConnectivityResult.none);
     _syncController.add(_isOnline);
 
+    if (_isOnline) {
+      syncPendingActions();
+    }
+
     // Listen for changes
     _connectivity.onConnectivityChanged.listen((results) {
       final wasOffline = !_isOnline;
