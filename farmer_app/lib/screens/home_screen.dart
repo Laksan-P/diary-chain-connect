@@ -570,6 +570,7 @@ class _HomeScreenState extends State<HomeScreen> {
               LucideIcons.trendingUp,
               Colors.green,
               isDark,
+              () => _showMonthlyBreakdown('earnings', locale),
             ),
           ),
           const SizedBox(width: 16),
@@ -580,6 +581,7 @@ class _HomeScreenState extends State<HomeScreen> {
               LucideIcons.droplets,
               Colors.blue,
               isDark,
+              () => _showMonthlyBreakdown('liters', locale),
             ),
           ),
         ],
@@ -587,8 +589,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _summaryCard(String title, String value, IconData icon, Color color, bool isDark) {
-    return Container(
+  Widget _summaryCard(String title, String value, IconData icon, Color color, bool isDark, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? AppTheme.surfaceDark : Colors.white,
@@ -635,6 +639,176 @@ class _HomeScreenState extends State<HomeScreen> {
               letterSpacing: -0.5,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showMonthlyBreakdown(String type, String locale) {
+    final now = DateTime.now();
+    final List<Map<String, dynamic>> history = [];
+
+    for (int i = 0; i < 3; i++) {
+      final date = DateTime(now.year, now.month - i, 1);
+      final stats = _getStatsForMonth(date.month, date.year);
+      history.add({
+        'date': date,
+        'val': stats[type],
+      });
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _buildMonthlyBreakdownSheet(type, history, locale),
+    );
+  }
+
+  Map<String, double> _getStatsForMonth(int month, int year) {
+    final payments = _payments.where((p) {
+      try {
+        final date = DateTime.parse(p['createdAt']);
+        return date.month == month && date.year == year;
+      } catch (_) => false;
+    });
+
+    final collections = _collections.where((c) {
+      try {
+        final date = DateTime.parse(c['createdAt']);
+        return date.month == month && date.year == year;
+      } catch (_) => false;
+    });
+
+    return {
+      'earnings': payments.fold(0.0, (s, p) => s + (double.tryParse(p['amount'].toString()) ?? 0.0)),
+      'liters': collections.fold(0.0, (s, c) => s + (double.tryParse(c['quantity'].toString()) ?? 0.0)),
+    };
+  }
+
+  Widget _buildMonthlyBreakdownSheet(String type, List<Map<String, dynamic>> history, String locale) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = type == 'earnings' ? Colors.green : Colors.blue;
+    final currencyFormat = NumberFormat.currency(symbol: 'Rs. ', decimalDigits: 2);
+    final title = type == 'earnings' ? Translations.get('monthly_earnings', locale) : Translations.get('monthly_liters', locale);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1F2C) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: isDark ? Colors.white : Colors.black,
+                  letterSpacing: -1,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '3 Months',
+                  style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          ...history.map((item) {
+            final date = item['date'] as DateTime;
+            final val = item['val'] as double;
+            final monthName = DateFormat('MMMM', locale).format(date);
+            final displayVal = type == 'earnings' ? currencyFormat.format(val) : '${val.toStringAsFixed(1)} L';
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        type == 'earnings' ? LucideIcons.trendingUp : LucideIcons.droplets,
+                        color: color,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            monthName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            date.year.toString(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? Colors.white54 : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      displayVal,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        color: isDark ? Colors.white : Colors.black,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 24),
         ],
       ),
     );
