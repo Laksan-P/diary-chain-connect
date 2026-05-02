@@ -85,15 +85,23 @@ const DispatchPage: React.FC = () => {
       setDispatches(d);
       saveCache('dispatch_history', d);
 
+      const cachedFarmers = getCache('farmers') || [];
       const offlineCollections = getPendingByType('collection').map(a => {
         // Check if there's a corresponding offline quality test
         const qualityTest = getPendingByType('quality').find(q => q.data.offlineCollectionId === a.id);
         const passed = qualityTest && qualityTest.data.fat >= 3.5 && qualityTest.data.snf >= 8.5 && qualityTest.data.water <= 0.5;
+        
+        const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
+        const name = a.data.farmerName && a.data.farmerName !== 'Pending Sync...' 
+          ? a.data.farmerName 
+          : (farmer?.name || 'Unknown Farmer');
 
         return {
           ...a.data,
           id: a.id,
+          displayId: `OFF-${a.id.substring(0, 4)}`,
           isOffline: true,
+          farmerName: name,
           qualityResult: passed ? 'Pass' : (qualityTest ? 'Fail' : 'Pending'),
           dispatchStatus: 'Pending'
         };
@@ -236,7 +244,7 @@ const DispatchPage: React.FC = () => {
               {collections.map(c => (
                 <label key={c.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors">
                   <Checkbox checked={selected.includes(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
-                  <span className="text-sm text-foreground">#{c.id} — {c.farmerName} — {c.quantity}L — {c.date}</span>
+                  <span className="text-sm text-foreground">#{c.displayId || c.id} — {c.farmerName} — {c.quantity}L — {c.date}</span>
                 </label>
               ))}
             </div>

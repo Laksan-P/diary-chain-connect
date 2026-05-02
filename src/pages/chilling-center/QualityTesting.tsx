@@ -34,12 +34,22 @@ const QualityTestingPage: React.FC = () => {
         const pendingQuality = serverCols.filter(c => !c.qualityResult);
         
         // Add offline-pending collections
-        const offlinePending = getPendingByType('collection').map(a => ({
-          ...a.data,
-          id: a.id, // Temporary ID
-          isOffline: true,
-          farmerName: a.data.farmerName || 'Pending Sync...',
-        }));
+        const cachedFarmers = getCache('farmers') || [];
+        const offlinePending = getPendingByType('collection').map(a => {
+          // Look up name if missing
+          const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
+          const name = a.data.farmerName && a.data.farmerName !== 'Pending Sync...' 
+            ? a.data.farmerName 
+            : (farmer?.name || 'Unknown Farmer');
+            
+          return {
+            ...a.data,
+            id: a.id,
+            isOffline: true,
+            farmerName: name,
+            displayId: `OFF-${a.id.substring(0, 4)}`, // Short ID for UI
+          };
+        });
 
         setCollections([...offlinePending, ...pendingQuality]);
       }
@@ -120,7 +130,7 @@ const QualityTestingPage: React.FC = () => {
             <SelectContent>
               {collections.map(c => (
                 <SelectItem key={c.id} value={String(c.id)}>
-                  #{c.id} — {c.farmerName} — {c.milkType || 'Cow'} — {c.quantity}L
+                  #{c.displayId || c.id} — {c.farmerName} — {c.milkType || 'Cow'} — {c.quantity}L
                 </SelectItem>
               ))}
             </SelectContent>
