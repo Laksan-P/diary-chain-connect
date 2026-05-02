@@ -212,7 +212,12 @@ const DispatchPage: React.FC = () => {
     useEffect(() => {
       if (centerId) loadData();
 
-      const handleUpdate = () => { if (centerId) loadData(); };
+      const handleUpdate = () => { 
+        // Small delay to ensure server processing is finished
+        setTimeout(() => {
+          if (centerId) loadData(); 
+        }, 1000);
+      };
       window.addEventListener('offline-action-saved', handleUpdate);
       window.addEventListener('offline-sync-complete', handleUpdate);
       window.addEventListener('online', handleUpdate);

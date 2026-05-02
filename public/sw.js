@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dairy-chain-v8';
+const CACHE_NAME = 'dairy-chain-v9';
 
 // Assets to cache immediately on install
 const PRECACHE_ASSETS = [
@@ -49,7 +49,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. For everything else (JS, CSS, Images): Stale-While-Revalidate
+  // 2. EXCLUDE API requests from caching - always go to network
+  if (url.pathname.startsWith('/api')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // 3. For everything else (JS, CSS, Images): Stale-While-Revalidate
   event.respondWith(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.match(request).then((cachedResponse) => {
