@@ -63,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
           if (pays != null) _payments = List<dynamic>.from(pays);
           if (notifs != null) _notifications = List<dynamic>.from(notifs);
 
+          _synthesizeNotifications();
+
           if (_collections.isNotEmpty || _payments.isNotEmpty) {
             _isLoading = false;
           }
@@ -92,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
   }
-  
+
   // ── Badge Management ──
   Future<void> _loadSeenCounts() async {
     try {
@@ -142,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_collections.isEmpty && _payments.isEmpty) {
       setState(() => _isLoading = true);
     }
-    
+
     try {
       final results = await Future.wait([
         _api.get('/collections?action=list&farmerId=$farmerId'),
@@ -168,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
         _notifications = notifs;
-
+        _synthesizeNotifications();
         _updateBadges();
       });
 
@@ -181,6 +183,69 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint("Fetch data failed: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Generates local notifications for data that exists but has no alert yet
+  void _synthesizeNotifications() {
+    bool changed = false;
+
+    // 1. Check for New Collections
+    for (var col in _collections) {
+      final date = col['date']?.toString() ?? '';
+      // Look for a notification about this specific date and collection
+      final exists = _notifications.any(
+        (n) =>
+            (n['message']?.toString().contains(date) ?? false) &&
+            (n['type'] == 'quality_result' || n['type'] == 'general'),
+      );
+
+      if (!exists) {
+        _notifications.insert(0, {
+          'id': 'local-col-${col['id']}',
+          'type': 'quality_result',
+          'title': 'Milk Collection Recorded',
+          'message':
+              'Your milk collection on $date has been recorded in the system.',
+          'createdAt': col['createdAt'] ?? DateTime.now().toIso8601String(),
+          'isRead': false,
+          'isSynthesized': true,
+        });
+        changed = true;
+      }
+    }
+
+    // 2. Check for New Payments
+    for (var pay in _payments) {
+      final amount = pay['amount']?.toString() ?? '';
+      final exists = _notifications.any(
+        (n) =>
+            (n['message']?.toString().contains(amount) ?? false) &&
+            n['type'] == 'payment',
+      );
+
+      if (!exists) {
+        _notifications.insert(0, {
+          'id': 'local-pay-${pay['id']}',
+          'type': 'payment',
+          'title': 'Payment Received',
+          'message':
+              'A payment of Rs. $amount has been processed for your account.',
+          'createdAt': pay['createdAt'] ?? DateTime.now().toIso8601String(),
+          'isRead': false,
+          'isSynthesized': true,
+        });
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      // Sort by date to keep archive tidy
+      _notifications.sort(
+        (a, b) => DateTime.parse(
+          b['createdAt'],
+        ).compareTo(DateTime.parse(a['createdAt'])),
+      );
     }
   }
 
