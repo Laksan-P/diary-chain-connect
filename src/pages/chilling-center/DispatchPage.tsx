@@ -297,8 +297,12 @@ const DispatchPage: React.FC = () => {
         render: (r: Dispatch) => {
           const hasPass = r.items?.some(i => i.qualityResult === 'Pass');
           const hasFail = r.items?.some(i => i.qualityResult === 'Fail');
+          const isManualReject = r.status === 'Rejected' && 
+                               r.rejectionReason && 
+                               !r.rejectionReason.startsWith('Quality Check Failed');
+          
           return (
-            <StatusBadge status={hasPass && hasFail ? 'Mixed' : r.status} />
+            <StatusBadge status={isManualReject ? 'Rejected' : (hasPass && hasFail ? 'Mixed' : r.status)} />
           );
         }
       },

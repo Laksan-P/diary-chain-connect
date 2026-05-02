@@ -210,11 +210,16 @@ const DispatchMonitoring: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <StatusBadge
-                        status={
-                          dispatch.status === 'Rejected' && dispatch.items.some(i => i.qualityResult === 'Pass')
-                            ? 'Mixed'
-                            : dispatch.status
-                        }
+                        status={(() => {
+                          const hasPass = dispatch.items?.some(i => i.qualityResult === 'Pass');
+                          const hasFail = dispatch.items?.some(i => i.qualityResult === 'Fail');
+                          const isManualReject = dispatch.status === 'Rejected' && 
+                                               dispatch.rejectionReason && 
+                                               !dispatch.rejectionReason.startsWith('Quality Check Failed');
+                          
+                          if (isManualReject) return 'Rejected';
+                          return hasPass && hasFail ? 'Mixed' : dispatch.status;
+                        })()}
                       />
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
