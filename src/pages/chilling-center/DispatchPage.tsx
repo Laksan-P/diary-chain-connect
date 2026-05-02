@@ -77,7 +77,22 @@ const DispatchPage: React.FC = () => {
 
     try {
       const c = await getCollections(centerId);
-      const filteredCols = c.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
+      
+      const allQuality = getPendingByType('quality');
+      const allDispatches = getPendingByType('dispatch');
+
+      // Update server collections with local quality/dispatch tests first
+      const updatedC = c.map(col => {
+        const qualityTest = allQuality.find(q => String(q.data.collectionId) === String(col.id));
+        const dispatchedLocally = allDispatches.some(d => d.data.items?.some((i: any) => String(i.collectionId) === String(col.id)));
+        return {
+          ...col,
+          qualityResult: qualityTest ? qualityTest.data.result : col.qualityResult,
+          dispatchStatus: dispatchedLocally ? 'Dispatched' : col.dispatchStatus
+        };
+      });
+
+      const filteredCols = updatedC.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
       saveCache('dispatch_pending_collections', filteredCols);
 
       const d = await getDispatches(centerId);
@@ -126,10 +141,21 @@ const DispatchPage: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (err) {
       console.error('Load data error:', err);
-      const cachedCols = getCache('dispatch_pending_collections') || [];
+      let cachedCols = getCache('dispatch_pending_collections') || [];
       const cachedFarmers = getCache('farmers') || [];
       const allQuality = getPendingByType('quality');
       const allDispatches = getPendingByType('dispatch');
+      
+      // Update cached server collections with local quality/dispatch tests first
+      cachedCols = cachedCols.map((col: any) => {
+        const qualityTest = allQuality.find(q => String(q.data.collectionId) === String(col.id));
+        const dispatchedLocally = allDispatches.some(d => d.data.items?.some((i: any) => String(i.collectionId) === String(col.id)));
+        return {
+          ...col,
+          qualityResult: qualityTest ? qualityTest.data.result : col.qualityResult,
+          dispatchStatus: dispatchedLocally ? 'Dispatched' : col.dispatchStatus
+        };
+      }).filter((col: any) => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
       const alreadyDispatchedIds = allDispatches
         .flatMap(d => d.data.items?.map((i: any) => i.offlineCollectionId).filter(Boolean) || []);
 

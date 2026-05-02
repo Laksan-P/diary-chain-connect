@@ -64,7 +64,29 @@ const CollectionHistory: React.FC = () => {
               isOffline: true,
             };
           });
-        setCollections([...pending, ...serverCols]);
+          
+        // Apply offline actions to server collections
+        const allDispatches = getPendingActions().filter(d => d.type === 'dispatch');
+        const updatedServerCols = serverCols.map(col => {
+          // Check if quality tested offline
+          const qualityTest = allQuality.find(q => String(q.data.collectionId) === String(col.id));
+          const qualityResult = qualityTest ? qualityTest.data.result : col.qualityResult;
+          const failureReason = qualityTest ? qualityTest.data.reason : col.failureReason;
+          
+          // Check if dispatched offline
+          const dispatched = allDispatches.some(d => 
+            d.data.items?.some((i: any) => String(i.collectionId) === String(col.id))
+          );
+          
+          return {
+            ...col,
+            qualityResult,
+            failureReason: failureReason || '—',
+            dispatchStatus: dispatched ? 'Dispatched' : col.dispatchStatus,
+          };
+        });
+
+        setCollections([...pending, ...updatedServerCols]);
 
         setLoading(false); 
       }
