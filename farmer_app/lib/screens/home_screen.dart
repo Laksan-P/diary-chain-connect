@@ -93,66 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _fetchData() async {
-    if (!mounted || _auth?.user == null) return;
-    if (!OfflineService().isOnline) return;
 
-    final user = _auth!.user!;
-    final farmerId = user['farmerId'];
-
-    try {
-      final notifs = await _api.get('/notifications?action=list');
-      if (mounted) {
-        setState(() {
-          for (var i = 0; i < notifs.length; i++) {
-            final id = notifs[i]['id'].toString();
-            final localIdx = _notifications.indexWhere(
-              (n) => n['id'].toString() == id,
-            );
-            if (localIdx != -1 && _notifications[localIdx]['isRead'] == true) {
-              notifs[i]['isRead'] = true;
-            }
-          }
-          _notifications = notifs;
-        });
-        OfflineService().saveCachedData('notifications', _notifications);
-      }
-    } catch (e) {
-      debugPrint("Notification refresh failed: $e");
-    }
-
-    try {
-      final cols = await _api.get(
-        '/collections?action=list&farmerId=$farmerId',
-      );
-      if (mounted) {
-        setState(() {
-          _collections = cols;
-        });
-        OfflineService().saveCachedData('collections', _collections);
-      }
-    } catch (e) {
-      debugPrint("Collection refresh failed: $e");
-    }
-
-    try {
-      final pays = await _api.get('/payments?action=list&farmerId=$farmerId');
-      if (mounted) {
-        setState(() {
-          _payments = pays;
-        });
-        OfflineService().saveCachedData('payments', _payments);
-      }
-    } catch (e) {
-      debugPrint("Payment refresh failed: $e");
-    }
-
-    if (mounted) {
-      setState(() {
-        _updateBadges();
-      });
-    }
-  }
 
   // ── Badge Management ──
   Future<void> _loadSeenCounts() async {
@@ -212,7 +153,20 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _collections = results[0];
         _payments = results[1];
-        _notifications = results[2];
+        
+        final notifs = results[2] as List<dynamic>;
+        // Preserve read status from local state
+        for (var i = 0; i < notifs.length; i++) {
+          final id = notifs[i]['id'].toString();
+          final localIdx = _notifications.indexWhere(
+            (n) => n['id'].toString() == id,
+          );
+          if (localIdx != -1 && _notifications[localIdx]['isRead'] == true) {
+            notifs[i]['isRead'] = true;
+          }
+        }
+        _notifications = notifs;
+        
         _updateBadges();
       });
 
@@ -315,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _notifications[index]['isRead'] = true;
                       }
                     });
-                    _fetchNotificationsSilently();
+                    _fetchData();
                   },
                   onBack: _handleBack,
                   locale: locale,
