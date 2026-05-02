@@ -75,7 +75,6 @@ const DispatchPage: React.FC = () => {
   const loadData = async () => {
     if (!centerId) return;
     setIsRefreshing(true);
-    const online = navigator.onLine;
 
     try {
       const c = await getCollections(centerId);
@@ -86,42 +85,49 @@ const DispatchPage: React.FC = () => {
       setDispatches(d);
       saveCache('dispatch_history', d);
 
-      if (online) {
-        // Online: only server records — no duplicates
-        setCollections(filteredCols);
-      } else {
-        // Offline: merge local pending that passed quality
-        const cachedFarmers = getCache('farmers') || [];
-        const offlineCollections = getPendingByType('collection')
-          .map(a => {
-            const qualityTest = getPendingByType('quality').find(q => q.data.offlineCollectionId === a.id);
-            const passed = qualityTest && qualityTest.data.fat >= 3.5 && qualityTest.data.snf >= 8.5 && qualityTest.data.water <= 0.5;
-            if (!passed) return null;
-            const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
-            return {
-              ...a.data,
-              id: a.id,
-              displayId: `OFF-${a.id.substring(0, 4).toUpperCase()}`,
-              isOffline: true,
-              farmerName: a.data.farmerName || farmer?.name || 'Unknown Farmer',
-              qualityResult: 'Pass',
-              dispatchStatus: 'Pending'
-            };
-          })
-          .filter(Boolean);
-        setCollections([...offlineCollections, ...filteredCols]);
-      }
+      // Always merge offline collections that passed quality testing
+      const cachedFarmers = getCache('farmers') || [];
+      const allQuality = getPendingByType('quality');
+      const allDispatches = getPendingByType('dispatch');
+      
+      // IDs already dispatched offline
+      const alreadyDispatchedIds = allDispatches
+        .flatMap(d => d.data.items?.map((i: any) => i.offlineCollectionId).filter(Boolean) || []);
+
+      const offlineCollections = getPendingByType('collection')
+        .filter(a => !alreadyDispatchedIds.includes(a.id)) // skip already dispatched
+        .map(a => {
+          const qualityTest = allQuality.find(q => q.data.offlineCollectionId === a.id);
+          if (!qualityTest || qualityTest.data.result !== 'Pass') return null; // Only passed
+          const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
+          return {
+            ...a.data,
+            id: a.id,
+            displayId: `OFF-${a.id.substring(0, 4).toUpperCase()}`,
+            isOffline: true,
+            farmerName: a.data.farmerName || farmer?.name || 'Unknown Farmer',
+            qualityResult: 'Pass',
+            dispatchStatus: 'Pending'
+          };
+        })
+        .filter(Boolean);
+      setCollections([...offlineCollections, ...filteredCols]);
 
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (err) {
       console.error('Load data error:', err);
       const cachedCols = getCache('dispatch_pending_collections') || [];
       const cachedFarmers = getCache('farmers') || [];
+      const allQuality = getPendingByType('quality');
+      const allDispatches = getPendingByType('dispatch');
+      const alreadyDispatchedIds = allDispatches
+        .flatMap(d => d.data.items?.map((i: any) => i.offlineCollectionId).filter(Boolean) || []);
+
       const offlineCollections = getPendingByType('collection')
+        .filter(a => !alreadyDispatchedIds.includes(a.id))
         .map(a => {
-          const qualityTest = getPendingByType('quality').find(q => q.data.offlineCollectionId === a.id);
-          const passed = qualityTest && qualityTest.data.fat >= 3.5 && qualityTest.data.snf >= 8.5 && qualityTest.data.water <= 0.5;
-          if (!passed) return null;
+          const qualityTest = allQuality.find(q => q.data.offlineCollectionId === a.id);
+          if (!qualityTest || qualityTest.data.result !== 'Pass') return null;
           const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
           return {
             ...a.data,

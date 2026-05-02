@@ -29,15 +29,37 @@ const CollectionHistory: React.FC = () => {
         }
 
         // Always show unsync'd offline records on top (they disappear after sync)
+        const cachedFarmers = JSON.parse(localStorage.getItem('cache_farmers') || '[]');
+        const allQuality = getPendingActions().filter(a => a.type === 'quality');
+
         const pending = getPendingActions()
           .filter(a => a.type === 'collection')
-          .map(a => ({ 
-            ...a.data, 
-            id: a.id, 
-            qualityResult: 'Pending Sync', 
-            dispatchStatus: 'Pending Sync',
-            isOffline: true 
-          }));
+          .map(a => {
+            // Look up farmer code
+            const farmer = cachedFarmers.find((f: any) => f.id === a.data.farmerId);
+            
+            // Check if quality tested offline
+            const qualityTest = allQuality.find(q => q.data.offlineCollectionId === a.id);
+            const qualityResult = qualityTest ? qualityTest.data.result : 'Pending';
+            const failureReason = qualityTest ? qualityTest.data.reason : undefined;
+            
+            // Check if dispatched offline
+            const allDispatches = getPendingActions().filter(d => d.type === 'dispatch');
+            const dispatched = allDispatches.some(d => 
+              d.data.items?.some((i: any) => i.offlineCollectionId === a.id)
+            );
+
+            return { 
+              ...a.data, 
+              id: a.id,
+              farmerCode: farmer?.farmerId || a.data.farmerId || '—',
+              farmerName: a.data.farmerName || farmer?.name || 'Unknown',
+              qualityResult: qualityResult,
+              failureReason: failureReason || '—',
+              dispatchStatus: dispatched ? 'Dispatched' : 'Pending',
+              isOffline: true,
+            };
+          });
         setCollections([...pending, ...serverCols]);
 
         setLoading(false); 

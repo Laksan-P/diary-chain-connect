@@ -90,12 +90,34 @@ const QualityTestingPage: React.FC = () => {
     };
 
     if (!isOnline() || isOfflineId) {
-      savePendingAction('quality', testData);
+      // Compute result locally — same logic as server
+      const fat = parseFloat(form.fat);
+      const snf = parseFloat(form.snf);
+      const water = parseFloat(form.water);
+      const reasons: string[] = [];
+      if (fat < 3.5) reasons.push('Low FAT');
+      if (snf < 8.5) reasons.push('Low SNF');
+      if (water > 0.5) reasons.push('Excess Water');
+      const localResult = reasons.length === 0 ? 'Pass' : 'Fail';
+      const localReason = reasons.join(', ') || undefined;
+
+      savePendingAction('quality', { ...testData, result: localResult, reason: localReason });
+      
+      // Show result on screen — same as online
+      setResult({
+        id: 0,
+        collectionId: testData.collectionId,
+        snf,
+        fat,
+        water,
+        result: localResult as 'Pass' | 'Fail',
+        reason: localReason,
+        testedAt: new Date().toISOString(),
+      });
+
       toast({ 
-        title: 'Saved Offline', 
-        description: isOfflineId 
-          ? 'Linked to pending collection. Will sync once both are online.'
-          : 'Connection is down. Test results will sync once online.' 
+        title: `Quality: ${localResult}`, 
+        description: localReason || 'All parameters within range',
       });
       setForm({ collectionId: '', snf: '', fat: '', water: '' });
       return;
