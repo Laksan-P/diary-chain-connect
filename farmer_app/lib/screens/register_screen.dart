@@ -8,6 +8,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../providers/preferences_provider.dart';
 import '../services/translations.dart';
 import '../services/toast_service.dart';
+import '../services/offline_service.dart';
 
 
 class RegisterScreen extends StatefulWidget {
