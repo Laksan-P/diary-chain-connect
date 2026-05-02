@@ -98,7 +98,6 @@ const DispatchPage: React.FC = () => {
       const d = await getDispatches(centerId);
       saveCache('dispatch_history', d);
 
-      const allDispatches = getPendingByType('dispatch');
       const maxId = d.reduce((max: number, curr: any) => (typeof curr.id === 'number' && curr.id > max ? curr.id : max), 0);
       
       const offlinePendingDispatches = allDispatches.map((a, index) => ({
@@ -112,7 +111,6 @@ const DispatchPage: React.FC = () => {
 
       // Always merge offline collections that passed quality testing
       const cachedFarmers = getCache('farmers') || [];
-      const allQuality = getPendingByType('quality');
       
       // IDs already dispatched offline
       const alreadyDispatchedIds = allDispatches
