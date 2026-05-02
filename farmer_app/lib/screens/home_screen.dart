@@ -16,7 +16,6 @@ import 'notifications_screen.dart';
 import '../providers/preferences_provider.dart';
 import '../services/translations.dart';
 import '../services/offline_service.dart';
-import 'record_collection_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -54,16 +53,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadCachedData() async {
     try {
-      final cJson = await _storage.read(key: 'cached_collections');
-      final pJson = await _storage.read(key: 'cached_payments');
-      final nJson = await _storage.read(key: 'cached_notifications');
+      final offline = OfflineService();
+      final cols = offline.getCachedData('collections');
+      final pays = offline.getCachedData('payments');
+      final notifs = offline.getCachedData('notifications');
 
       if (mounted) {
         setState(() {
-          if (cJson != null) _collections = json.decode(cJson);
-          if (pJson != null) _payments = json.decode(pJson);
-          if (nJson != null) _notifications = json.decode(nJson);
-          // If we had cached data, we can stop the initial blank-screen loader early
+          if (cols != null) _collections = List<dynamic>.from(cols);
+          if (pays != null) _payments = List<dynamic>.from(pays);
+          if (notifs != null) _notifications = List<dynamic>.from(notifs);
+          
           if (_collections.isNotEmpty || _payments.isNotEmpty) {
             _isLoading = false;
           }
@@ -96,16 +96,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchNotificationsSilently() async {
     if (!mounted || _auth?.user == null) return;
+    if (!OfflineService().isOnline) return;
 
     final user = _auth!.user!;
     final farmerId = user['farmerId'];
 
-    // Fetch each independently so one failure doesn't block the others
     try {
       final notifs = await _api.get('/notifications?action=list');
       if (mounted) {
         setState(() {
-          // Smart merge: ensure we don't overwrite local "read" status with old server data
           for (var i = 0; i < notifs.length; i++) {
             final id = notifs[i]['id'].toString();
             final localIdx = _notifications.indexWhere(
@@ -117,19 +116,19 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           _notifications = notifs;
         });
+        OfflineService().saveCachedData('notifications', _notifications);
       }
     } catch (e) {
       debugPrint("Notification refresh failed: $e");
     }
 
     try {
-      final cols = await _api.get(
-        '/collections?action=list&farmerId=$farmerId',
-      );
+      final cols = await _api.get('/collections?action=list&farmerId=$farmerId');
       if (mounted) {
         setState(() {
           _collections = cols;
         });
+        OfflineService().saveCachedData('collections', _collections);
       }
     } catch (e) {
       debugPrint("Collection refresh failed: $e");
@@ -141,6 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _payments = pays;
         });
+        OfflineService().saveCachedData('payments', _payments);
       }
     } catch (e) {
       debugPrint("Payment refresh failed: $e");
@@ -170,7 +170,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _clearBadgeForTab(int index) {
     if (index == 1 && _hasNewCollections) {
-      // Passbook tab visited
       _lastSeenCollectionCount = _collections.length;
       _storage.write(
         key: 'seen_collection_count',
@@ -178,7 +177,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       setState(() => _hasNewCollections = false);
     } else if (index == 2 && _hasNewPayments) {
-      // Payments tab visited
       _lastSeenPaymentCount = _payments.length;
       _storage.write(
         key: 'seen_payment_count',
@@ -190,6 +188,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchData() async {
     if (!mounted || _auth?.user == null) return;
+    
+    // If offline, don't even try to fetch, just use what we have
+    if (!OfflineService().isOnline) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
     final user = _auth!.user!;
     final farmerId = user['farmerId'];
 
@@ -200,7 +205,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _api.get('/payments?action=list&farmerId=$farmerId'),
         _api.get('/notifications?action=list'),
       ]);
+      
       if (!mounted) return;
+      
       setState(() {
         _collections = results[0];
         _payments = results[1];
@@ -208,18 +215,14 @@ class _HomeScreenState extends State<HomeScreen> {
         _updateBadges();
       });
 
-      // Save to cache for instant loading next time
-      _storage.write(
-        key: 'cached_collections',
-        value: json.encode(_collections),
-      );
-      _storage.write(key: 'cached_payments', value: json.encode(_payments));
-      _storage.write(
-        key: 'cached_notifications',
-        value: json.encode(_notifications),
-      );
+      // Save to Hive cache for instant loading next time
+      final offline = OfflineService();
+      await offline.saveCachedData('collections', _collections);
+      await offline.saveCachedData('payments', _payments);
+      await offline.saveCachedData('notifications', _notifications);
+      
     } catch (e) {
-      // Error handling
+      debugPrint("Fetch data failed: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -321,17 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       bottomNavigationBar: _buildIntegratedNavBar(locale),
-      floatingActionButton: _currentIndex == 0 ? FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const RecordCollectionScreen()),
-          ).then((_) => _fetchData());
-        },
-        backgroundColor: AppTheme.primary,
-        icon: const Icon(LucideIcons.plus),
-        label: const Text('Record Milk', style: TextStyle(fontWeight: FontWeight.bold)),
-      ) : null,
+      floatingActionButton: null,
     );
   }
 

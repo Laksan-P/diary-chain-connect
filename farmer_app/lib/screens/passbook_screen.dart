@@ -385,15 +385,32 @@ class _PassbookScreenState extends State<PassbookScreen> {
     String collectionId,
     StateSetter setModalState,
   ) async {
+    // If offline, try to load from cache first
+    if (!OfflineService().isOnline) {
+      final cached = OfflineService().getCachedData('test_$collectionId');
+      if (cached != null) {
+        if (mounted) {
+          setState(() {
+            _collectionTests[collectionId] = cached;
+          });
+          setModalState(() {});
+        }
+      }
+      return;
+    }
+
     try {
       final results = await _api.get(
         '/quality-tests?collectionId=$collectionId',
       );
       if (results != null && results is List && results.isNotEmpty) {
         if (mounted) {
+          final testData = results[0];
           setState(() {
-            _collectionTests[collectionId] = results[0];
+            _collectionTests[collectionId] = testData;
           });
+          // Save to persistent cache
+          await OfflineService().saveCachedData('test_$collectionId', testData);
           setModalState(() {}); // Update modal UI
         }
       }

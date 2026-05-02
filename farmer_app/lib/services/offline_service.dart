@@ -7,6 +7,7 @@ import 'api_service.dart';
 
 class OfflineService {
   static const String pendingActionsBoxName = 'pending_actions';
+  static const String cachedDataBoxName = 'cached_data';
   final _api = ApiService();
   final _uuid = const Uuid();
   
@@ -24,6 +25,7 @@ class OfflineService {
   Future<void> init() async {
     await Hive.initFlutter();
     await Hive.openBox(pendingActionsBoxName);
+    await Hive.openBox(cachedDataBoxName);
     
     // Initial check
     final result = await _connectivity.checkConnectivity();
@@ -42,6 +44,18 @@ class OfflineService {
     });
   }
 
+  // --- Caching Logic ---
+  Future<void> saveCachedData(String key, dynamic data) async {
+    final box = Hive.box(cachedDataBoxName);
+    await box.put(key, data);
+  }
+
+  dynamic getCachedData(String key) {
+    final box = Hive.box(cachedDataBoxName);
+    return box.get(key);
+  }
+
+  // --- Pending Actions ---
   Future<void> addPendingAction(String path, String method, Map<String, dynamic> body) async {
     final box = Hive.box(pendingActionsBoxName);
     final id = _uuid.v4();
