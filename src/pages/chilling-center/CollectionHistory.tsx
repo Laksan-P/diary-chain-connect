@@ -7,14 +7,28 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection } from '@/types';
 import { formatDate, formatQuantity } from '@/lib/utils';
 
+import { getPendingActions } from '@/services/offlineSync';
+
 const CollectionHistory: React.FC = () => {
   const { user } = useAuth();
-  const [collections, setCollections] = useState<MilkCollection[]>([]);
+  const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { 
     if (user?.chillingCenterId) {
-      getCollections(user.chillingCenterId).then(c => { setCollections(c); setLoading(false); }); 
+      getCollections(user.chillingCenterId).then(c => { 
+        const pending = getPendingActions()
+          .filter(a => a.type === 'collection')
+          .map(a => ({ 
+            ...a.data, 
+            id: a.id, 
+            qualityResult: 'Pending Sync', 
+            dispatchStatus: 'Pending Sync',
+            isOffline: true 
+          }));
+        setCollections([...pending, ...c]); 
+        setLoading(false); 
+      }); 
     }
   }, [user]);
 

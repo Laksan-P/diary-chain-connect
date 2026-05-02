@@ -11,6 +11,7 @@ export const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     Verified: 'status-pending',
     Mixed: 'status-pending',
     Paid: 'status-paid',
+    'Pending Sync': 'status-offline',
   };
 
   return <span className={classMap[status] || 'status-pending'}>{status}</span>;

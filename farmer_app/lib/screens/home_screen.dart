@@ -15,6 +15,8 @@ import 'notifications_screen.dart';
 
 import '../providers/preferences_provider.dart';
 import '../services/translations.dart';
+import '../services/offline_service.dart';
+import 'record_collection_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -234,51 +236,102 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: IndexedStack(
-        index: _currentIndex,
+      body: Column(
         children: [
-          _buildFintechDashboard(user, prefs),
-          PassbookScreen(
-            collections: _collections,
-            payments: _payments,
-            locale: locale,
-            isLoading: _isLoading,
-            onRefresh: _fetchData,
-            onBack: _handleBack,
-            mode: 'supply',
+          StreamBuilder<bool>(
+            stream: OfflineService().connectivityStream,
+            initialData: OfflineService().isOnline,
+            builder: (context, snapshot) {
+              final isOnline = snapshot.data ?? true;
+              if (isOnline) return const SizedBox.shrink();
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                color: Colors.red.withValues(alpha: 0.1),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      Translations.get('offline_mode_msg', locale),
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
           ),
-          PassbookScreen(
-            collections: _collections,
-            payments: _payments,
-            locale: locale,
-            isLoading: _isLoading,
-            onRefresh: _fetchData,
-            onBack: _handleBack,
-            mode: 'payments',
-          ),
-          ProfileScreen(onBack: _handleBack),
-          NotificationsScreen(
-            notifications: _notifications,
-            isLoading: _isLoading,
-            onRefresh: _fetchData,
-            onRead: (id) {
-              setState(() {
-                final index = _notifications.indexWhere(
-                  (n) => n['id'].toString() == id,
-                );
-                if (index != -1) {
-                  _notifications[index]['isRead'] = true;
-                }
-              });
-              _fetchNotificationsSilently();
-            },
-            onBack: _handleBack,
-            locale: locale,
-            userId: user['id']?.toString() ?? '',
+          Expanded(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: [
+                _buildFintechDashboard(user, prefs),
+                PassbookScreen(
+                  collections: _collections,
+                  payments: _payments,
+                  locale: locale,
+                  isLoading: _isLoading,
+                  onRefresh: _fetchData,
+                  onBack: _handleBack,
+                  mode: 'supply',
+                ),
+                PassbookScreen(
+                  collections: _collections,
+                  payments: _payments,
+                  locale: locale,
+                  isLoading: _isLoading,
+                  onRefresh: _fetchData,
+                  onBack: _handleBack,
+                  mode: 'payments',
+                ),
+                ProfileScreen(onBack: _handleBack),
+                NotificationsScreen(
+                  notifications: _notifications,
+                  isLoading: _isLoading,
+                  onRefresh: _fetchData,
+                  onRead: (id) {
+                    setState(() {
+                      final index = _notifications.indexWhere(
+                        (n) => n['id'].toString() == id,
+                      );
+                      if (index != -1) {
+                        _notifications[index]['isRead'] = true;
+                      }
+                    });
+                    _fetchNotificationsSilently();
+                  },
+                  onBack: _handleBack,
+                  locale: locale,
+                  userId: user['id']?.toString() ?? '',
+                ),
+              ],
+            ),
           ),
         ],
       ),
       bottomNavigationBar: _buildIntegratedNavBar(locale),
+      floatingActionButton: _currentIndex == 0 ? FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const RecordCollectionScreen()),
+          ).then((_) => _fetchData());
+        },
+        backgroundColor: AppTheme.primary,
+        icon: const Icon(LucideIcons.plus),
+        label: const Text('Record Milk', style: TextStyle(fontWeight: FontWeight.bold)),
+      ) : null,
     );
   }
 

@@ -149,6 +149,13 @@
   .status-paid {
     @apply status-pass;
   }
+  
+  .status-offline {
+    @apply status-badge;
+    background: hsl(209 100% 29% / 0.12);
+    color: hsl(var(--nestle-blue));
+    border: 1px dashed hsl(var(--nestle-blue) / 0.3);
+  }
 
   .fade-in-up {
     animation: fadeInUp 0.3s ease-out forwards;

@@ -7,7 +7,12 @@ import 'screens/home_screen.dart';
 import 'screens/app_theme.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
+import 'services/offline_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await OfflineService().init();
+  
   runApp(
     MultiProvider(
       providers: [

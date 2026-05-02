@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../services/translations.dart';
 import 'app_theme.dart';
 import '../services/api_service.dart';
+import '../services/offline_service.dart';
 
 class PassbookScreen extends StatefulWidget {
   final List<dynamic> collections;
@@ -36,9 +37,24 @@ class _PassbookScreenState extends State<PassbookScreen> {
       {}; // Cache for on-demand test results
 
   List<dynamic> get _filteredData {
+    List<dynamic> source = [];
     if (widget.mode == 'supply') {
-      if (_statusFilter == 'All') return widget.collections;
-      return widget.collections.where((c) {
+      source = List<dynamic>.from(widget.collections);
+      // Add pending collections
+      final pending = OfflineService()
+          .getPendingActions()
+          .where((a) => a['path'] == '/collections' && a['method'] == 'POST')
+          .map((a) => {
+                ...a['body'],
+                'id': a['id'],
+                'qualityResult': 'Pending Sync',
+                'isOffline': true,
+              })
+          .toList();
+      source.insertAll(0, pending);
+
+      if (_statusFilter == 'All') return source;
+      return source.where((c) {
         final status = (c['qualityResult'] ?? 'Pending')
             .toString()
             .toLowerCase();
@@ -957,6 +973,10 @@ class _PassbookScreenState extends State<PassbookScreen> {
       case 'fail':
       case 'rejected':
         color = Colors.red;
+        break;
+      case 'pending sync':
+      case 'pending_sync':
+        color = Colors.blue;
         break;
       default:
         color = Colors.orange;

@@ -9,6 +9,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../providers/preferences_provider.dart';
 import '../services/translations.dart';
 import '../services/toast_service.dart';
+import '../services/offline_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -124,20 +125,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
+    final auth = context.read<AuthProvider>();
+    final farmerId = auth.user?['farmerId'];
+    final updateData = {
+      'name': _nameController.text.trim(),
+      'address': _addressController.text.trim(),
+      'phone': _phoneController.text.trim(),
+      'nic': _nicController.text.trim(),
+      'bank_name': _bankNameController.text.trim(),
+      'account_number': _accountNumberController.text.trim(),
+      'branch': _branchController.text.trim(),
+    };
+
+    if (!OfflineService().isOnline) {
+      await OfflineService().addPendingAction(
+        '/farmers?action=update&id=$farmerId',
+        'PATCH',
+        updateData,
+      );
+      
+      // Optimistic update of local user state
+      if (auth.user != null) {
+        auth.user!['name'] = _nameController.text.trim();
+        auth.user!['address'] = _addressController.text.trim();
+        auth.user!['phone'] = _phoneController.text.trim();
+        auth.user!['nic'] = _nicController.text.trim();
+        auth.user!['bankName'] = _bankNameController.text.trim();
+        auth.user!['accountNumber'] = _accountNumberController.text.trim();
+        auth.user!['branch'] = _branchController.text.trim();
+      }
+
+      if (mounted && !silent) {
+        ToastService.show(context, 'Profile changes saved offline. Will sync when online.');
+        setState(() => _isEditing = false);
+      }
+      return;
+    }
+
     if (!silent) setState(() => _isLoading = true);
     try {
-      final auth = context.read<AuthProvider>();
-      final farmerId = auth.user?['farmerId'];
-
-      await _api.patch('/farmers?action=update&id=$farmerId', {
-        'name': _nameController.text.trim(),
-        'address': _addressController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'nic': _nicController.text.trim(),
-        'bank_name': _bankNameController.text.trim(),
-        'account_number': _accountNumberController.text.trim(),
-        'branch': _branchController.text.trim(),
-      });
+      await _api.patch('/farmers?action=update&id=$farmerId', updateData);
 
       if (auth.user != null) {
         auth.user!['name'] = _nameController.text.trim();

@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getFarmers, createCollection } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Farmer } from '@/types';
+import { savePendingAction, isOnline } from '@/services/offlineSync';
 
 const MilkCollectionPage: React.FC = () => {
   const { user } = useAuth();
@@ -47,17 +48,30 @@ const MilkCollectionPage: React.FC = () => {
       toast({ title: 'Error', description: 'No chilling center associated with your account', variant: 'destructive' });
       return;
     }
+    
+    const collectionData = {
+      farmerId: parseInt(form.farmerId),
+      chillingCenterId: user.chillingCenterId,
+      date: form.date,
+      time: form.time,
+      temperature: parseFloat(form.temperature),
+      quantity: parseFloat(form.quantity),
+      milkType: form.milkType as 'Buffalo' | 'Cow' | 'Goat',
+    };
+
+    if (!isOnline()) {
+      savePendingAction('collection', collectionData);
+      toast({ 
+        title: 'Saved Offline', 
+        description: 'Connection is down. Record will sync once online.' 
+      });
+      setForm({ farmerId: '', date: form.date, time: new Date().toTimeString().slice(0, 5), temperature: '', quantity: '', milkType: 'Cow' });
+      return;
+    }
+
     setLoading(true);
     try {
-      await createCollection({
-        farmerId: parseInt(form.farmerId),
-        chillingCenterId: user.chillingCenterId,
-        date: form.date,
-        time: form.time,
-        temperature: parseFloat(form.temperature),
-        quantity: parseFloat(form.quantity),
-        milkType: form.milkType as 'Buffalo' | 'Cow' | 'Goat',
-      });
+      await createCollection(collectionData);
       toast({ title: 'Collection Recorded', description: 'Milk collection saved successfully' });
       setForm({ farmerId: '', date: form.date, time: new Date().toTimeString().slice(0, 5), temperature: '', quantity: '', milkType: 'Cow' });
     } catch {

@@ -10,6 +10,7 @@ import { getCollections, submitQualityTest } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, QualityTest } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
+import { savePendingAction, isOnline } from '@/services/offlineSync';
 
 const QualityTestingPage: React.FC = () => {
   const { user } = useAuth();
@@ -29,15 +30,28 @@ const QualityTestingPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const testData = {
+      collectionId: parseInt(form.collectionId),
+      snf: parseFloat(form.snf),
+      fat: parseFloat(form.fat),
+      water: parseFloat(form.water),
+    };
+
+    if (!isOnline()) {
+      savePendingAction('quality', testData);
+      toast({ 
+        title: 'Saved Offline', 
+        description: 'Connection is down. Test results will sync once online.' 
+      });
+      setForm({ collectionId: '', snf: '', fat: '', water: '' });
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     try {
-      const res = await submitQualityTest({
-        collectionId: parseInt(form.collectionId),
-        snf: parseFloat(form.snf),
-        fat: parseFloat(form.fat),
-        water: parseFloat(form.water),
-      });
+      const res = await submitQualityTest(testData);
       setResult(res);
       toast({ title: `Quality: ${res.result}`, description: res.reason || 'All parameters within range' });
       setForm({ collectionId: '', snf: '', fat: '', water: '' });

@@ -12,6 +12,7 @@ import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, Dispatch } from '@/types';
+import { savePendingAction, isOnline } from '@/services/offlineSync';
 import {
   Dialog,
   DialogContent,
@@ -98,14 +99,28 @@ const DispatchPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selected.length === 0) { toast({ title: 'Error', description: 'Select at least one collection', variant: 'destructive' }); return; }
+    
+    const dispatchData = {
+      chillingCenterId: centerId,
+      ...form,
+      dispatchDate: toISOWithOffset(form.dispatchDate),
+      items: selected.map(id => ({ id: 0, dispatchId: 0, collectionId: id })),
+    };
+
+    if (!isOnline()) {
+      savePendingAction('dispatch', dispatchData);
+      toast({ 
+        title: 'Saved Offline', 
+        description: 'Connection is down. Dispatch will sync once online.' 
+      });
+      setSelected([]);
+      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
+      return;
+    }
+
     setLoading(true);
     try {
-      await createDispatch({
-        chillingCenterId: centerId,
-        ...form,
-        dispatchDate: toISOWithOffset(form.dispatchDate),
-        items: selected.map(id => ({ id: 0, dispatchId: 0, collectionId: id })),
-      });
+      await createDispatch(dispatchData);
       toast({ title: 'Dispatch Created', description: `${selected.length} collections dispatched` });
       setSelected([]);
       setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
