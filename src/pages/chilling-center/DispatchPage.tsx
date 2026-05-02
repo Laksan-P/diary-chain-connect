@@ -85,12 +85,38 @@ const DispatchPage: React.FC = () => {
       setDispatches(d);
       saveCache('dispatch_history', d);
 
+      const offlineCollections = getPendingByType('collection').map(a => {
+        // Check if there's a corresponding offline quality test
+        const qualityTest = getPendingByType('quality').find(q => q.data.offlineCollectionId === a.id);
+        const passed = qualityTest && qualityTest.data.fat >= 3.5 && qualityTest.data.snf >= 8.5 && qualityTest.data.water <= 0.5;
+        
+        return {
+          ...a.data,
+          id: a.id,
+          isOffline: true,
+          qualityResult: passed ? 'Pass' : (qualityTest ? 'Fail' : 'Pending'),
+          dispatchStatus: 'Pending'
+        };
+      });
+
+      // Combine and filter for dispatchable items (must pass quality)
+      const dispatchable = [
+        ...offlineCollections.filter(c => c.qualityResult === 'Pass'),
+        ...filteredCols
+      ];
+      setCollections(dispatchable);
+
       // Wait for at least 600ms to show the animation clearly
       await new Promise(resolve => setTimeout(resolve, 600));
     } catch (err) {
       console.error('Load data error:', err);
-      const cachedCols = getCache('dispatch_pending_collections');
-      if (cachedCols) setCollections(cachedCols);
+      const cachedCols = getCache('dispatch_pending_collections') || [];
+      const offlineCollections = getPendingByType('collection').map(a => {
+        const qualityTest = getPendingByType('quality').find(q => q.data.offlineCollectionId === a.id);
+        const passed = qualityTest && qualityTest.data.fat >= 3.5 && qualityTest.data.snf >= 8.5 && qualityTest.data.water <= 0.5;
+        return { ...a.data, id: a.id, isOffline: true, qualityResult: passed ? 'Pass' : (qualityTest ? 'Fail' : 'Pending'), dispatchStatus: 'Pending' };
+      });
+      setCollections([...offlineCollections.filter(c => c.qualityResult === 'Pass'), ...cachedCols]);
       
       const cachedDispatches = getCache('dispatch_history');
       if (cachedDispatches) setDispatches(cachedDispatches);
@@ -114,14 +140,22 @@ const DispatchPage: React.FC = () => {
       chillingCenterId: centerId,
       ...form,
       dispatchDate: toISOWithOffset(form.dispatchDate),
-      items: selected.map(id => ({ id: 0, dispatchId: 0, collectionId: id })),
+      items: selected.map(id => {
+        const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
+        return { 
+          id: 0, 
+          dispatchId: 0, 
+          collectionId: isOfflineId ? 0 : Number(id),
+          offlineCollectionId: isOfflineId ? String(id) : undefined
+        };
+      }),
     };
 
-    if (!isOnline()) {
+    if (!isOnline() || dispatchData.items.some(i => i.offlineCollectionId)) {
       savePendingAction('dispatch', dispatchData);
       toast({ 
         title: 'Saved Offline', 
-        description: 'Connection is down. Dispatch will sync once online.' 
+        description: 'Dispatch record saved locally. Will sync once online.' 
       });
       setSelected([]);
       setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });

@@ -66,6 +66,7 @@ const MilkCollectionPage: React.FC = () => {
       temperature: parseFloat(form.temperature),
       quantity: parseFloat(form.quantity),
       milkType: form.milkType as 'Buffalo' | 'Cow' | 'Goat',
+      farmerName: farmers.find(f => String(f.id) === form.farmerId)?.name || 'Unknown Farmer',
     };
 
     if (!isOnline()) {

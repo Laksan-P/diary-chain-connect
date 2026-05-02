@@ -15,8 +15,16 @@ const CollectionHistory: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { 
-    if (user?.chillingCenterId) {
-      getCollections(user.chillingCenterId).then(c => { 
+    const loadHistory = async () => {
+      if (user?.chillingCenterId) {
+        let serverCols: any[] = [];
+        try {
+          serverCols = await getCollections(user.chillingCenterId);
+        } catch (err) {
+          // No cache for history yet, but we should at least show pending
+          console.error('Failed to load history:', err);
+        }
+
         const pending = getPendingActions()
           .filter(a => a.type === 'collection')
           .map(a => ({ 
@@ -26,10 +34,12 @@ const CollectionHistory: React.FC = () => {
             dispatchStatus: 'Pending Sync',
             isOffline: true 
           }));
-        setCollections([...pending, ...c]); 
+        
+        setCollections([...pending, ...serverCols]); 
         setLoading(false); 
-      }); 
-    }
+      }
+    };
+    loadHistory();
   }, [user]);
 
   const columns = [

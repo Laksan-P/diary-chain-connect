@@ -64,6 +64,10 @@ export const getCache = (key: string) => {
   return data ? JSON.parse(data) : null;
 };
 
+export const getPendingByType = (type: PendingAction['type']) => {
+  return getPendingActions().filter(a => a.type === type);
+};
+
 window.addEventListener('online', () => {
   console.log('Online restored, syncing...');
   syncActions();

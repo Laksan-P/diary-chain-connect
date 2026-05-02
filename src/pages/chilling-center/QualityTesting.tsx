@@ -10,7 +10,7 @@ import { getCollections, submitQualityTest } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, QualityTest } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
-import { savePendingAction, isOnline, saveCache, getCache } from '@/services/offlineSync';
+import { savePendingAction, isOnline, saveCache, getCache, getPendingByType } from '@/services/offlineSync';
 
 const QualityTestingPage: React.FC = () => {
   const { user } = useAuth();
@@ -23,15 +23,25 @@ const QualityTestingPage: React.FC = () => {
   useEffect(() => { 
     const loadCollections = async () => {
       if (user?.chillingCenterId) {
+        let serverCols: MilkCollection[] = [];
         try {
-          const cols = await getCollections(user.chillingCenterId);
-          const pending = cols.filter(c => !c.qualityResult);
-          setCollections(pending);
-          saveCache('pending_quality_collections', pending);
+          serverCols = await getCollections(user.chillingCenterId);
+          saveCache('pending_quality_collections', serverCols);
         } catch (err) {
-          const cached = getCache('pending_quality_collections');
-          if (cached) setCollections(cached);
+          serverCols = getCache('pending_quality_collections') || [];
         }
+
+        const pendingQuality = serverCols.filter(c => !c.qualityResult);
+        
+        // Add offline-pending collections
+        const offlinePending = getPendingByType('collection').map(a => ({
+          ...a.data,
+          id: a.id, // Temporary ID
+          isOffline: true,
+          farmerName: a.data.farmerName || 'Pending Sync...',
+        }));
+
+        setCollections([...offlinePending, ...pendingQuality]);
       }
     };
     loadCollections();
@@ -42,18 +52,24 @@ const QualityTestingPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Check if it's an offline ID (UUID)
+    const isOfflineId = isNaN(parseInt(form.collectionId)) || form.collectionId.includes('-');
+    
     const testData = {
-      collectionId: parseInt(form.collectionId),
+      collectionId: isOfflineId ? 0 : parseInt(form.collectionId),
+      offlineCollectionId: isOfflineId ? form.collectionId : undefined,
       snf: parseFloat(form.snf),
       fat: parseFloat(form.fat),
       water: parseFloat(form.water),
     };
 
-    if (!isOnline()) {
+    if (!isOnline() || isOfflineId) {
       savePendingAction('quality', testData);
       toast({ 
         title: 'Saved Offline', 
-        description: 'Connection is down. Test results will sync once online.' 
+        description: isOfflineId 
+          ? 'Linked to pending collection. Will sync once both are online.'
+          : 'Connection is down. Test results will sync once online.' 
       });
       setForm({ collectionId: '', snf: '', fat: '', water: '' });
       return;
