@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../services/translations.dart';
 import 'app_theme.dart';
 import '../services/api_service.dart';
 import '../services/offline_service.dart';
+import '../widgets/offline_banner.dart';
 
 class PassbookScreen extends StatefulWidget {
   final List<dynamic> collections;
@@ -86,24 +88,49 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: RefreshIndicator(
-        onRefresh: () async => widget.onRefresh(),
-        color: AppTheme.primary,
-        child: widget.isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(child: _buildScrollableHeader(context)),
-                  SliverToBoxAdapter(child: _buildSummary(context)),
-                  if (widget.mode == 'payments')
-                    SliverToBoxAdapter(child: _buildPricingInfo(context)),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                    sliver: _buildSliverList(context),
-                  ),
-                ],
+      body: Stack(
+        children: [
+          // Subtle background decoration
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : AppTheme.primary.withValues(alpha: 0.03),
+                shape: BoxShape.circle,
               ),
+            ),
+          ),
+          RefreshIndicator(
+            onRefresh: () async => widget.onRefresh(),
+            color: AppTheme.primary,
+            child: widget.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: SafeArea(
+                          bottom: false,
+                          child: OfflineBanner(locale: widget.locale),
+                        ),
+                      ),
+                      SliverToBoxAdapter(child: _buildScrollableHeader(context)),
+                      SliverToBoxAdapter(child: _buildSummary(context)),
+                      if (widget.mode == 'payments')
+                        SliverToBoxAdapter(child: _buildPricingInfo(context)),
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                        sliver: _buildSliverList(context),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -149,7 +176,10 @@ class _PassbookScreenState extends State<PassbookScreen> {
           color: isDark ? Colors.white : Colors.black87,
           size: 14,
         ),
-        onPressed: widget.onBack,
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          widget.onBack();
+        },
       ),
     );
   }
@@ -296,7 +326,10 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
   Widget _buildFilterButton(bool isDark) {
     return PopupMenuButton<String>(
-      onSelected: (value) => setState(() => _statusFilter = value),
+      onSelected: (value) {
+        HapticFeedback.selectionClick();
+        setState(() => _statusFilter = value);
+      },
       color: isDark ? AppTheme.surfaceDark : Colors.white,
       offset: const Offset(0, 50),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -554,10 +587,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
                   ),
                 ],
 
-                if (c['rejectReason'] != null &&
-                    (c['qualityResult']?.toString().toLowerCase() == 'fail' ||
-                        c['qualityResult']?.toString().toLowerCase() ==
-                            'rejected')) ...[
+                if ((c['qualityResult']?.toString().toLowerCase() == 'fail' ||
+                        c['qualityResult']?.toString().toLowerCase() == 'rejected')) ...[
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -587,7 +618,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                 ),
                               ),
                               Text(
-                                c['rejectReason'].toString(),
+                                (c['reason'] ?? c['failureReason'] ?? c['rejectReason'] ?? Translations.get('unknown_error', widget.locale)).toString(),
                                 style: TextStyle(
                                   color: isDark
                                       ? Colors.white70
@@ -900,7 +931,10 @@ class _PassbookScreenState extends State<PassbookScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
@@ -1115,7 +1149,9 @@ class _PassbookScreenState extends State<PassbookScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: accentColor.withOpacity(0.1),
+                  color: Theme.of(context).brightness == Brightness.dark 
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : AppTheme.primary.withValues(alpha: 0.03),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

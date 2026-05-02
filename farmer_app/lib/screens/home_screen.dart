@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../widgets/offline_banner.dart';
 import 'app_theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +16,7 @@ import 'notifications_screen.dart';
 import '../providers/preferences_provider.dart';
 import '../services/translations.dart';
 import '../services/offline_service.dart';
+import '../widgets/bouncing_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -189,10 +191,14 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Generates local notifications for data that exists but has no alert yet
   void _synthesizeNotifications() {
     bool changed = false;
+    final locale = Localizations.localeOf(context).languageCode;
 
     // 1. Check for New Collections
     for (var col in _collections) {
       final date = col['date']?.toString() ?? '';
+      final qResult = col['qualityResult']?.toString().toLowerCase() ?? 'pending';
+      final reason = col['reason'] ?? col['failureReason'] ?? col['rejectReason'] ?? '';
+      
       // Look for a notification about this specific date and collection
       final exists = _notifications.any(
         (n) =>
@@ -201,14 +207,35 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (!exists) {
+        String title = 'Milk Collection Recorded';
+        String message = 'Your milk collection on $date has been recorded in the system.';
+        
+        if (qResult == 'pass') {
+          title = 'quality_test_passed_title';
+          message = 'quality_test_passed_msg|date:$date';
+        } else if (qResult == 'fail') {
+          title = 'quality_test_failed_title';
+          // Translate common reasons if possible
+          String displayReason = reason.toString();
+          if (displayReason.toLowerCase().contains('fat')) {
+            displayReason = Translations.get('low_fat', locale);
+          } else if (displayReason.toLowerCase().contains('snf')) {
+            displayReason = Translations.get('low_snf', locale);
+          } else if (displayReason.toLowerCase().contains('water')) {
+            displayReason = Translations.get('excess_water', locale);
+          }
+          
+          message = 'quality_test_failed_msg|date:$date,reason:$displayReason';
+        }
+
+        final localId = 'local-col-${col['id']}';
         _notifications.insert(0, {
-          'id': 'local-col-${col['id']}',
+          'id': localId,
           'type': 'quality_result',
-          'title': 'Milk Collection Recorded',
-          'message':
-              'Your milk collection on $date has been recorded in the system.',
+          'title': title,
+          'message': message,
           'createdAt': col['createdAt'] ?? DateTime.now().toIso8601String(),
-          'isRead': false,
+          'isRead': OfflineService().isLocalNotificationRead(localId),
           'isSynthesized': true,
         });
         changed = true;
@@ -225,14 +252,14 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (!exists) {
+        final localId = 'local-pay-${pay['id']}';
         _notifications.insert(0, {
-          'id': 'local-pay-${pay['id']}',
+          'id': localId,
           'type': 'payment',
-          'title': 'Payment Received',
-          'message':
-              'A payment of Rs. $amount has been processed for your account.',
+          'title': 'payment_received_title',
+          'message': 'payment_received_msg|amount:$amount,qty:--',
           'createdAt': pay['createdAt'] ?? DateTime.now().toIso8601String(),
-          'isRead': false,
+          'isRead': OfflineService().isLocalNotificationRead(localId),
           'isSynthesized': true,
         });
         changed = true;
@@ -260,92 +287,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Column(
+      body: IndexedStack(
+        index: _currentIndex,
         children: [
-          StreamBuilder<bool>(
-            stream: OfflineService().connectivityStream,
-            initialData: OfflineService().isOnline,
-            builder: (context, snapshot) {
-              final isOnline = snapshot.data ?? true;
-              if (isOnline) return const SizedBox.shrink();
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 16,
-                ),
-                color: Colors.red.withValues(alpha: 0.1),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        Translations.get('offline_mode_msg', locale),
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+          _buildFintechDashboard(user, prefs),
+          PassbookScreen(
+            collections: _collections,
+            payments: _payments,
+            locale: locale,
+            isLoading: _isLoading,
+            onRefresh: _fetchData,
+            onBack: _handleBack,
+            mode: 'supply',
           ),
-          Expanded(
-            child: IndexedStack(
-              index: _currentIndex,
-              children: [
-                _buildFintechDashboard(user, prefs),
-                PassbookScreen(
-                  collections: _collections,
-                  payments: _payments,
-                  locale: locale,
-                  isLoading: _isLoading,
-                  onRefresh: _fetchData,
-                  onBack: _handleBack,
-                  mode: 'supply',
-                ),
-                PassbookScreen(
-                  collections: _collections,
-                  payments: _payments,
-                  locale: locale,
-                  isLoading: _isLoading,
-                  onRefresh: _fetchData,
-                  onBack: _handleBack,
-                  mode: 'payments',
-                ),
-                ProfileScreen(onBack: _handleBack),
-                NotificationsScreen(
-                  notifications: _notifications,
-                  isLoading: _isLoading,
-                  onRefresh: _fetchData,
-                  onRead: (id) {
-                    setState(() {
-                      final index = _notifications.indexWhere(
-                        (n) => n['id'].toString() == id,
-                      );
-                      if (index != -1) {
-                        _notifications[index]['isRead'] = true;
-                      }
-                    });
-                    _fetchData();
-                  },
-                  onBack: _handleBack,
-                  locale: locale,
-                  userId: user['id']?.toString() ?? '',
-                ),
-              ],
-            ),
+          PassbookScreen(
+            collections: _collections,
+            payments: _payments,
+            locale: locale,
+            isLoading: _isLoading,
+            onRefresh: _fetchData,
+            onBack: _handleBack,
+            mode: 'payments',
+          ),
+          ProfileScreen(onBack: _handleBack),
+          NotificationsScreen(
+            notifications: _notifications,
+            isLoading: _isLoading,
+            onRefresh: _fetchData,
+            onRead: (id) {
+              if (id.startsWith('local-')) {
+                OfflineService().markLocalNotificationAsRead(id);
+              }
+              setState(() {
+                final index = _notifications.indexWhere(
+                  (n) => n['id'].toString() == id,
+                );
+                if (index != -1) {
+                  _notifications[index]['isRead'] = true;
+                }
+              });
+              _fetchData();
+            },
+            onBack: _handleBack,
+            locale: locale,
+            userId: user['id']?.toString() ?? '',
           ),
         ],
       ),
@@ -456,9 +441,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ? const Color(0xFFFFB000)
         : const Color(0xFF1B264F);
 
-    return GestureDetector(
+    return BouncingButton(
       onTap: () => _onTabTapped(index),
-      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
@@ -562,66 +546,85 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return SafeArea(
       bottom: false,
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(user, totalBalance, prefs),
-            const SizedBox(height: 24),
-            _buildSummaryStats(monthlyEarnings, monthlyLiters, locale),
-            const SizedBox(height: 32),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                Translations.get('recent_activity', locale),
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : AppTheme.primary,
-                ),
+      child: Stack(
+        children: [
+          // Subtle background decoration
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark 
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : AppTheme.primary.withValues(alpha: 0.03),
+                shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(height: 16),
-            if (_isLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(40),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else if (_collections.isEmpty && _payments.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(32),
-                child: Center(
+          ),
+          SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                OfflineBanner(locale: locale),
+                _buildHeader(user, totalBalance, prefs),
+                const SizedBox(height: 24),
+                _buildSummaryStats(monthlyEarnings, monthlyLiters, locale),
+                const SizedBox(height: 32),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    Translations.get('no_records_found', locale),
-                    style: TextStyle(color: Colors.grey.withValues(alpha: 0.5)),
+                    Translations.get('recent_activity', locale),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : AppTheme.primary,
+                    ),
                   ),
                 ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    ..._collections
-                        .take(3)
-                        .map((c) => _fintechCollectionCard(c, locale)),
-                    ..._payments
-                        .take(2)
-                        .map((p) => _fintechPaymentCard(p, locale)),
-                  ],
-                ),
+                const SizedBox(height: 16),
+                  if (_isLoading)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else if (_collections.isEmpty && _payments.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Text(
+                          Translations.get('no_records_found', locale),
+                          style: TextStyle(color: Colors.grey.withValues(alpha: 0.5)),
+                        ),
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          ..._collections
+                              .take(3)
+                              .map((c) => _fintechCollectionCard(c, locale)),
+                          ..._payments
+                              .take(2)
+                              .map((p) => _fintechPaymentCard(p, locale)),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-            const SizedBox(height: 120),
+            ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildSummaryStats(double earnings, double liters, String locale) {
@@ -670,7 +673,10 @@ class _HomeScreenState extends State<HomeScreen> {
     VoidCallback onTap,
   ) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -1081,7 +1087,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
     bool showBadge = false,
   }) {
-    return GestureDetector(
+    return BouncingButton(
       onTap: onTap,
       child: Stack(
         clipBehavior: Clip.none,

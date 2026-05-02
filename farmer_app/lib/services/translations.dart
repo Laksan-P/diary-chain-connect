@@ -152,6 +152,10 @@ class Translations {
       'pending_sync': 'Pending Sync',
       'monthly_earnings': 'Monthly Earnings',
       'monthly_liters': 'Monthly Liters',
+      'low_fat': 'Low FAT',
+      'low_snf': 'Low SNF',
+      'excess_water': 'Excess Water',
+      'unknown_error': 'Unknown Error',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -307,6 +311,10 @@ class Translations {
       'pending_sync': 'සමමුහුර්ත වීමට ඇත',
       'monthly_earnings': 'මාසික ආදායම',
       'monthly_liters': 'මාසික ලීටර්',
+      'low_fat': 'මේදය අඩුයි (Low FAT)',
+      'low_snf': 'SNF අඩුයි (Low SNF)',
+      'excess_water': 'වැඩිපුර ජලය (Excess Water)',
+      'unknown_error': 'හඳුනා නොගත් දෝෂයකි',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -463,6 +471,10 @@ class Translations {
       'pending_sync': 'ஒத்திசைவு நிலுவையில் உள்ளது',
       'monthly_earnings': 'மாத வருமானம்',
       'monthly_liters': 'மாதாந்திர லிட்டர்',
+      'low_fat': 'கொழுப்பு குறைவு (Low FAT)',
+      'low_snf': 'SNF குறைவு (Low SNF)',
+      'excess_water': 'அதிகப்படியான நீர் (Excess Water)',
+      'unknown_error': 'அறியப்படாத பிழை',
     },
   };
 

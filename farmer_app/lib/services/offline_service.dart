@@ -71,6 +71,22 @@ class OfflineService {
     return box.get(key);
   }
 
+  // --- Local Notification State ---
+  Future<void> markLocalNotificationAsRead(String id) async {
+    final box = Hive.box(cachedDataBoxName);
+    List<String> readIds = List<String>.from(box.get('read_local_notifications', defaultValue: <String>[]));
+    if (!readIds.contains(id)) {
+      readIds.add(id);
+      await box.put('read_local_notifications', readIds);
+    }
+  }
+
+  bool isLocalNotificationRead(String id) {
+    final box = Hive.box(cachedDataBoxName);
+    List<String> readIds = List<String>.from(box.get('read_local_notifications', defaultValue: <String>[]));
+    return readIds.contains(id);
+  }
+
   // --- Pending Actions ---
   Future<void> addPendingAction(String path, String method, Map<String, dynamic> body) async {
     final box = Hive.box(pendingActionsBoxName);

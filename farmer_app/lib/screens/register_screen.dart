@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../widgets/offline_banner.dart';
 import 'app_theme.dart';
 import '../services/api_service.dart';
 import '../providers/auth_provider.dart';
@@ -10,7 +11,6 @@ import '../providers/preferences_provider.dart';
 import '../services/translations.dart';
 import '../services/toast_service.dart';
 import '../services/offline_service.dart';
-
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -55,6 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     'Union Bank': 12,
     'Amana Bank': 12,
     'Cargills Bank': 12,
+    'Other': 20,
   };
 
   StreamSubscription<bool>? _connectivitySub;
@@ -80,7 +81,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _fetchCenters() async {
-    // Try cache first if offline
     if (!OfflineService().isOnline) {
       final cached = OfflineService().getCachedData('chilling_centers');
       if (cached != null && mounted) {
@@ -93,11 +93,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final res = await _api.get('/chilling-centers?action=list');
       if (mounted) {
         setState(() => _centers = res);
-        // Save to cache
         await OfflineService().saveCachedData('chilling_centers', res);
       }
     } catch (e) {
-      // If error, try loading from cache as fallback
       final cached = OfflineService().getCachedData('chilling_centers');
       if (cached != null && mounted) {
         setState(() => _centers = List<dynamic>.from(cached));
@@ -148,118 +146,156 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final prefs = context.watch<AppPreferences>();
     final locale = prefs.locale.languageCode;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 60, 24, 120),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.pop(context);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.grey.shade100, shape: BoxShape.circle),
-                      child: Icon(LucideIcons.chevronLeft, size: 20, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87),
-                    ),
-                  ),
-                ],
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Subtle background decoration
+            Positioned(
+              top: -100,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  color: isDark 
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : AppTheme.primary.withValues(alpha: 0.03),
+                  shape: BoxShape.circle,
+                ),
               ),
-              const SizedBox(height: 32),
-              Text(
-                Translations.get('farmer_registration', locale),
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -1),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                Translations.get('join_network', locale),
-                style: TextStyle(fontSize: 14, color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.grey.shade500, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 48),
-              _sectionTitle(Translations.get('personal_details', locale)),
-              _field('name', Translations.get('full_name', locale), LucideIcons.user, locale, hint: 'e.g. Sunil Perera'),
-              _field('nic', Translations.get('nic', locale), LucideIcons.creditCard, locale, hint: 'e.g. 199012345678'),
-              _field('address', Translations.get('address', locale), LucideIcons.mapPin, locale, hint: 'e.g. 123 Main St, Kandy'),
-              _field('phone', Translations.get('phone', locale), LucideIcons.phone, locale, hint: 'e.g. 0771234567'),
-              const SizedBox(height: 16),
-              _centers.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: TextFormField(
-                        enabled: false,
-                        decoration: AppTheme.inputDecoration('Chilling Center', LucideIcons.warehouse, context: context).copyWith(
-                          hintText: 'Check network connection...',
+            ),
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 120),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Scrollable Banner (moves with the form)
+                    OfflineBanner(locale: locale),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isDark 
+                                  ? Colors.white.withOpacity(0.05) 
+                                  : Colors.grey.shade100, 
+                              shape: BoxShape.circle
+                            ),
+                            child: Icon(
+                              LucideIcons.chevronLeft, 
+                              size: 20, 
+                              color: isDark ? Colors.white : Colors.black87
+                            ),
+                          ),
                         ),
-                        validator: (v) => 'Unable to fetch chilling centers',
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    Text(
+                      Translations.get('farmer_registration', locale),
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -1),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      Translations.get('join_network', locale),
+                      style: TextStyle(
+                        fontSize: 14, 
+                        color: isDark ? Colors.white60 : Colors.grey.shade500, 
+                        fontWeight: FontWeight.w500
                       ),
-                    )
-                  : Padding(
+                    ),
+                    const SizedBox(height: 48),
+                    _sectionTitle(Translations.get('personal_details', locale)),
+                    _field('name', Translations.get('full_name', locale), LucideIcons.user, locale, hint: 'e.g. Sunil Perera'),
+                    _field('nic', Translations.get('nic', locale), LucideIcons.creditCard, locale, hint: 'e.g. 199012345678'),
+                    _field('address', Translations.get('address', locale), LucideIcons.mapPin, locale, hint: 'e.g. 123 Main St, Kandy'),
+                    _field('phone', Translations.get('phone', locale), LucideIcons.phone, locale, hint: 'e.g. 0771234567'),
+                    const SizedBox(height: 16),
+                    _centers.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: TextFormField(
+                              enabled: false,
+                              decoration: AppTheme.inputDecoration('Chilling Center', LucideIcons.warehouse, context: context).copyWith(
+                                hintText: 'Check network connection...',
+                              ),
+                              validator: (v) => 'Unable to fetch chilling centers',
+                            ),
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: DropdownButtonFormField<int>(
+                              value: _selectedCenter,
+                              decoration: AppTheme.inputDecoration('Chilling Center', LucideIcons.warehouse, context: context),
+                              items: _centers.map<DropdownMenuItem<int>>((c) {
+                                return DropdownMenuItem<int>(value: c['id'], child: Text(c['name']));
+                              }).toList(),
+                              onChanged: (v) => setState(() => _selectedCenter = v),
+                              validator: (v) => v == null ? Translations.get('required_field', locale) : null,
+                            ),
+                          ),
+                    const SizedBox(height: 24),
+                    _sectionTitle(Translations.get('bank_details', locale)),
+                    Padding(
                       padding: const EdgeInsets.only(bottom: 16),
-                      child: DropdownButtonFormField<int>(
-                        initialValue: _selectedCenter,
-                        decoration: AppTheme.inputDecoration('Chilling Center', LucideIcons.warehouse, context: context),
-                        items: _centers.map<DropdownMenuItem<int>>((c) {
-                          return DropdownMenuItem<int>(value: c['id'], child: Text(c['name']));
-                        }).toList(),
-                        onChanged: (v) => setState(() => _selectedCenter = v),
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedBank,
+                        decoration: AppTheme.inputDecoration(Translations.get('bank_name', locale), LucideIcons.landmark, context: context),
+                        items: _bankRules.keys.map((bank) => DropdownMenuItem(value: bank, child: Text(bank))).toList(),
+                        onChanged: (v) {
+                          setState(() {
+                            _selectedBank = v;
+                            _controllers['bankName']!.text = v ?? '';
+                            _controllers['accountNumber']!.clear();
+                          });
+                        },
                         validator: (v) => v == null ? Translations.get('required_field', locale) : null,
                       ),
                     ),
-              const SizedBox(height: 24),
-              _sectionTitle(Translations.get('bank_details', locale)),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: DropdownButtonFormField<String>(
-                  value: _selectedBank,
-                  decoration: AppTheme.inputDecoration(Translations.get('bank_name', locale), LucideIcons.landmark, context: context),
-                  items: [..._bankRules.keys, 'Other'].map((bank) => DropdownMenuItem(value: bank, child: Text(bank))).toList(),
-                  onChanged: (v) {
-                    setState(() {
-                      _selectedBank = v;
-                      _controllers['bankName']!.text = v ?? '';
-                      _controllers['accountNumber']!.clear();
-                    });
-                  },
-                  validator: (v) => v == null ? Translations.get('required_field', locale) : null,
-                ),
-              ),
-              _field('accountNumber', Translations.get('account_number', locale), LucideIcons.hash, locale, hint: _selectedBank != null && _selectedBank != 'Other' ? 'Required: ${_bankRules[_selectedBank]} digits' : 'e.g. 123456789'),
-              _field('branch', Translations.get('branch', locale), LucideIcons.gitBranch, locale, hint: 'e.g. Kandy Central'),
-              const SizedBox(height: 40),
-              _sectionTitle(Translations.get('account_credentials', locale)),
-              _field('email', Translations.get('email', locale), LucideIcons.mail, locale, type: TextInputType.emailAddress, hint: 'e.g. sunil@example.com'),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: TextFormField(
-                  controller: _controllers['password'],
-                  decoration: AppTheme.inputDecoration(Translations.get('password', locale), LucideIcons.lock, hint: 'Create a strong password', context: context).copyWith(
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? LucideIcons.eye : LucideIcons.eyeOff, size: 20, color: Colors.grey.shade400),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    _field('accountNumber', Translations.get('account_number', locale), LucideIcons.hash, locale, hint: _selectedBank != null && _selectedBank != 'Other' ? 'Required: ${_bankRules[_selectedBank]} digits' : 'e.g. 123456789'),
+                    _field('branch', Translations.get('branch', locale), LucideIcons.gitBranch, locale, hint: 'e.g. Kandy Central'),
+                    const SizedBox(height: 40),
+                    _sectionTitle(Translations.get('account_credentials', locale)),
+                    _field('email', Translations.get('email', locale), LucideIcons.mail, locale, type: TextInputType.emailAddress, hint: 'e.g. sunil@example.com'),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: TextFormField(
+                        controller: _controllers['password'],
+                        decoration: AppTheme.inputDecoration(Translations.get('password', locale), LucideIcons.lock, hint: 'Create a strong password', context: context).copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscurePassword ? LucideIcons.eye : LucideIcons.eyeOff, size: 20, color: Colors.grey.shade400),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                        ),
+                        obscureText: _obscurePassword,
+                        validator: (v) => v == null || v.isEmpty ? Translations.get('required_field', locale) : null,
+                      ),
                     ),
-                  ),
-                  obscureText: _obscurePassword,
-                  validator: (v) => v == null || v.isEmpty ? Translations.get('required_field', locale) : null,
+                    const SizedBox(height: 48),
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _handleRegister,
+                      style: AppTheme.primaryButton(context),
+                      child: _isLoading 
+                        ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text(Translations.get('complete_registration', locale)),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 48),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _handleRegister,
-                style: AppTheme.primaryButton(context),
-                child: _isLoading 
-                  ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text(Translations.get('complete_registration', locale)),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -288,7 +324,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       maxLength = 12;
       formatters = [FilteringTextInputFormatter.allow(RegExp(r'[0-9vVxX]'))];
     } else if (key == 'accountNumber') {
-      if (_selectedBank != null && _selectedBank != 'Other') {
+      if (_selectedBank != null) {
         maxLength = _bankRules[_selectedBank];
       }
       formatters = [FilteringTextInputFormatter.digitsOnly];
@@ -300,7 +336,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: TextFormField(
         controller: _controllers[key],
         decoration: AppTheme.inputDecoration(label, icon, hint: hint, context: context).copyWith(
-          counterText: '', // Remove character count for cleaner UI
+          counterText: '',
         ),
         keyboardType: keyboardType,
         obscureText: obscure,
@@ -314,7 +350,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) return 'Invalid phone number';
           }
           if (key == 'nic' && !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) return 'Invalid NIC (e.g. 123456789V or 12-digit)';
-          if (key == 'accountNumber' && _selectedBank != null && _selectedBank != 'Other') {
+          if (key == 'accountNumber' && _selectedBank != null) {
             final requiredLength = _bankRules[_selectedBank];
             if (v.length != requiredLength) return 'Account number must be $requiredLength digits for $_selectedBank';
           }

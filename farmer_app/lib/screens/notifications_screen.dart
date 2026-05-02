@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../services/api_service.dart';
@@ -104,6 +105,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     widget.onRead?.call(id);
 
     // 3. Background API sync
+    if (id.startsWith('local-')) return;
+
     try {
       await _api.patch('/notifications?action=mark-read&id=$id', {});
     } catch (e) {
@@ -330,7 +333,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           color: isDark ? Colors.white : Colors.black87,
           size: 14,
         ),
-        onPressed: widget.onBack,
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          widget.onBack();
+        },
       ),
     );
   }
@@ -371,6 +377,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return GestureDetector(
       onTap: () {
+        HapticFeedback.lightImpact();
         if (!isRead) _markAsRead(note['id'].toString());
       },
       child: Container(

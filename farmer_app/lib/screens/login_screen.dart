@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../widgets/offline_banner.dart';
 import 'app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'register_screen.dart';
@@ -64,212 +65,219 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          // Subtle background decoration
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.03),
-                shape: BoxShape.circle,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Subtle background decoration
+            Positioned(
+              top: -100,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : AppTheme.primary.withValues(alpha: 0.03),
+                      shape: BoxShape.circle,
+                    ),
               ),
             ),
-          ),
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(32, 100, 32, 40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: TweenAnimationBuilder(
-                    duration: const Duration(milliseconds: 1200),
-                    curve: Curves.easeOutQuint,
-                    tween: Tween<double>(begin: 0, end: 1),
-                    builder: (context, double value, child) {
-                      return Opacity(
-                        opacity: value,
-                        child: Transform.translate(
-                          offset: Offset(0, 30 * (1 - value)),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.getHeaderGradient(context),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primary.withValues(alpha: 0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        LucideIcons.droplets,
-                        size: 40,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 48),
-                Text(
-                  Translations.get('welcome', locale),
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  Translations.get('enter_details', locale),
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white60
-                        : Colors.grey.shade500,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 64),
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: AppTheme.inputDecoration(
-                          Translations.get('email', locale),
-                          LucideIcons.mail,
-                          hint: 'e.g. farmer@nestle.com',
-                          context: context,
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return Translations.get('required_field', locale);
-                          }
-                          if (!RegExp(
-                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                          ).hasMatch(v)) {
-                            return 'Invalid email format';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordController,
-                        decoration:
-                            AppTheme.inputDecoration(
-                              Translations.get('password', locale),
-                              LucideIcons.lock,
-                              hint: '••••••••',
-                              context: context,
-                            ).copyWith(
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? LucideIcons.eye
-                                      : LucideIcons.eyeOff,
-                                  size: 20,
-                                  color: Colors.grey.shade400,
-                                ),
-                                onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword,
-                                ),
-                              ),
-                            ),
-                        obscureText: _obscurePassword,
-                        validator: (v) => (v == null || v.isEmpty)
-                            ? Translations.get('required_field', locale)
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 40),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleLogin,
-                  style: AppTheme.primaryButton(context),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(Translations.get('sign_in', locale)),
-                ),
-                const SizedBox(height: 32),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 4,
-                  children: [
-                    Text(
-                      "${Translations.get('new_to_platform', locale)} ",
-                      style: TextStyle(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white70
-                            : Colors.grey.shade500,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const RegisterScreen(),
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(32, 20, 32, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Scrollable Banner (appears only at the top of the content)
+                  OfflineBanner(locale: locale),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: TweenAnimationBuilder(
+                      duration: const Duration(milliseconds: 1200),
+                      curve: Curves.easeOutQuint,
+                      tween: Tween<double>(begin: 0, end: 1),
+                      builder: (context, double value, child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Transform.translate(
+                            offset: Offset(0, 30 * (1 - value)),
+                            child: child,
                           ),
                         );
                       },
-                      child: Text(
-                        Translations.get('create_account', locale),
-                        style: TextStyle(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? AppTheme.primaryLight
-                              : AppTheme.primary,
-                          fontWeight: FontWeight.w900,
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.getHeaderGradient(context),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primary.withValues(alpha: 0.2),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          LucideIcons.droplets,
+                          size: 40,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 64),
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? AppTheme.surfaceDark
-                        : Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(
+                  const SizedBox(height: 48),
+                  Text(
+                    Translations.get('welcome', locale),
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    Translations.get('enter_details', locale),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white60
+                          : Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 64),
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: AppTheme.inputDecoration(
+                            Translations.get('email', locale),
+                            LucideIcons.mail,
+                            hint: 'e.g. farmer@nestle.com',
+                            context: context,
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return Translations.get('required_field', locale);
+                            }
+                            if (!RegExp(
+                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                            ).hasMatch(v)) {
+                              return 'Invalid email format';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _passwordController,
+                          decoration:
+                              AppTheme.inputDecoration(
+                                Translations.get('password', locale),
+                                LucideIcons.lock,
+                                hint: '••••••••',
+                                context: context,
+                              ).copyWith(
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? LucideIcons.eye
+                                        : LucideIcons.eyeOff,
+                                    size: 20,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  ),
+                                ),
+                              ),
+                          obscureText: _obscurePassword,
+                          validator: (v) => (v == null || v.isEmpty)
+                              ? Translations.get('required_field', locale)
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _handleLogin,
+                    style: AppTheme.primaryButton(context),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(Translations.get('sign_in', locale)),
+                  ),
+                  const SizedBox(height: 32),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 4,
                     children: [
-                      _langTab('en', 'English', prefs),
-                      _langTab('si', 'සිංහල', prefs),
-                      _langTab('ta', 'தமிழ்', prefs),
+                      Text(
+                        "${Translations.get('new_to_platform', locale)} ",
+                        style: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white70
+                              : Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          Translations.get('create_account', locale),
+                          style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppTheme.primaryLight
+                                : AppTheme.primary,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 64),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppTheme.surfaceDark
+                          : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        _langTab('en', 'English', prefs),
+                        _langTab('si', 'සිංහල', prefs),
+                        _langTab('ta', 'தமிழ்', prefs),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
