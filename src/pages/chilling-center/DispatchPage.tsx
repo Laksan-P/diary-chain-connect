@@ -12,7 +12,7 @@ import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, Dispatch } from '@/types';
-import { savePendingAction, isOnline } from '@/services/offlineSync';
+import { savePendingAction, isOnline, saveCache, getCache } from '@/services/offlineSync';
 import {
   Dialog,
   DialogContent,
@@ -77,13 +77,23 @@ const DispatchPage: React.FC = () => {
     setIsRefreshing(true);
     try {
       const c = await getCollections(centerId);
-      setCollections(c.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending'));
+      const filteredCols = c.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
+      setCollections(filteredCols);
+      saveCache('dispatch_pending_collections', filteredCols);
+
       const d = await getDispatches(centerId);
       setDispatches(d);
+      saveCache('dispatch_history', d);
+
       // Wait for at least 600ms to show the animation clearly
       await new Promise(resolve => setTimeout(resolve, 600));
     } catch (err) {
       console.error('Load data error:', err);
+      const cachedCols = getCache('dispatch_pending_collections');
+      if (cachedCols) setCollections(cachedCols);
+      
+      const cachedDispatches = getCache('dispatch_history');
+      if (cachedDispatches) setDispatches(cachedDispatches);
     } finally {
       setIsRefreshing(false);
     }

@@ -55,6 +55,15 @@ export const syncActions = async () => {
 
 export const isOnline = () => navigator.onLine;
 
+export const saveCache = (key: string, data: any) => {
+  localStorage.setItem(`cache_${key}`, JSON.stringify(data));
+};
+
+export const getCache = (key: string) => {
+  const data = localStorage.getItem(`cache_${key}`);
+  return data ? JSON.parse(data) : null;
+};
+
 window.addEventListener('online', () => {
   console.log('Online restored, syncing...');
   syncActions();

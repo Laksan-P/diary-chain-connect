@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getFarmers, createCollection } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Farmer } from '@/types';
-import { savePendingAction, isOnline } from '@/services/offlineSync';
+import { savePendingAction, isOnline, saveCache, getCache } from '@/services/offlineSync';
 
 const MilkCollectionPage: React.FC = () => {
   const { user } = useAuth();
@@ -33,11 +33,20 @@ const MilkCollectionPage: React.FC = () => {
   });
 
   useEffect(() => { 
-    if (user?.chillingCenterId) {
-      getFarmers(user.chillingCenterId).then(setFarmers); 
-    } else {
-      getFarmers().then(setFarmers);
-    }
+    const loadFarmers = async () => {
+      try {
+        const data = user?.chillingCenterId 
+          ? await getFarmers(user.chillingCenterId)
+          : await getFarmers();
+        
+        setFarmers(data);
+        saveCache('farmers', data);
+      } catch (err) {
+        const cached = getCache('farmers');
+        if (cached) setFarmers(cached);
+      }
+    };
+    loadFarmers();
   }, [user]);
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));

@@ -10,7 +10,7 @@ import { getCollections, submitQualityTest } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, QualityTest } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
-import { savePendingAction, isOnline } from '@/services/offlineSync';
+import { savePendingAction, isOnline, saveCache, getCache } from '@/services/offlineSync';
 
 const QualityTestingPage: React.FC = () => {
   const { user } = useAuth();
@@ -21,9 +21,20 @@ const QualityTestingPage: React.FC = () => {
   const [form, setForm] = useState({ collectionId: '', snf: '', fat: '', water: '' });
 
   useEffect(() => { 
-    if (user?.chillingCenterId) {
-      getCollections(user.chillingCenterId).then(cols => setCollections(cols.filter(c => !c.qualityResult))); 
-    }
+    const loadCollections = async () => {
+      if (user?.chillingCenterId) {
+        try {
+          const cols = await getCollections(user.chillingCenterId);
+          const pending = cols.filter(c => !c.qualityResult);
+          setCollections(pending);
+          saveCache('pending_quality_collections', pending);
+        } catch (err) {
+          const cached = getCache('pending_quality_collections');
+          if (cached) setCollections(cached);
+        }
+      }
+    };
+    loadCollections();
   }, [user]);
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
