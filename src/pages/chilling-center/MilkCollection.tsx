@@ -34,16 +34,22 @@ const MilkCollectionPage: React.FC = () => {
 
   useEffect(() => { 
     const loadFarmers = async () => {
-      try {
-        const data = user?.chillingCenterId 
-          ? await getFarmers(user.chillingCenterId)
-          : await getFarmers();
-        
-        setFarmers(data);
-        saveCache('farmers', data);
-      } catch (err) {
-        const cached = getCache('farmers');
-        if (cached) setFarmers(cached);
+      // 1. Always check cache first for instant loading
+      const cached = getCache('farmers');
+      if (cached) setFarmers(cached);
+
+      // 2. If online, fetch fresh data and update cache
+      if (isOnline()) {
+        try {
+          const data = user?.chillingCenterId 
+            ? await getFarmers(user.chillingCenterId)
+            : await getFarmers();
+          
+          setFarmers(data);
+          saveCache('farmers', data);
+        } catch (err) {
+          console.error("Failed to fetch fresh farmers:", err);
+        }
       }
     };
     loadFarmers();
