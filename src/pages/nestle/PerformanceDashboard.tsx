@@ -49,7 +49,7 @@ const PerformanceDashboard: React.FC = () => {
             <Tabs value={selectedType} onValueChange={(v: any) => { setSelectedType(v); setSelectedId(null); }}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="farmer" className="text-xs">Farmers</TabsTrigger>
-                <TabsTrigger value="center" className="text-xs">Centers</TabsTrigger>
+                <TabsTrigger value="center" className="text-xs">Chilling Centers</TabsTrigger>
               </TabsList>
             </Tabs>
           </CardHeader>
