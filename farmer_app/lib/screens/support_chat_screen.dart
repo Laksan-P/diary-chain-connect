@@ -80,8 +80,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         _scrollToBottom();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ToastService.show(context, 'Failed to send message', isError: true);
+      }
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
