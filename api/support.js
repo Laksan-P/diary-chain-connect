@@ -57,7 +57,10 @@ export default async function handler(req, res) {
           query = query.eq('user_id', user.id);
         } else if (user.role === 'chilling_center') {
           // CC sees their own tickets + tickets from their farmers
-          query = query.or(`user_id.eq.${user.id},cc_id.eq.${user.chillingCenterId}`);
+          // We use a join with farmers to ensure even tickets with null cc_id are found if the user is a farmer in this CC
+          const { data: farmerIds } = await supabase.from('farmers').select('user_id').eq('chilling_center_id', user.chillingCenterId);
+          const userIds = [user.id, ...(farmerIds?.map(f => f.user_id) || [])];
+          query = query.in('user_id', userIds);
         } else if (['nestle', 'nestle_officer'].includes(user.role)) {
           // Nestle sees everything
           if (status) query = query.eq('status', status);

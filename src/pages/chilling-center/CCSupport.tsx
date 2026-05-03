@@ -43,7 +43,7 @@ export default function CCSupport() {
   });
 
   // Fetch Tickets (Farmer issues assigned to this CC + CC's own tickets)
-  const { data: tickets = [], isLoading: ticketsLoading } = useQuery({
+  const { data: tickets = [], isLoading: ticketsLoading, isFetching } = useQuery({
     queryKey: ['support_tickets'],
     queryFn: () => apiFetch<any[]>('/api/support'),
     refetchInterval: 30000 // Refresh every 30s
@@ -155,13 +155,14 @@ export default function CCSupport() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
           <Button 
             variant="outline" 
             size="icon" 
             onClick={() => queryClient.invalidateQueries({ queryKey: ['support_tickets'] })}
-            disabled={ticketsLoading}
+            disabled={isFetching}
           >
-            <RefreshCw className={`w-4 h-4 ${ticketsLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
