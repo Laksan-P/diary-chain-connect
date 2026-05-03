@@ -173,6 +173,11 @@ class Translations {
       'type_your_issue': 'Describe your issue...',
       'other_issues': 'Other Issues / Custom Questions',
       'custom_issue_feedback': 'New feedback message on your custom issue.',
+      'performance_alert': 'Performance Alert',
+      'farmer_performance_alert_title': 'Performance Improvement Needed',
+      'farmer_performance_alert_msg': 'Farmer {farmer} has been flagged for: {issue}',
+      'cc_performance_alert_title': 'Center Quality Warning',
+      'cc_performance_alert_msg': 'Center #{center_id} has high rejection rate: {rate}',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -349,6 +354,11 @@ class Translations {
       'type_your_issue': 'ඔබේ ගැටලුව විස්තර කරන්න...',
       'other_issues': 'වෙනත් ගැටළු / අභිරුචි ප්‍රශ්න',
       'custom_issue_feedback': 'ඔබේ අභිරුචි ගැටලුව පිළිබඳ නව ප්‍රතිපෝෂණ පණිවිඩයක්.',
+      'performance_alert': 'කාර්ය සාධන දැනුම්දීම',
+      'farmer_performance_alert_title': 'කාර්ය සාධනය වැඩි දියුණු කිරීම අවශ්‍යයි',
+      'farmer_performance_alert_msg': '{farmer} ගොවි මහතාගේ පරීක්ෂාවන් අසාර්ථකයි: {issue}',
+      'cc_performance_alert_title': 'මධ්‍යස්ථාන තත්ත්ව අවවාදය',
+      'cc_performance_alert_msg': 'අංක #{center_id} මධ්‍යස්ථානයේ ප්‍රතික්ෂේපිත ප්‍රමාණය වැඩියි: {rate}',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -526,6 +536,11 @@ class Translations {
       'type_your_issue': 'உங்கள் சிக்கலை விவரிக்கவும்...',
       'other_issues': 'වෙනත් ගැටළු / தனிப்பயன் கேள்விகள்',
       'custom_issue_feedback': 'உங்கள் தனிப்பயன் சிக்கலில் புதிய கருத்துச் செய்தி.',
+      'performance_alert': 'செயல்திறன் எச்சரிக்கை',
+      'farmer_performance_alert_title': 'செயல்திறன் மேம்பாடு தேவை',
+      'farmer_performance_alert_msg': 'விவசாயி {farmer} இன் பால் தரம் குறைந்துள்ளது: {issue}',
+      'cc_performance_alert_title': 'மைய தர எச்சரிக்கை',
+      'cc_performance_alert_msg': 'மையம் #{center_id} இன் நிராகரிப்பு விகிதம் அதிகம்: {rate}',
     },
   };
 

@@ -143,10 +143,10 @@ export default async function handler(req, res) {
               user_id: userId,
               title: dispatchTitle,
               message: `${dispatchMsg}|${params}`,
-              type: 'dispatch' // Changed to dispatch type for better differentiation
+              type: 'dispatch'
             });
 
-            // 3. Notify Chilling Center about Nestlé's verification result (Include Farmer Name)
+            // 3. Notify Chilling Center about Nestlé's verification result
             if (ccUserId) {
               const ccTitle = resultValue === 'Pass' ? 'cc_collection_passed_nestle_title' : 'cc_collection_rejected_nestle_title';
               const ccMsg = resultValue === 'Pass' ? 'cc_collection_passed_nestle_msg' : 'cc_collection_rejected_nestle_msg';
@@ -159,6 +159,47 @@ export default async function handler(req, res) {
             }
           }
         }
+
+        // ────────── PERFORMANCE TRACKING TRIGGER ──────────
+        try {
+          const { data: lastTests } = await supabase
+            .from('quality_tests')
+            .select('result, fat, snf, water')
+            .eq('collection_id', collectionId)
+            .order('tested_at', { ascending: false })
+            .limit(3);
+
+          if (lastTests && lastTests.length === 3 && lastTests.every(t => t.result === 'Fail')) {
+            let fatFails = 0, snfFails = 0, waterFails = 0;
+            lastTests.forEach(t => {
+              if (t.fat < 3.5) fatFails++;
+              if (t.snf < 8.5) snfFails++;
+              if (t.water > 0.5) waterFails++;
+            });
+
+            let rec = 'General quality issue. Please review hygiene and storage.';
+            if (waterFails >= 2) rec = 'Possible milk dilution detected. Please ensure milk is not diluted with water.';
+            else if (snfFails >= 2) rec = 'Low SNF detected. This often relates to animal nutrition. Review feed quality.';
+            else if (fatFails >= 2) rec = 'Low FAT detected. Review breed nutrition or feeding times.';
+
+            await supabase.from('farmers').update({ performance_status: 'Needs Improvement', performance_recommendation: rec }).eq('id', col.farmer_id);
+            const { data: nestleUsers } = await supabase.from('users').select('id').eq('role', 'nestle');
+            const targetUsers = [...(nestleUsers?.map(u => u.id) || [])];
+            if (ccUserId) targetUsers.push(ccUserId);
+
+            for (const uid of targetUsers) {
+              await supabase.from('notifications').insert({
+                user_id: uid,
+                title: 'farmer_performance_alert_title',
+                message: `farmer_performance_alert_msg|farmer:${farmerName},issue:${rec}`,
+                type: 'system'
+              });
+            }
+          } else if (lastTests && lastTests.length > 0 && lastTests[0].result === 'Pass') {
+            // Auto-recovery: If latest test is Pass, clear the warning
+            await supabase.from('farmers').update({ performance_status: 'Good', performance_recommendation: null }).eq('id', col.farmer_id);
+          }
+        } catch (pErr) { console.error('Performance err:', pErr); }
       }
 
       return res.status(201).json({
@@ -368,6 +409,45 @@ export default async function handler(req, res) {
           type: 'dispatch'
         });
       }
+
+      // ────────── CC PERFORMANCE TRACKING TRIGGER ──────────
+      try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const { data: recentDispatches } = await supabase
+          .from('dispatches')
+          .select('status')
+          .eq('chilling_center_id', dispatch.chilling_center_id)
+          .gte('dispatch_date', thirtyDaysAgo.toISOString().split('T')[0]);
+
+        if (recentDispatches && recentDispatches.length >= 5) {
+          const total = recentDispatches.length;
+          const rejected = recentDispatches.filter(d => d.status === 'Rejected').length;
+          const rate = (rejected / total) * 100;
+
+          if (rate > 10) { // 10% threshold
+            const rec = `High rejection rate (${rate.toFixed(1)}%). Review farmer collection testing and cooling procedures.`;
+            await supabase.from('chilling_centers').update({ performance_status: 'Underperforming', performance_recommendation: rec }).eq('id', dispatch.chilling_center_id);
+            
+            // Notify Nestle
+            const { data: nestleUsers } = await supabase.from('users').select('id').eq('role', 'nestle');
+            if (nestleUsers) {
+              for (const n of nestleUsers) {
+                await supabase.from('notifications').insert({
+                  user_id: n.id,
+                  title: 'cc_performance_alert_title',
+                  message: `cc_performance_alert_msg|center_id:${dispatch.chilling_center_id},rate:${rate.toFixed(1)}%`,
+                  type: 'system'
+                });
+              }
+            }
+          } else {
+            // Auto-recovery: If rate is fine, reset to Good
+            await supabase.from('chilling_centers').update({ performance_status: 'Good', performance_recommendation: null }).eq('id', dispatch.chilling_center_id);
+          }
+        }
+      } catch (ccPErr) { console.error('CC Performance err:', ccPErr); }
 
       // Fetch dispatch items for this dispatch
       const { data: items } = await supabase

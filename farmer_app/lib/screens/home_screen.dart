@@ -36,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<dynamic> _collections = [];
   List<dynamic> _payments = [];
   List<dynamic> _notifications = [];
+  Map<String, dynamic> _performance = {};
   Timer? _refreshTimer;
   AuthProvider? _auth;
   bool _isBalanceVisible = true;
@@ -158,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _api.get('/payments?action=list&farmerId=$farmerId'),
         _api.get('/notifications?action=list'),
         _api.get('/support'),
+        _api.get('/performance?type=farmer'),
       ]);
 
       if (!mounted) return;
@@ -182,6 +184,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final supportTickets = results[3] as List<dynamic>;
         _hasUnreadSupport = supportTickets.any((t) => t['is_read_by_user'] == false);
+
+        _performance = results[4] as Map<String, dynamic>;
 
         _updateBadges();
       });
@@ -639,6 +643,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildHeader(user, totalBalance, prefs),
                 const SizedBox(height: 24),
                 _buildSummaryStats(monthlyEarnings, monthlyLiters, locale),
+                if (_performance['status'] != null && _performance['status'] != 'Good') ...[
+                  const SizedBox(height: 24),
+                  _buildPerformanceCard(locale),
+                ],
                 const SizedBox(height: 32),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -692,6 +700,84 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       );
+  }
+
+  Widget _buildPerformanceCard(String locale) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final status = _performance['status'] ?? 'Good';
+    final rec = _performance['recommendation'] ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark 
+              ? [const Color(0xFF422006), const Color(0xFF451A03)]
+              : [const Color(0xFFFFF7ED), const Color(0xFFFFEDD5)],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark ? const Color(0xFF78350F) : const Color(0xFFFED7AA),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF97316).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(LucideIcons.alertTriangle, color: Color(0xFFF97316), size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        Translations.get('performance_alert', locale),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? const Color(0xFFFFEDD5) : const Color(0xFF7C2D12),
+                        ),
+                      ),
+                      Text(
+                        status,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: (isDark ? const Color(0xFFFFEDD5) : const Color(0xFF7C2D12)).withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              rec,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.5,
+                fontWeight: FontWeight.w500,
+                color: isDark ? const Color(0xFFFED7AA) : const Color(0xFF9A3412),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildSummaryStats(double earnings, double liters, String locale) {

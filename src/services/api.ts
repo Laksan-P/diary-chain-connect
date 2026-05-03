@@ -284,6 +284,21 @@ export const getCenterPerformance = async (): Promise<CenterPerformance[]> => {
   return apiFetch<CenterPerformance[]>('/api/chilling-centers?action=performance');
 };
 
+/** GET /api/performance?type=farmer&id=X */
+export const getFarmerPerformance = async (id?: number): Promise<any> => {
+  return apiFetch<any>(`/api/performance?type=farmer${id ? `&id=${id}` : ''}`);
+};
+
+/** GET /api/performance?type=center&id=X */
+export const getCenterPerformanceDetailed = async (id?: number): Promise<any> => {
+  return apiFetch<any>(`/api/performance?type=center${id ? `&id=${id}` : ''}`);
+};
+
+/** GET /api/performance */
+export const getAllPerformance = async (): Promise<any> => {
+  return apiFetch<any>('/api/performance');
+};
+
 // ============ NOTIFICATIONS ============
 
 /** GET /api/notifications?action=list */

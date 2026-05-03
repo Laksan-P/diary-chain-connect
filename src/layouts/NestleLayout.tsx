@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Milk, Users, Truck, DollarSign, BarChart3, LogOut, Menu, Settings, Building2, HelpCircle } from 'lucide-react';
+import { Milk, Users, Truck, DollarSign, BarChart3, LogOut, Menu, Settings, Building2, HelpCircle, TrendingUp } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ const navItems = [
   { title: 'Chilling Centers', path: '/nestle/centers', icon: Building2 },
   { title: 'Farmers', path: '/nestle/farmers', icon: Users },
   { title: 'Dispatches', path: '/nestle/dispatches', icon: Truck },
+  { title: 'Performance', path: '/nestle/performance', icon: TrendingUp },
   { title: 'Pricing Rules', path: '/nestle/pricing', icon: Settings },
   { title: 'Payments', path: '/nestle/payments', icon: DollarSign },
   { title: 'Support & FAQ', path: '/nestle/support', icon: HelpCircle },
