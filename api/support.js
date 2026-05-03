@@ -153,12 +153,30 @@ export default async function handler(req, res) {
       if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
 
       const isNestle = ['nestle', 'nestle_officer'].includes(user.role);
-      let isCcOwner = user.role === 'chilling_center' && ticket.cc_id === user.chillingCenterId;
+      let isCcOwner = false;
 
-      // Fallback: if token is old and doesn't have chillingCenterId, check DB
-      if (user.role === 'chilling_center' && !isCcOwner) {
-        const { data: cc } = await supabase.from('chilling_centers').select('id').eq('user_id', user.id).single();
-        if (cc && cc.id === ticket.cc_id) isCcOwner = true;
+      if (user.role === 'chilling_center') {
+        if (ticket.cc_id === user.chillingCenterId && user.chillingCenterId) {
+          isCcOwner = true;
+        } else {
+          // Check if the ticket creator is a farmer in this CC
+          const { data: farmer } = await supabase
+            .from('farmers')
+            .select('chilling_center_id')
+            .eq('user_id', ticket.user_id)
+            .single();
+          
+          // Get the CC ID for the current user if not in token
+          let myCcId = user.chillingCenterId;
+          if (!myCcId) {
+            const { data: myCc } = await supabase.from('chilling_centers').select('id').eq('user_id', user.id).single();
+            myCcId = myCc?.id;
+          }
+
+          if (farmer && farmer.chilling_center_id === myCcId) {
+            isCcOwner = true;
+          }
+        }
       }
 
       if (!isNestle && !isCcOwner) {
