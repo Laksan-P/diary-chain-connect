@@ -33,7 +33,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     super.initState();
     _fetchTickets();
     _refreshTimer = Timer.periodic(
-      const Duration(seconds: 15),
+      const Duration(seconds: 5),
       (_) => _fetchTickets(isSilent: true),
     );
   }
@@ -231,29 +231,39 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                       Icon(
                         LucideIcons.building,
                         size: 12,
-                        color: isDark ? AppTheme.primaryLight : AppTheme.primary,
+                        color: isDark
+                            ? AppTheme.primaryLight
+                            : AppTheme.primary,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         Translations.get(
-                          ticket['replied_by'] == 'chilling_center' ? 'cc_reply' : 'nestle_reply', 
-                          locale
+                          ticket['replied_by'] == 'chilling_center'
+                              ? 'cc_reply'
+                              : 'nestle_reply',
+                          locale,
                         ).toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? AppTheme.primaryLight : AppTheme.primary.withOpacity(0.7),
+                          color: isDark
+                              ? AppTheme.primaryLight
+                              : AppTheme.primary.withOpacity(0.7),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    (locale == 'si' && ticket['reply_si'] != null && ticket['reply_si'].toString().isNotEmpty)
+                    (locale == 'si' &&
+                            ticket['reply_si'] != null &&
+                            ticket['reply_si'].toString().isNotEmpty)
                         ? ticket['reply_si']
-                        : (locale == 'ta' && ticket['reply_ta'] != null && ticket['reply_ta'].toString().isNotEmpty)
-                            ? ticket['reply_ta']
-                            : ticket['reply'] ?? '',
+                        : (locale == 'ta' &&
+                              ticket['reply_ta'] != null &&
+                              ticket['reply_ta'].toString().isNotEmpty)
+                        ? ticket['reply_ta']
+                        : ticket['reply'] ?? '',
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
                       fontSize: 15,
@@ -296,8 +306,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                   const SizedBox(width: 8),
                   Text(
                     Translations.get(
-                      ticket['cc_id'] != null ? 'waiting_for_cc' : 'waiting_for_nestle', 
-                      locale
+                      ticket['cc_id'] != null
+                          ? 'waiting_for_cc'
+                          : 'waiting_for_nestle',
+                      locale,
                     ),
                     style: const TextStyle(
                       fontSize: 10,

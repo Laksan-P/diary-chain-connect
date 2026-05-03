@@ -65,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _initControllers();
     _fetchFarmerDetails();
     _checkSupportUnread();
-    _supportCheckTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _supportCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted && !_isEditing) _checkSupportUnread();
     });
   }

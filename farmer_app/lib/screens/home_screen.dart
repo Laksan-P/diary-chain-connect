@@ -93,8 +93,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
-      if (mounted && _auth?.isAuthenticated == true) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      if (mounted && OfflineService().isOnline) {
         _fetchData();
       }
     });
@@ -132,6 +132,8 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _hasNewPayments = false);
     }
   }
+
+
 
   Future<void> _fetchData() async {
     if (!mounted || _auth?.user == null) return;

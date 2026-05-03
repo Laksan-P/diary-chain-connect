@@ -156,25 +156,36 @@ export default async function handler(req, res) {
       let isCcOwner = false;
 
       if (user.role === 'chilling_center') {
-        if (ticket.cc_id === user.chillingCenterId && user.chillingCenterId) {
+        // 1. Is it their own ticket to Nestle?
+        if (ticket.user_id === user.id) {
+          isCcOwner = true;
+        } 
+        // 2. Is it a ticket from their farmer?
+        else if (ticket.cc_id === user.chillingCenterId && user.chillingCenterId) {
           isCcOwner = true;
         } else {
           // Check if the ticket creator is a farmer in this CC
-          const { data: farmer } = await supabase
-            .from('farmers')
-            .select('chilling_center_id')
-            .eq('user_id', ticket.user_id)
-            .single();
-          
-          // Get the CC ID for the current user if not in token
-          let myCcId = user.chillingCenterId;
-          if (!myCcId) {
-            const { data: myCc } = await supabase.from('chilling_centers').select('id').eq('user_id', user.id).single();
-            myCcId = myCc?.id;
-          }
+          try {
+            const { data: farmer } = await supabase
+              .from('farmers')
+              .select('chilling_center_id')
+              .eq('user_id', ticket.user_id)
+              .maybeSingle();
+            
+            if (farmer) {
+              // Get the CC ID for the current user
+              let myCcId = user.chillingCenterId;
+              if (!myCcId) {
+                const { data: myCc } = await supabase.from('chilling_centers').select('id').eq('user_id', user.id).maybeSingle();
+                myCcId = myCc?.id;
+              }
 
-          if (farmer && farmer.chilling_center_id === myCcId) {
-            isCcOwner = true;
+              if (myCcId && farmer.chilling_center_id === myCcId) {
+                isCcOwner = true;
+              }
+            }
+          } catch (e) {
+            console.error("Permission check failed:", e);
           }
         }
       }
