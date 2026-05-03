@@ -166,11 +166,11 @@ const SupportManagement: React.FC = () => {
                   Add FAQ
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                   <DialogTitle>{editingFaq ? 'Edit FAQ' : 'Add FAQ'}</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
+                <div className="flex-1 overflow-y-auto pr-4 -mr-4 space-y-4 py-4">
                   <div className="space-y-2">
                     <Label>Role</Label>
                     <Select value={faqForm.role} onValueChange={v => setFaqForm({ ...faqForm, role: v })}>

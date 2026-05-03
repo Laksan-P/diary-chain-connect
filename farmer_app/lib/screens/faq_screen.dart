@@ -167,7 +167,7 @@ class _FaqScreenState extends State<FaqScreen> {
                             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                             physics: const BouncingScrollPhysics(),
                             children: [
-                              ..._faqs.map((faq) => _buildFaqItem(faq, isDark)),
+                              ..._faqs.map((faq) => _buildFaqItem(faq, isDark, locale)),
                               const SizedBox(height: 24),
                               _buildOtherIssueCard(userRole, locale, isDark),
                             ],
@@ -224,7 +224,7 @@ class _FaqScreenState extends State<FaqScreen> {
     );
   }
 
-  Widget _buildFaqItem(dynamic faq, bool isDark) {
+  Widget _buildFaqItem(dynamic faq, bool isDark, String locale) {
     final isExpanded = _expandedId == faq['id'];
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
