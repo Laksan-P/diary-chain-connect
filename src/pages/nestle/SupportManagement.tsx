@@ -32,6 +32,7 @@ const SupportManagement: React.FC = () => {
   const [replyTa, setReplyTa] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [isReplyOpen, setIsReplyOpen] = useState(false);
+  const [ticketTypeFilter, setTicketTypeFilter] = useState('all');
 
   // Fetch configs
   const { data: phoneConfig } = useQuery({
@@ -362,7 +363,17 @@ const SupportManagement: React.FC = () => {
             <MessageSquare className="w-5 h-5 text-primary" />
             Custom Support Issues
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <Select value={ticketTypeFilter} onValueChange={setTicketTypeFilter}>
+              <SelectTrigger className="w-[140px] h-8">
+                <SelectValue placeholder="All Sources" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sources</SelectItem>
+                <SelectItem value="farmer">Farmers</SelectItem>
+                <SelectItem value="chilling_center">Chilling Center</SelectItem>
+              </SelectContent>
+            </Select>
             <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
               {tickets.filter((t: any) => t.status === 'pending').length} Pending
             </Badge>
@@ -373,7 +384,9 @@ const SupportManagement: React.FC = () => {
             {tickets.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No custom issues reported.</p>
             ) : (
-              tickets.map((ticket: any) => (
+              tickets
+                .filter((t: any) => ticketTypeFilter === 'all' || t.role === ticketTypeFilter)
+                .map((ticket: any) => (
                 <div key={ticket.id} className="p-4 border rounded-xl bg-card hover:shadow-md transition-all relative overflow-hidden">
                   {!ticket.is_read_by_admin && (
                     <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-bl-xl shadow-lg" />
