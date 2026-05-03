@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, ComposedChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import { TrendingUp, AlertTriangle, Info, MapPin, Loader2, BarChart3 } from 'lucide-react';
 import { getPredictions } from '@/services/api';
 import type { PredictionData } from '@/types';
@@ -118,7 +118,7 @@ const SupplyPredictions: React.FC = () => {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={320}>
-            <ComposedChart data={combinedTrend}>
+            <LineChart data={combinedTrend}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
               <XAxis 
                 dataKey="week" 
@@ -134,7 +134,6 @@ const SupplyPredictions: React.FC = () => {
               <Tooltip 
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
               />
-              <Area type="monotone" dataKey="actual" fill="hsl(209 100% 29% / 0.1)" stroke="none" />
               <Line 
                 type="monotone" 
                 dataKey="actual" 
@@ -152,7 +151,7 @@ const SupplyPredictions: React.FC = () => {
                 dot={{ r: 4, fill: '#fff', stroke: 'hsl(209 100% 29%)', strokeWidth: 2 }} 
                 name="Predicted Supply (L)"
               />
-            </ComposedChart>
+            </LineChart>
           </ResponsiveContainer>
         </motion.div>
 
