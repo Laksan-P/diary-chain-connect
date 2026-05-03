@@ -122,46 +122,92 @@ const ChillingCentersView: React.FC = () => {
       </div>
 
       {showForm && (
-        <motion.form initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} onSubmit={handleSubmit} className="glass-card p-6 space-y-4">
-          <h3 className="font-semibold border-b pb-2">Register New Chilling Center</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.form 
+          initial={{ opacity: 0, y: -20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          onSubmit={handleSubmit} 
+          className="glass-card p-8 space-y-6 border-primary/20 shadow-xl"
+        >
+          <div className="flex items-center justify-between border-b pb-4">
+            <h3 className="text-lg font-bold text-primary">Register New Chilling Center</h3>
+            <p className="text-xs text-muted-foreground italic">* All fields are required</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label>Center Name</Label>
-              <Input value={form.name} maxLength={50} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. North Province Center" required />
+              <Label className="text-sm font-semibold">Center Name</Label>
+              <Input 
+                value={form.name} 
+                maxLength={50} 
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))} 
+                placeholder="e.g. North Province Center" 
+                required 
+                className="bg-background/50"
+              />
             </div>
+            
             <div className="space-y-2">
-              <Label>Location</Label>
-              <Input value={form.location} maxLength={50} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Jaffna" required />
+              <Label className="text-sm font-semibold">Location</Label>
+              <Input 
+                value={form.location} 
+                maxLength={50} 
+                onChange={e => setForm(f => ({ ...f, location: e.target.value }))} 
+                placeholder="e.g. Jaffna" 
+                required 
+                className="bg-background/50"
+              />
             </div>
+            
             <div className="space-y-2">
-              <Label>Mobile Number</Label>
-              <Input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="e.g. 077..." required />
+              <Label className="text-sm font-semibold text-primary font-bold">Mobile Number (For Support Calls)</Label>
+              <Input 
+                type="tel" 
+                value={form.phone} 
+                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} 
+                placeholder="e.g. 0771234567" 
+                required 
+                className="bg-background/50 border-primary/40 focus:border-primary shadow-sm"
+              />
             </div>
+            
             <div className="space-y-2">
-              <Label>Login Email</Label>
-              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="e.g. center@nestle.com" required />
+              <Label className="text-sm font-semibold">Login Email</Label>
+              <Input 
+                type="email" 
+                value={form.email} 
+                onChange={e => setForm(f => ({ ...f, email: e.target.value }))} 
+                placeholder="e.g. center@nestle.com" 
+                required 
+                className="bg-background/50"
+              />
             </div>
-            <div className="space-y-2">
-              <Label>Login Password</Label>
+            
+            <div className="space-y-2 md:col-span-2">
+              <Label className="text-sm font-semibold">Login Password</Label>
               <div className="relative">
                 <Input 
                   type={showPassword ? "text" : "password"} 
                   value={form.password} 
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))} 
                   required 
-                  className="pr-10" 
+                  className="pr-10 bg-background/50" 
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
           </div>
-          <Button type="submit" disabled={submitting}>{submitting ? 'Registering...' : 'Complete Registration'}</Button>
+          
+          <div className="flex justify-end pt-4">
+            <Button type="submit" disabled={submitting} size="lg" className="px-8 shadow-lg">
+              {submitting ? 'Registering...' : 'Complete Registration'}
+            </Button>
+          </div>
         </motion.form>
       )}
 

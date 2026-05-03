@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Phone, Save } from 'lucide-react';
+import { Plus, Trash2, Edit2, Phone, Save, RefreshCw } from 'lucide-react';
 import { apiFetch } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,6 +97,10 @@ const SupportManagement: React.FC = () => {
           <h2 className="text-3xl font-bold tracking-tight">Support & FAQ</h2>
           <p className="text-muted-foreground">Manage FAQs, contact numbers, and view farmer feedback.</p>
         </div>
+        <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries()} className="gap-2">
+          <RefreshCw className="w-4 h-4" />
+          Refresh Data
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
