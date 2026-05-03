@@ -22,20 +22,25 @@ const SupportManagement: React.FC = () => {
     role: 'farmer'
   });
   const [nestlePhone, setNestlePhone] = useState('');
+  const [nestleName, setNestleName] = useState('Nestlé HQ Support');
   const [logSearch, setLogSearch] = useState('');
   const [logRoleFilter, setLogRoleFilter] = useState('all');
 
   // Fetch configs
-  const { data: configData } = useQuery({
+  const { data: phoneConfig } = useQuery({
     queryKey: ['system_config', 'nestle_phone'],
     queryFn: () => apiFetch<any>('/api/config?key=nestle_phone')
   });
 
+  const { data: nameConfig } = useQuery({
+    queryKey: ['system_config', 'nestle_name'],
+    queryFn: () => apiFetch<any>('/api/config?key=nestle_name')
+  });
+
   useEffect(() => {
-    if (configData?.config_value) {
-      setNestlePhone(configData.config_value);
-    }
-  }, [configData]);
+    if (phoneConfig?.config_value) setNestlePhone(phoneConfig.config_value);
+    if (nameConfig?.config_value) setNestleName(nameConfig.config_value);
+  }, [phoneConfig, nameConfig]);
 
   // Fetch FAQs
   const { data: faqs = [] } = useQuery({
@@ -50,12 +55,16 @@ const SupportManagement: React.FC = () => {
   });
 
   const saveConfigMutation = useMutation({
-    mutationFn: (phone: string) => apiFetch<any>('/api/config', { method: 'POST', body: JSON.stringify({ key: 'nestle_phone', value: phone }) }),
-    onSuccess: () => {
-      toast.success('Nestlé support phone updated');
+    mutationFn: ({ key, value }: { key: string, value: string }) => 
+      apiFetch<any>('/api/config', { 
+        method: 'POST', 
+        body: JSON.stringify({ key, value }) 
+      }),
+    onSuccess: (_, variables) => {
+      toast.success(`${variables.key === 'nestle_name' ? 'Support name' : 'Phone number'} updated`);
       queryClient.invalidateQueries({ queryKey: ['system_config'] });
     },
-    onError: () => toast.error('Failed to update phone number')
+    onError: () => toast.error('Failed to update configuration')
   });
 
   const saveFaqMutation = useMutation({
@@ -83,10 +92,6 @@ const SupportManagement: React.FC = () => {
     },
     onError: () => toast.error('Failed to delete FAQ')
   });
-
-  const handleSavePhone = () => {
-    saveConfigMutation.mutate(nestlePhone);
-  };
 
   const handleSaveFaq = () => {
     if (!faqForm.question || !faqForm.answer) {
@@ -138,21 +143,42 @@ const SupportManagement: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Phone Number</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="+94 77..."
-                    value={nestlePhone}
-                    onChange={e => setNestlePhone(e.target.value)}
-                  />
-                  <Button onClick={handleSavePhone} disabled={saveConfigMutation.isPending}>
-                    <Save className="w-4 h-4" />
-                  </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Support Display Name</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. Nestlé HQ Support"
+                      value={nestleName}
+                      onChange={e => setNestleName(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => saveConfigMutation.mutate({ key: 'nestle_name', value: nestleName })} 
+                      disabled={saveConfigMutation.isPending}
+                    >
+                      <Save className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Support Phone Number</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="+94 77..."
+                      value={nestlePhone}
+                      onChange={e => setNestlePhone(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => saveConfigMutation.mutate({ key: 'nestle_phone', value: nestlePhone })} 
+                      disabled={saveConfigMutation.isPending}
+                    >
+                      <Save className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                This number is displayed in the Farmer and Chilling Center apps for "Other Issues".
+                These details are displayed in the Farmer and Chilling Center apps for "Other Issues".
               </p>
             </div>
           </CardContent>

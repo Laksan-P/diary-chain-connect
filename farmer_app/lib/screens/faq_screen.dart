@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -25,23 +26,35 @@ class _FaqScreenState extends State<FaqScreen> {
   bool _isLoading = true;
   List<dynamic> _faqs = [];
   String? _nestlePhone;
+  String? _nestleName;
   String? _ccPhone;
   String? _ccName;
   int? _expandedId;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchData();
+    // Auto-refresh every 30 seconds to ensure "instant" sync
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchData(isSilent: true));
   }
 
-  Future<void> _fetchData() async {
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchData({bool isSilent = false}) async {
+    if (!isSilent) setState(() => _isLoading = true);
     try {
       final user = context.read<AuthProvider>().user;
       final userRole = user?['role'] ?? 'farmer';
       
-      final faqs = await _api.get('/faq?role=$userRole');
-      final config = await _api.get('/config?key=nestle_phone');
+       final faqs = await _api.get('/faq?role=$userRole');
+      final phoneConfig = await _api.get('/config?key=nestle_phone');
+      final nameConfig = await _api.get('/config?key=nestle_name');
       
       String? ccPhone;
       String? ccName;
@@ -66,10 +79,11 @@ class _FaqScreenState extends State<FaqScreen> {
         }
       }
 
-      if (mounted) {
+       if (mounted) {
         setState(() {
           _faqs = faqs is List ? faqs : [];
-          _nestlePhone = config != null ? config['config_value'] : null;
+          _nestlePhone = phoneConfig != null ? phoneConfig['config_value'] : null;
+          _nestleName = nameConfig != null ? nameConfig['config_value'] : 'Nestlé HQ Support';
           _ccPhone = ccPhone;
           _ccName = ccName;
           _isLoading = false;
@@ -340,8 +354,8 @@ class _FaqScreenState extends State<FaqScreen> {
           
           if (_nestlePhone != null && _nestlePhone!.isNotEmpty)
             _buildCallButton(
-              title: Translations.get('call_nestle', locale),
-              subtitle: 'Nestlé HQ Support',
+              title: _nestleName ?? Translations.get('call_nestle', locale),
+              subtitle: _nestleName != null ? 'Nestlé Support' : 'Nestlé HQ Support',
               phone: _nestlePhone!,
               isDark: isDark,
               isPrimary: false,
