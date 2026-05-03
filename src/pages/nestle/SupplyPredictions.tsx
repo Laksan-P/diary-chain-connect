@@ -39,9 +39,17 @@ const SupplyPredictions: React.FC = () => {
     ...data.forecastData.map(d => d.week)
   ])).sort();
 
+  const lastActualWeek = data.actualData.length > 0 ? data.actualData[data.actualData.length - 1].week : null;
+
   const combinedTrend = allWeeks.map(week => {
     const actual = data.actualData.find(d => d.week === week)?.value;
-    const predicted = data.forecastData.find(d => d.week === week)?.value;
+    let predicted = data.forecastData.find(d => d.week === week)?.value;
+    
+    // Connect the dashed line to the solid line at the exact crossover point
+    if (week === lastActualWeek && actual !== undefined) {
+      predicted = actual;
+    }
+
     return { week, actual, predicted };
   });
 
