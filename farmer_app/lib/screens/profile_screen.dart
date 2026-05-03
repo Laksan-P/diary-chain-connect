@@ -12,6 +12,7 @@ import '../services/translations.dart';
 import '../services/toast_service.dart';
 import '../services/offline_service.dart';
 import '../widgets/bouncing_button.dart';
+import 'faq_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -317,6 +318,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         prefs.themeMode == ThemeMode.system ? Translations.get('system', locale) : prefs.themeMode == ThemeMode.dark ? Translations.get('dark', locale) : Translations.get('light', locale),
                         prefs.themeMode == ThemeMode.dark ? LucideIcons.moon : LucideIcons.sun,
                         onTap: () => _showThemePicker(context, prefs),
+                      ),
+                      _settingsTile(
+                        Translations.get('faq_support', locale),
+                        Translations.get('faq_support_desc', locale),
+                        LucideIcons.helpCircle,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FaqScreen(onBack: () => Navigator.pop(context)),
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
                       TextButton(

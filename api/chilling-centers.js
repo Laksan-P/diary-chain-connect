@@ -22,12 +22,12 @@ export default async function handler(req, res) {
 
     try {
       const body = getBody(req);
-      const { name, location } = body;
+      const { name, location, phone_number } = body;
       if (!name || !location) return res.status(400).json({ error: 'Name and location are required' });
 
       const { data, error } = await supabase
         .from('chilling_centers')
-        .insert({ name, location })
+        .insert({ name, location, phone_number })
         .select()
         .single();
 
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     try {
       const { data, error } = await supabase
         .from('chilling_centers')
-        .select('id, name, location');
+        .select('id, name, location, phone_number');
 
       if (error) throw error;
       return res.status(200).json(data);

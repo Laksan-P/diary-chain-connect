@@ -13,7 +13,7 @@ const ChillingCentersView: React.FC = () => {
   const [centers, setCenters] = useState<(CenterPerformance & { location?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', location: '', contact: '', email: '', password: '' });
+  const [form, setForm] = useState({ name: '', location: '', phone: '', email: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
@@ -45,11 +45,12 @@ const ChillingCentersView: React.FC = () => {
       await registerChillingCenterByAdmin({ 
         name: form.name, 
         location: form.location,
+        phone: form.phone,
         email: form.email,
         password: form.password
       });
       toast({ title: 'Success', description: 'Chilling Center registered with credentials.' });
-      setForm({ name: '', location: '', contact: '', email: '', password: '' });
+      setForm({ name: '', location: '', phone: '', email: '', password: '' });
       setShowForm(false);
       loadData();
     } catch (err: any) {
@@ -97,6 +98,10 @@ const ChillingCentersView: React.FC = () => {
             <div className="space-y-2">
               <Label>Location</Label>
               <Input value={form.location} maxLength={50} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Jaffna" required />
+            </div>
+            <div className="space-y-2">
+              <Label>Mobile Number</Label>
+              <Input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="e.g. 077..." required />
             </div>
             <div className="space-y-2">
               <Label>Login Email</Label>

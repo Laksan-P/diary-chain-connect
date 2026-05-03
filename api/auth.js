@@ -300,7 +300,7 @@ export default async function handler(req, res) {
   if (action === 'register-user' && req.method === 'POST') {
     try {
       const body = getBody(req);
-      const { name, email, password, role, bankName, accountNumber, branch, location, designation } = body;
+      const { name, email, password, role, bankName, accountNumber, branch, location, designation, phone } = body;
       if (!email || !password || !name || !role) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -330,7 +330,8 @@ export default async function handler(req, res) {
           .from('chilling_centers')
           .insert({ 
             name, 
-            location: location || 'Default Location', 
+            location: location || 'Default Location',
+            phone_number: phone || '',
             user_id: userId,
             email: email,
             password: passwordHash // Store HASHED password

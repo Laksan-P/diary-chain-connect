@@ -156,6 +156,12 @@ class Translations {
       'low_snf': 'Low SNF',
       'excess_water': 'Excess Water',
       'unknown_error': 'Unknown Error',
+      'faq_support': 'FAQ & Support',
+      'faq_support_desc': 'Get help and contact support',
+      'other_issue': 'Other Issue?',
+      'contact_support_desc': 'Can\'t find what you\'re looking for? Contact support.',
+      'call_cc': 'Call Chilling Center',
+      'call_nestle': 'Call Nestlé',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -315,6 +321,12 @@ class Translations {
       'low_snf': 'SNF අඩුයි (Low SNF)',
       'excess_water': 'වැඩිපුර ජලය (Excess Water)',
       'unknown_error': 'හඳුනා නොගත් දෝෂයකි',
+      'faq_support': 'ප්‍රශ්න හා සහාය',
+      'faq_support_desc': 'උදවු සහ සහාය ලබාගන්න',
+      'other_issue': 'වෙනත් ගැටලුවක්ද?',
+      'contact_support_desc': 'ඔබ සොයන දේ සොයාගත නොහැකිද? සහාය අමතන්න.',
+      'call_cc': 'මධ්‍යස්ථානය අමතන්න',
+      'call_nestle': 'නෙස්ලේ අමතන්න',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -475,6 +487,12 @@ class Translations {
       'low_snf': 'SNF குறைவு (Low SNF)',
       'excess_water': 'அதிகப்படியான நீர் (Excess Water)',
       'unknown_error': 'அறியப்படாத பிழை',
+      'faq_support': 'கேள்விகள் & ஆதரவு',
+      'faq_support_desc': 'உதவி மற்றும் ஆதரவு',
+      'other_issue': 'வேறு பிரச்சனை?',
+      'contact_support_desc': 'உங்களுக்குத் தேவையானதைக் கண்டுபிடிக்க முடியவில்லையா? ஆதரவைத் தொடர்பு கொள்ளவும்.',
+      'call_cc': 'கலக்கும் நிலையத்தை அழைக்கவும்',
+      'call_nestle': 'நெஸ்லேயை அழைக்கவும்',
     },
   };
 

@@ -14,6 +14,7 @@ import MilkCollectionPage from "./pages/chilling-center/MilkCollection";
 import QualityTestingPage from "./pages/chilling-center/QualityTesting";
 import CollectionHistory from "./pages/chilling-center/CollectionHistory";
 import DispatchPage from "./pages/chilling-center/DispatchPage";
+import CCSupport from "./pages/chilling-center/CCSupport";
 import NestleLayout from "./layouts/NestleLayout";
 import NestleDashboard from "./pages/nestle/NestleDashboard";
 import FarmersView from "./pages/nestle/FarmersView";
@@ -23,6 +24,7 @@ import PaymentsPage from "./pages/nestle/PaymentsPage";
 import AnalyticsPage from "./pages/nestle/AnalyticsPage";
 import NestleMilkHistory from "./pages/nestle/NestleMilkHistory";
 import ChillingCentersView from "./pages/nestle/ChillingCentersView";
+import SupportManagement from "./pages/nestle/SupportManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +49,7 @@ const App = () => (
               <Route path="quality" element={<QualityTestingPage />} />
               <Route path="history" element={<CollectionHistory />} />
               <Route path="dispatch" element={<DispatchPage />} />
+              <Route path="support" element={<CCSupport />} />
             </Route>
 
             {/* Nestlé */}
@@ -59,6 +62,7 @@ const App = () => (
               <Route path="pricing" element={<PricingRules />} />
               <Route path="payments" element={<PaymentsPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="support" element={<SupportManagement />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
