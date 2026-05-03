@@ -16,7 +16,7 @@ void main() async {
   await initializeDateFormatting('si', null);
   await initializeDateFormatting('ta', null);
   await OfflineService().init();
-  
+
   runApp(
     MultiProvider(
       providers: [
@@ -28,7 +28,8 @@ void main() async {
   );
 }
 
-final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 class NestleDairyApp extends StatelessWidget {
   const NestleDairyApp({super.key});
