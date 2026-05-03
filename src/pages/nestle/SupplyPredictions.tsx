@@ -87,7 +87,7 @@ const SupplyPredictions: React.FC = () => {
           title="Predicted Next Week" 
           value={`${data.forecastData[0].value.toLocaleString()} L`} 
           icon={TrendingUp} 
-          variant={data.forecastData[0].value < (data.actualData.reduce((a,b)=>a+b.value, 0) / data.actualData.length) * 0.8 ? 'destructive' : 'success'}
+          variant={data.forecastData[0].value < (data.actualData.reduce((a,b)=>a+b.value, 0) / data.actualData.length) * 0.8 ? 'danger' : 'success'}
         />
         <StatCard 
           title="Forecast Horizon" 
