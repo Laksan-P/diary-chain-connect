@@ -33,11 +33,17 @@ const SupplyPredictions: React.FC = () => {
 
   if (!data) return null;
 
-  // Combine actual and forecast for the master trend chart
-  const combinedTrend = [
-    ...data.actualData.map(d => ({ week: d.week, actual: d.value })),
-    ...data.forecastData.map(d => ({ week: d.week, predicted: d.value }))
-  ];
+  // Merge actual and forecast into a continuous timeline for better charting
+  const allWeeks = Array.from(new Set([
+    ...data.actualData.map(d => d.week),
+    ...data.forecastData.map(d => d.week)
+  ])).sort();
+
+  const combinedTrend = allWeeks.map(week => {
+    const actual = data.actualData.find(d => d.week === week)?.value;
+    const predicted = data.forecastData.find(d => d.week === week)?.value;
+    return { week, actual, predicted };
+  });
 
   return (
     <div className="space-y-6">
@@ -108,7 +114,7 @@ const SupplyPredictions: React.FC = () => {
             <h3 className="font-display font-semibold text-foreground">Supply Trend & Forecast</h3>
             <div className="flex items-center gap-4 text-xs font-medium">
               <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-primary" /> Actual</div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-primary/30" /> Predicted</div>
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-primary/60" /> Predicted</div>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={320}>
