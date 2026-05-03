@@ -707,6 +707,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final status = _performance['status'] ?? 'Good';
     final rec = _performance['recommendation'] ?? '';
 
+    String displayStatus = status;
+    if (status == 'Needs Improvement') displayStatus = Translations.get('perf_needs_improvement', locale);
+    else if (status == 'Good') displayStatus = Translations.get('perf_good', locale);
+
+    String displayRec = rec;
+    if (rec.contains('dilution')) displayRec = Translations.get('rec_water', locale);
+    else if (rec.contains('SNF')) displayRec = Translations.get('rec_snf', locale);
+    else if (rec.contains('FAT')) displayRec = Translations.get('rec_fat', locale);
+    else if (rec.contains('General quality')) displayRec = Translations.get('rec_general', locale);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
@@ -752,7 +762,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       Text(
-                        status,
+                        displayStatus,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -766,7 +776,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              rec,
+              displayRec,
               style: TextStyle(
                 fontSize: 13,
                 height: 1.5,

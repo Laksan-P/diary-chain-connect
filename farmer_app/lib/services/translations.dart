@@ -178,6 +178,12 @@ class Translations {
       'farmer_performance_alert_msg': 'Farmer {farmer} has been flagged for: {issue}',
       'cc_performance_alert_title': 'Center Quality Warning',
       'cc_performance_alert_msg': 'Center #{center_id} has high rejection rate: {rate}',
+      'perf_needs_improvement': 'Needs Improvement',
+      'perf_good': 'Good',
+      'rec_water': 'Possible milk dilution detected. Please ensure milk is not diluted with water.',
+      'rec_snf': 'Low SNF detected. This often relates to animal nutrition. Review feed quality.',
+      'rec_fat': 'Low FAT detected. Review breed nutrition or feeding times.',
+      'rec_general': 'General quality issue. Please review hygiene and storage.',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -359,6 +365,12 @@ class Translations {
       'farmer_performance_alert_msg': '{farmer} ගොවි මහතාගේ පරීක්ෂාවන් අසාර්ථකයි: {issue}',
       'cc_performance_alert_title': 'මධ්‍යස්ථාන තත්ත්ව අවවාදය',
       'cc_performance_alert_msg': 'අංක #{center_id} මධ්‍යස්ථානයේ ප්‍රතික්ෂේපිත ප්‍රමාණය වැඩියි: {rate}',
+      'perf_needs_improvement': 'වැඩි දියුණු කළ යුතුයි',
+      'perf_good': 'යහපත්',
+      'rec_water': 'කිරිවලට ජලය මිශ්‍ර වී ඇති බව පෙනේ. කරුණාකර කිරිවලට ජලය මිශ්‍ර නොකිරීමට වගබලා ගන්න.',
+      'rec_snf': 'අඩු SNF ප්‍රමාණයක් වාර්තා වේ. මෙය බොහෝ විට සත්ව පෝෂණය මත රඳා පවතී. සත්ව ආහාරවල ගුණාත්මකභාවය පරීක්ෂා කරන්න.',
+      'rec_fat': 'අඩු මේද ප්‍රතිශතයක් (FAT) වාර්තා වේ. සත්ව පෝෂණය හෝ ආහාර ලබාදෙන වේලාවන් පරීක්ෂා කරන්න.',
+      'rec_general': 'සාමාන්‍ය තත්ත්ව ගැටලුවකි. කරුණාකර සනීපාරක්ෂාව සහ ගබඩා කිරීම පරීක්ෂා කරන්න.',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -541,6 +553,12 @@ class Translations {
       'farmer_performance_alert_msg': 'விவசாயி {farmer} இன் பால் தரம் குறைந்துள்ளது: {issue}',
       'cc_performance_alert_title': 'மைய தர எச்சரிக்கை',
       'cc_performance_alert_msg': 'மையம் #{center_id} இன் நிராகரிப்பு விகிதம் அதிகம்: {rate}',
+      'perf_needs_improvement': 'மேம்படுத்தப்பட வேண்டும்',
+      'perf_good': 'நல்லது',
+      'rec_water': 'பால் நீர்க்கப்பட்டுள்ளதாகக் கண்டறியப்பட்டுள்ளது. பாலில் தண்ணீர் கலக்காமல் இருப்பதை உறுதி செய்யவும்.',
+      'rec_snf': 'குறைந்த SNF கண்டறியப்பட்டுள்ளது. இது விலங்குகளின் ஊட்டச்சத்துடன் தொடர்புடையது. தீவனத்தின் தரத்தை சரிபார்க்கவும்.',
+      'rec_fat': 'குறைந்த கொழுப்பு கண்டறியப்பட்டுள்ளது. இன ஊட்டச்சத்து அல்லது உணவளிக்கும் நேரங்களை சரிபார்க்கவும்.',
+      'rec_general': 'பொதுவான தரப் பிரச்சினை. சுகாதாரம் மற்றும் சேமிப்பை சரிபார்க்கவும்.',
     },
   };
 
