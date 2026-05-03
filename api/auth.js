@@ -453,6 +453,50 @@ export default async function handler(req, res) {
     }
   }
 
+  // ────────── POST /api/auth?action=update-cc-credentials ──────────
+  if (action === 'update-cc-credentials' && req.method === 'POST') {
+    const user = authenticate(req, res);
+    if (!user || !['nestle', 'nestle_officer'].includes(user.role)) return res.status(403).json({ error: 'Forbidden' });
+
+    try {
+      const { centerId, name, email, password } = body;
+      if (!centerId) return res.status(400).json({ error: 'centerId is required' });
+
+      // Get the userId linked to this center
+      const { data: cc, error: ccErr } = await supabase
+        .from('chilling_centers').select('user_id').eq('id', centerId).single();
+      if (ccErr) throw ccErr;
+      const targetUserId = cc.user_id;
+
+      // Update User table
+      const userUpdates = {};
+      if (name) userUpdates.name = name;
+      if (email) userUpdates.email = email;
+      if (password) {
+        userUpdates.password_hash = await bcrypt.hash(password, 10);
+      }
+
+      const { error: uErr } = await supabase.from('users').update(userUpdates).eq('id', targetUserId);
+      if (uErr) throw uErr;
+
+      // Update CC table
+      const ccUpdates = {};
+      if (name) ccUpdates.name = name;
+      if (email) ccUpdates.email = email;
+      if (password) {
+        ccUpdates.password = await bcrypt.hash(password, 10);
+      }
+
+      const { error: ccUpdateErr } = await supabase.from('chilling_centers').update(ccUpdates).eq('id', centerId);
+      if (ccUpdateErr) throw ccUpdateErr;
+
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('[AUTH:update-cc-credentials] Error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   // Fallback — no matching action
   console.log('[AUTH] No matching action. method:', req.method, 'action:', action);
   return res.status(400).json({

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, Plus, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { Building2, Plus, RefreshCw, Eye, EyeOff, Save, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DataTable from '@/components/DataTable';
 import { Button } from '@/components/ui/button';
@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { getCenterPerformance, registerChillingCenterByAdmin, getChillingCenters, apiFetch } from '@/services/api';
-import type { CenterPerformance, ChillingCenter } from '@/types';
+import type { CenterPerformance } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const ChillingCentersView: React.FC = () => {
-  const [centers, setCenters] = useState<(CenterPerformance & { location?: string })[]>([]);
+  const [centers, setCenters] = useState<(CenterPerformance & { location?: string, phone_number?: string, email?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', location: '', phone: '', email: '', password: '' });
@@ -22,13 +22,17 @@ const ChillingCentersView: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      console.debug('Fetching center performance and chilling centers data...');
       const perfs = await getCenterPerformance();
       const list = await getChillingCenters();
       
       const combined = perfs.map(p => {
         const matching = list.find(l => l.id === p.centerId);
-        return { ...p, location: matching?.location || 'Unknown', phone_number: matching?.phone_number || '' };
+        return { 
+          ...p, 
+          location: matching?.location || 'Unknown', 
+          phone_number: matching?.phone_number || '',
+          email: matching?.email || ''
+        };
       });
       setCenters(combined);
     } catch (err) {
@@ -40,9 +44,11 @@ const ChillingCentersView: React.FC = () => {
 
   useEffect(() => { loadData(); }, []);
 
+  // Editing State
   const [editingCenter, setEditingCenter] = useState<any>(null);
-  const [editPhone, setEditPhone] = useState('');
-  const [updatingPhone, setUpdatingPhone] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', location: '', phone: '', email: '', password: '' });
+  const [updating, setUpdating] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,23 +72,52 @@ const ChillingCentersView: React.FC = () => {
     }
   };
 
-  const handleUpdatePhone = async (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCenter) return;
-    setUpdatingPhone(true);
+    setUpdating(true);
     try {
-      await apiFetch('/api/chilling-centers?action=update-phone', {
+      // 1. Update CC Details (Name, Location, Phone)
+      await apiFetch('/api/chilling-centers?action=update', {
         method: 'POST',
-        body: JSON.stringify({ id: editingCenter.centerId, phone_number: editPhone })
+        body: JSON.stringify({ 
+          id: editingCenter.centerId, 
+          name: editForm.name,
+          location: editForm.location,
+          phone_number: editForm.phone 
+        })
       });
-      toast({ title: 'Success', description: 'Phone number updated successfully.' });
+
+      // 2. Update Login Credentials (Email, Password)
+      await apiFetch('/api/auth?action=update-cc-credentials', {
+        method: 'POST',
+        body: JSON.stringify({
+          centerId: editingCenter.centerId,
+          name: editForm.name,
+          email: editForm.email,
+          password: editForm.password || undefined // Only send if changed
+        })
+      });
+
+      toast({ title: 'Success', description: 'Chilling Center details updated.' });
       setEditingCenter(null);
       loadData();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to update phone number.', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to update center.', variant: 'destructive' });
     } finally {
-      setUpdatingPhone(false);
+      setUpdating(false);
     }
+  };
+
+  const openEdit = (center: any) => {
+    setEditingCenter(center);
+    setEditForm({
+      name: center.centerName,
+      location: center.location || '',
+      phone: center.phone_number || '',
+      email: center.email || '',
+      password: '' // Keep password empty unless changing
+    });
   };
 
   const columns = [
@@ -96,10 +131,7 @@ const ChillingCentersView: React.FC = () => {
       key: 'actions', 
       header: 'Actions', 
       render: (r: any) => (
-        <Button size="sm" variant="outline" onClick={() => {
-          setEditingCenter(r);
-          setEditPhone(r.phone_number || '');
-        }}>Edit Mobile</Button>
+        <Button size="sm" variant="outline" onClick={() => openEdit(r)}>Edit Details</Button>
       )
     },
   ];
@@ -160,7 +192,7 @@ const ChillingCentersView: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-primary font-bold">Mobile Number (For Support Calls)</Label>
+              <Label className="text-sm font-semibold text-primary font-bold">Mobile Number</Label>
               <Input 
                 type="tel" 
                 value={form.phone} 
@@ -214,19 +246,89 @@ const ChillingCentersView: React.FC = () => {
 
       <DataTable columns={columns} data={centers} loading={loading} />
 
+      {/* Full Edit Dialog */}
       <Dialog open={!!editingCenter} onOpenChange={(open) => !open && setEditingCenter(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Update Mobile Number</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" />
+              Edit Chilling Center: {editingCenter?.centerName}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleUpdatePhone} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Mobile Number for {editingCenter?.centerName}</Label>
-              <Input type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="Enter mobile number" required />
+          
+          <form onSubmit={handleUpdate} className="space-y-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Center Name</Label>
+                <Input 
+                  value={editForm.name} 
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} 
+                  required 
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input 
+                  value={editForm.location} 
+                  onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} 
+                  required 
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Mobile Number</Label>
+                <Input 
+                  type="tel" 
+                  value={editForm.phone} 
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} 
+                  required 
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Login Email</Label>
+                <Input 
+                  type="email" 
+                  value={editForm.email} 
+                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} 
+                  required 
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label className="flex justify-between">
+                  <span>New Password</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">Leave blank to keep current</span>
+                </Label>
+                <div className="relative">
+                  <Input 
+                    type={showEditPassword ? "text" : "password"} 
+                    value={editForm.password} 
+                    onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))} 
+                    placeholder="••••••••"
+                    className="pr-10" 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword(!showEditPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
             </div>
+
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditingCenter(null)}>Cancel</Button>
-              <Button type="submit" disabled={updatingPhone}>{updatingPhone ? 'Saving...' : 'Save'}</Button>
+              <Button type="button" variant="outline" onClick={() => setEditingCenter(null)} className="gap-2">
+                <X className="w-4 h-4" />
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updating} className="gap-2 px-8">
+                {updating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {updating ? 'Saving...' : 'Save Changes'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

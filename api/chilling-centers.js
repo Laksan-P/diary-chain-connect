@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     try {
       const { data, error } = await supabase
         .from('chilling_centers')
-        .select('id, name, location, phone_number');
+        .select('id, name, location, phone_number, email');
 
       if (error) throw error;
       return res.status(200).json(data);
@@ -106,20 +106,25 @@ export default async function handler(req, res) {
     }
   }
 
-  // ────────── POST /api/chilling-centers?action=update-phone ──────────
-  if (action === 'update-phone' && req.method === 'POST') {
+  // ────────── POST /api/chilling-centers?action=update ──────────
+  if (action === 'update' && req.method === 'POST') {
     const user = authenticate(req, res);
     if (!user) return;
     if (!['nestle', 'nestle_officer'].includes(user.role)) return res.status(403).json({ error: 'Forbidden' });
 
     try {
       const body = getBody(req);
-      const { id, phone_number } = body;
-      if (!id || typeof phone_number === 'undefined') return res.status(400).json({ error: 'ID and phone_number required' });
+      const { id, name, location, phone_number } = body;
+      if (!id) return res.status(400).json({ error: 'ID is required' });
+
+      const updateData = {};
+      if (typeof name !== 'undefined') updateData.name = name;
+      if (typeof location !== 'undefined') updateData.location = location;
+      if (typeof phone_number !== 'undefined') updateData.phone_number = phone_number;
 
       const { data, error } = await supabase
         .from('chilling_centers')
-        .update({ phone_number })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -127,7 +132,7 @@ export default async function handler(req, res) {
       if (error) throw error;
       return res.status(200).json(data);
     } catch (err) {
-      console.error('Update phone error:', err);
+      console.error('Update chilling center error:', err);
       return res.status(500).json({ error: 'Server error' });
     }
   }
