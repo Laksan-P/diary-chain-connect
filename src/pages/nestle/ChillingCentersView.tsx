@@ -22,6 +22,7 @@ const ChillingCentersView: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      console.debug('Fetching center performance and chilling centers data...');
       const perfs = await getCenterPerformance();
       const list = await getChillingCenters();
       
@@ -31,7 +32,7 @@ const ChillingCentersView: React.FC = () => {
       });
       setCenters(combined);
     } catch (err) {
-      console.error(err);
+      console.error('Error in loadData:', err);
     } finally {
       setLoading(false);
     }
@@ -129,7 +130,10 @@ const ChillingCentersView: React.FC = () => {
           className="glass-card p-8 space-y-6 border-primary/20 shadow-xl"
         >
           <div className="flex items-center justify-between border-b pb-4">
-            <h3 className="text-lg font-bold text-primary">Register New Chilling Center</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-primary">Register New Chilling Center</h3>
+              <span className="text-[10px] bg-red-500 text-white px-1 rounded">LATEST v2</span>
+            </div>
             <p className="text-xs text-muted-foreground italic">* All fields are required</p>
           </div>
           

@@ -72,7 +72,10 @@ const NestleLayout: React.FC = () => {
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="text-foreground">
             <Menu className="w-5 h-5" />
           </Button>
-          <h1 className="font-display font-semibold text-foreground flex-1">Nestlé Dashboard</h1>
+          <h1 className="font-display font-semibold text-foreground flex-1 flex items-center gap-2">
+            Nestlé Dashboard
+            <span className="text-[10px] bg-red-500 text-white px-1 rounded h-4 flex items-center">v2</span>
+          </h1>
           <NotificationBell />
         </header>
         <main className="flex-1 overflow-auto p-6 relative">
