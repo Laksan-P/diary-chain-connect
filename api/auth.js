@@ -60,10 +60,13 @@ export default async function handler(req, res) {
 
       let farmerId = null;
       let farmerCode = null;
+      let chillingCenterId = null;
+      let nestleOfficerId = null;
+
       if (data.role === 'farmer') {
         const { data: fRows, error: fErr } = await supabase
           .from('farmers')
-          .select('id, farmer_id, address, phone, nic')
+          .select('id, farmer_id, address, phone, nic, chilling_center_id')
           .eq('user_id', data.id)
           .maybeSingle();
 
@@ -75,7 +78,6 @@ export default async function handler(req, res) {
         }
       }
 
-      let chillingCenterId = null;
       if (data.role === 'chilling_center') {
         const { data: cc, error: ccErr } = await supabase
           .from('chilling_centers')
@@ -86,7 +88,6 @@ export default async function handler(req, res) {
         if (cc) chillingCenterId = cc.id;
       }
 
-      let nestleOfficerId = null;
       if (data.role === 'nestle') {
         const { data: off, error: offErr } = await supabase
           .from('nestle_officers')
