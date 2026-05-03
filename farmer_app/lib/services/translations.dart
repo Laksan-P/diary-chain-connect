@@ -162,6 +162,12 @@ class Translations {
       'contact_support_desc': 'Can\'t find what you\'re looking for? Contact support.',
       'call_cc': 'Call Chilling Center',
       'call_nestle': 'Call Nestlé',
+      'support_chat': 'Support Chat',
+      'message_sent': 'Message sent successfully',
+      'no_messages_yet': 'No messages yet',
+      'waiting_for_reply': 'Waiting for Nestlé reply...',
+      'type_your_issue': 'Describe your issue...',
+      'other_issues': 'Other Issues / Custom Questions',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -327,6 +333,12 @@ class Translations {
       'contact_support_desc': 'ඔබ සොයන දේ සොයාගත නොහැකිද? සහාය අමතන්න.',
       'call_cc': 'මධ්‍යස්ථානය අමතන්න',
       'call_nestle': 'නෙස්ලේ අමතන්න',
+      'support_chat': 'සහාය කතාබස්',
+      'message_sent': 'පණිවිඩය සාර්ථකව යවන ලදී',
+      'no_messages_yet': 'තවමත් පණිවිඩ නැත',
+      'waiting_for_reply': 'නෙස්ලේ පිළිතුරක් ලැබෙන තෙක්...',
+      'type_your_issue': 'ඔබේ ගැටලුව විස්තර කරන්න...',
+      'other_issues': 'වෙනත් ගැටළු / අභිරුචි ප්‍රශ්න',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -493,6 +505,12 @@ class Translations {
       'contact_support_desc': 'உங்களுக்குத் தேவையானதைக் கண்டுபிடிக்க முடியவில்லையா? ஆதரவைத் தொடர்பு கொள்ளவும்.',
       'call_cc': 'கலக்கும் நிலையத்தை அழைக்கவும்',
       'call_nestle': 'நெஸ்லேயை அழைக்கவும்',
+      'support_chat': 'ஆதரவு அரட்டை',
+      'message_sent': 'செய்தி வெற்றிகரமாக அனுப்பப்பட்டது',
+      'no_messages_yet': 'இன்னும் செய்திகள் இல்லை',
+      'waiting_for_reply': 'நெஸ்லே பதிலுக்காக காத்திருக்கிறது...',
+      'type_your_issue': 'உங்கள் சிக்கலை விவரிக்கவும்...',
+      'other_issues': 'වෙනත් ගැටළු / தனிப்பயன் கேள்விகள்',
     },
   };
 

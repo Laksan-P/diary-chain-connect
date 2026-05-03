@@ -12,6 +12,7 @@ import '../providers/auth_provider.dart';
 import '../providers/preferences_provider.dart';
 import 'app_theme.dart';
 import '../widgets/bouncing_button.dart';
+import 'support_chat_screen.dart';
 
 class FaqScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -339,7 +340,59 @@ class _FaqScreenState extends State<FaqScreen> {
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
+          BouncingButton(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SupportChatScreen()),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(LucideIcons.messageCircle, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          Translations.get('other_issues', locale),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          Translations.get('type_your_issue', locale),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(LucideIcons.chevronRight, color: isDark ? Colors.grey.shade600 : Colors.grey.shade400, size: 18),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
           
           if (role == 'farmer' && _ccPhone != null && _ccPhone!.isNotEmpty) ...[
             _buildCallButton(

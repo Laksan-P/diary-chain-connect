@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, useIsFetching } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Phone, Save, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Edit2, Phone, Save, RefreshCw, MessageSquare, Reply } from 'lucide-react';
 import { apiFetch } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 const SupportManagement: React.FC = () => {
@@ -26,6 +27,9 @@ const SupportManagement: React.FC = () => {
   const [nestleName, setNestleName] = useState('Nestlé HQ Support');
   const [logSearch, setLogSearch] = useState('');
   const [logRoleFilter, setLogRoleFilter] = useState('all');
+  const [replyText, setReplyText] = useState('');
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [isReplyOpen, setIsReplyOpen] = useState(false);
 
   // Fetch configs
   const { data: phoneConfig } = useQuery({
@@ -55,11 +59,17 @@ const SupportManagement: React.FC = () => {
     queryFn: () => apiFetch<any[]>('/api/feedback-logs')
   });
 
+  // Fetch Support Tickets
+  const { data: tickets = [] } = useQuery({
+    queryKey: ['support_tickets'],
+    queryFn: () => apiFetch<any[]>('/api/support')
+  });
+
   const saveConfigMutation = useMutation({
-    mutationFn: ({ key, value }: { key: string, value: string }) => 
-      apiFetch<any>('/api/config', { 
-        method: 'POST', 
-        body: JSON.stringify({ key, value }) 
+    mutationFn: ({ key, value }: { key: string, value: string }) =>
+      apiFetch<any>('/api/config', {
+        method: 'POST',
+        body: JSON.stringify({ key, value })
       }),
     onSuccess: (_, variables) => {
       toast.success(`${variables.key === 'nestle_name' ? 'Support name' : 'Phone number'} updated`);
@@ -94,6 +104,22 @@ const SupportManagement: React.FC = () => {
     onError: () => toast.error('Failed to delete FAQ')
   });
 
+  const replyMutation = useMutation({
+    mutationFn: ({ id, reply }: { id: number, reply: string }) => 
+      apiFetch<any>(`/api/support?id=${id}`, { 
+        method: 'PATCH', 
+        body: JSON.stringify({ reply }) 
+      }),
+    onSuccess: () => {
+      toast.success('Reply sent successfully');
+      queryClient.invalidateQueries({ queryKey: ['support_tickets'] });
+      setIsReplyOpen(false);
+      setReplyText('');
+      setSelectedTicket(null);
+    },
+    onError: () => toast.error('Failed to send reply')
+  });
+
   const handleSaveFaq = () => {
     if (!faqForm.question || !faqForm.answer) {
       toast.error('Question and answer are required');
@@ -114,8 +140,8 @@ const SupportManagement: React.FC = () => {
   };
 
   const filteredLogs = feedbackLogs.filter((log: any) => {
-    const matchesSearch = 
-      (log.user_id?.toString() || '').toLowerCase().includes(logSearch.toLowerCase()) || 
+    const matchesSearch =
+      (log.user_id?.toString() || '').toLowerCase().includes(logSearch.toLowerCase()) ||
       (log.additional_info || '').toLowerCase().includes(logSearch.toLowerCase());
     const matchesRole = logRoleFilter === 'all' || log.role === logRoleFilter;
     return matchesSearch && matchesRole;
@@ -128,10 +154,10 @@ const SupportManagement: React.FC = () => {
           <h2 className="text-3xl font-bold tracking-tight">Support & FAQ</h2>
           <p className="text-muted-foreground">Manage FAQs, contact numbers, and view farmer feedback.</p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => queryClient.invalidateQueries()} 
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => queryClient.invalidateQueries()}
           className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-none"
         >
           <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
@@ -158,8 +184,8 @@ const SupportManagement: React.FC = () => {
                       value={nestleName}
                       onChange={e => setNestleName(e.target.value)}
                     />
-                    <Button 
-                      onClick={() => saveConfigMutation.mutate({ key: 'nestle_name', value: nestleName })} 
+                    <Button
+                      onClick={() => saveConfigMutation.mutate({ key: 'nestle_name', value: nestleName })}
                       disabled={saveConfigMutation.isPending}
                     >
                       <Save className="w-4 h-4" />
@@ -174,8 +200,8 @@ const SupportManagement: React.FC = () => {
                       value={nestlePhone}
                       onChange={e => setNestlePhone(e.target.value)}
                     />
-                    <Button 
-                      onClick={() => saveConfigMutation.mutate({ key: 'nestle_phone', value: nestlePhone })} 
+                    <Button
+                      onClick={() => saveConfigMutation.mutate({ key: 'nestle_phone', value: nestlePhone })}
                       disabled={saveConfigMutation.isPending}
                     >
                       <Save className="w-4 h-4" />
@@ -311,11 +337,125 @@ const SupportManagement: React.FC = () => {
       </div>
 
       <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-primary" />
+            Custom Support Issues
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
+              {tickets.filter((t: any) => t.status === 'pending').length} Pending
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {tickets.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No custom issues reported.</p>
+            ) : (
+              tickets.map((ticket: any) => (
+                <div key={ticket.id} className="p-4 border rounded-xl bg-card hover:shadow-md transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                        {ticket.users?.name?.charAt(0) || 'U'}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">{ticket.users?.name || 'Unknown User'}</h4>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="capitalize px-1.5 py-0.5 rounded bg-muted font-medium">
+                            {ticket.role.replace('_', ' ')}
+                          </span>
+                          <span>•</span>
+                          <span>{new Date(ticket.created_at).toLocaleString()}</span>
+                          <span>•</span>
+                          <span className="uppercase text-[10px] font-bold border px-1 rounded">
+                            {ticket.language}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant={ticket.status === 'replied' ? 'secondary' : 'destructive'} className="rounded-full">
+                      {ticket.status === 'replied' ? 'Replied' : 'Pending'}
+                    </Badge>
+                  </div>
+                  
+                  <div className="pl-13 ml-13 border-l-2 border-primary/20 pl-4 py-1">
+                    <p className="text-sm leading-relaxed">{ticket.message}</p>
+                  </div>
+
+                  {ticket.reply ? (
+                    <div className="mt-4 pl-13 ml-13 border-l-2 border-emerald-500/20 pl-4 py-2 bg-emerald-50/30 rounded-r-lg">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Reply className="w-3 h-3 text-emerald-600" />
+                        <span className="text-[10px] font-bold uppercase text-emerald-600">Nestlé Reply</span>
+                        <span className="text-[10px] text-muted-foreground italic">
+                          at {new Date(ticket.replied_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{ticket.reply}</p>
+                    </div>
+                  ) : (
+                    <div className="mt-4 pl-13 ml-13 flex justify-end">
+                      <Dialog open={isReplyOpen && selectedTicket?.id === ticket.id} onOpenChange={(open) => {
+                        setIsReplyOpen(open);
+                        if (!open) setSelectedTicket(null);
+                      }}>
+                        <DialogTrigger asChild>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="gap-2"
+                            onClick={() => setSelectedTicket(ticket)}
+                          >
+                            <Reply className="w-4 h-4" />
+                            Reply to {ticket.role === 'farmer' ? 'Farmer' : 'CC'}
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Reply to Support Issue</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="p-3 bg-muted/50 rounded-lg text-sm italic">
+                              "{ticket.message}"
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Your Answer</Label>
+                              <textarea 
+                                className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                placeholder="Type your reply here..."
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsReplyOpen(false)}>Cancel</Button>
+                            <Button 
+                              onClick={() => replyMutation.mutate({ id: ticket.id, reply: replyText })}
+                              disabled={replyMutation.isPending || !replyText.trim()}
+                            >
+                              Send Reply
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between py-4">
           <CardTitle className="text-lg">Feedback Logs</CardTitle>
           <div className="flex items-center gap-4">
-            <Input 
-              placeholder="Search User ID or Action..." 
+            <Input
+              placeholder="Search User ID or Action..."
               className="max-w-[250px]"
               value={logSearch}
               onChange={(e) => setLogSearch(e.target.value)}
