@@ -14,12 +14,12 @@ const SupportManagement: React.FC = () => {
   const queryClient = useQueryClient();
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<any>(null);
-  
-  const [faqForm, setFaqForm] = useState({ 
-    question: '', answer: '', 
-    question_si: '', answer_si: '', 
-    question_ta: '', answer_ta: '', 
-    role: 'farmer' 
+
+  const [faqForm, setFaqForm] = useState({
+    question: '', answer: '',
+    question_si: '', answer_si: '',
+    question_ta: '', answer_ta: '',
+    role: 'farmer'
   });
   const [nestlePhone, setNestlePhone] = useState('');
 
@@ -63,11 +63,11 @@ const SupportManagement: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['faqs'] });
       setIsFaqOpen(false);
       setEditingFaq(null);
-      setFaqForm({ 
-        question: '', answer: '', 
-        question_si: '', answer_si: '', 
-        question_ta: '', answer_ta: '', 
-        role: 'farmer' 
+      setFaqForm({
+        question: '', answer: '',
+        question_si: '', answer_si: '',
+        question_ta: '', answer_ta: '',
+        role: 'farmer'
       });
     },
     onError: () => toast.error('Failed to save FAQ')
@@ -96,11 +96,11 @@ const SupportManagement: React.FC = () => {
 
   const openEditFaq = (faq: any) => {
     setEditingFaq(faq);
-    setFaqForm({ 
-      question: faq.question, answer: faq.answer, 
-      question_si: faq.question_si || '', answer_si: faq.answer_si || '', 
-      question_ta: faq.question_ta || '', answer_ta: faq.answer_ta || '', 
-      role: faq.role 
+    setFaqForm({
+      question: faq.question, answer: faq.answer,
+      question_si: faq.question_si || '', answer_si: faq.answer_si || '',
+      question_ta: faq.question_ta || '', answer_ta: faq.answer_ta || '',
+      role: faq.role
     });
     setIsFaqOpen(true);
   };
@@ -131,10 +131,10 @@ const SupportManagement: React.FC = () => {
               <div className="space-y-2">
                 <Label>Phone Number</Label>
                 <div className="flex gap-2">
-                  <Input 
-                    placeholder="+94 77..." 
-                    value={nestlePhone} 
-                    onChange={e => setNestlePhone(e.target.value)} 
+                  <Input
+                    placeholder="+94 77..."
+                    value={nestlePhone}
+                    onChange={e => setNestlePhone(e.target.value)}
                   />
                   <Button onClick={handleSavePhone} disabled={saveConfigMutation.isPending}>
                     <Save className="w-4 h-4" />
@@ -153,24 +153,24 @@ const SupportManagement: React.FC = () => {
             <CardTitle className="text-lg">FAQ Management</CardTitle>
             <Dialog open={isFaqOpen} onOpenChange={setIsFaqOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={() => { 
-                  setEditingFaq(null); 
-                  setFaqForm({ 
-                    question: '', answer: '', 
-                    question_si: '', answer_si: '', 
-                    question_ta: '', answer_ta: '', 
-                    role: 'farmer' 
-                  }); 
+                <Button size="sm" onClick={() => {
+                  setEditingFaq(null);
+                  setFaqForm({
+                    question: '', answer: '',
+                    question_si: '', answer_si: '',
+                    question_ta: '', answer_ta: '',
+                    role: 'farmer'
+                  });
                 }}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add FAQ
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-                <DialogHeader>
+              <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+                <DialogHeader className="p-6 pb-2">
                   <DialogTitle>{editingFaq ? 'Edit FAQ' : 'Add FAQ'}</DialogTitle>
                 </DialogHeader>
-                <div className="flex-1 overflow-y-auto pr-4 -mr-4 space-y-4 py-4">
+                <div className="flex-1 overflow-y-auto px-6 space-y-6 py-2">
                   <div className="space-y-2">
                     <Label>Role</Label>
                     <Select value={faqForm.role} onValueChange={v => setFaqForm({ ...faqForm, role: v })}>
@@ -189,10 +189,10 @@ const SupportManagement: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Answer (EN)</Label>
-                      <textarea 
+                      <textarea
                         className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        value={faqForm.answer} 
-                        onChange={e => setFaqForm({ ...faqForm, answer: e.target.value })} 
+                        value={faqForm.answer}
+                        onChange={e => setFaqForm({ ...faqForm, answer: e.target.value })}
                       />
                     </div>
                   </div>
@@ -205,10 +205,10 @@ const SupportManagement: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Answer (SI)</Label>
-                      <textarea 
+                      <textarea
                         className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        value={faqForm.answer_si} 
-                        onChange={e => setFaqForm({ ...faqForm, answer_si: e.target.value })} 
+                        value={faqForm.answer_si}
+                        onChange={e => setFaqForm({ ...faqForm, answer_si: e.target.value })}
                       />
                     </div>
                   </div>
@@ -221,15 +221,15 @@ const SupportManagement: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Answer (TA)</Label>
-                      <textarea 
+                      <textarea
                         className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        value={faqForm.answer_ta} 
-                        onChange={e => setFaqForm({ ...faqForm, answer_ta: e.target.value })} 
+                        value={faqForm.answer_ta}
+                        onChange={e => setFaqForm({ ...faqForm, answer_ta: e.target.value })}
                       />
                     </div>
                   </div>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="p-6 pt-2 border-t">
                   <Button variant="outline" onClick={() => setIsFaqOpen(false)}>Cancel</Button>
                   <Button onClick={handleSaveFaq} disabled={saveFaqMutation.isPending}>Save</Button>
                 </DialogFooter>
