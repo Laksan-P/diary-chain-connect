@@ -40,13 +40,9 @@ class _FaqScreenState extends State<FaqScreen> {
       final user = context.read<AuthProvider>().user;
       final userRole = user?['role'] ?? 'farmer';
       
-      // 1. Fetch FAQs
       final faqs = await _api.get('/faq?role=$userRole');
-      
-      // 2. Fetch Nestlé config
       final config = await _api.get('/config?key=nestle_phone');
       
-      // 3. Fetch CC details if farmer
       String? ccPhone;
       String? ccName;
       
@@ -117,16 +113,44 @@ class _FaqScreenState extends State<FaqScreen> {
     final userRole = context.read<AuthProvider>().user?['role'] ?? 'farmer';
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       body: Stack(
         children: [
-          // Premium Background Overlay
+          // ── PREMIUM DECORATIVE OVERLAYS (MATCHING HOME SCREEN) ──
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : AppTheme.primary.withValues(alpha: 0.03),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -150,
+            left: -50,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? AppTheme.primaryLight.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.01),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          
+          // Blur effect
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                color: (isDark ? Colors.black : Colors.white).withOpacity(0.85),
-              ),
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: Container(color: Colors.transparent),
             ),
           ),
           
@@ -140,7 +164,8 @@ class _FaqScreenState extends State<FaqScreen> {
                       : RefreshIndicator(
                           onRefresh: _fetchData,
                           child: ListView(
-                            padding: const EdgeInsets.all(24),
+                            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                            physics: const BouncingScrollPhysics(),
                             children: [
                               ..._faqs.map((faq) => _buildFaqItem(faq, isDark)),
                               const SizedBox(height: 24),
@@ -159,7 +184,7 @@ class _FaqScreenState extends State<FaqScreen> {
 
   Widget _buildHeader(String locale, bool isDark) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
       child: Row(
         children: [
           BouncingButton(
@@ -170,8 +195,9 @@ class _FaqScreenState extends State<FaqScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
                 shape: BoxShape.circle,
+                boxShadow: isDark ? [] : AppTheme.premiumShadow,
               ),
               child: Icon(
                 Icons.arrow_back_ios_new_rounded,
@@ -201,32 +227,44 @@ class _FaqScreenState extends State<FaqScreen> {
   Widget _buildFaqItem(dynamic faq, bool isDark) {
     final isExpanded = _expandedId == faq['id'];
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: isDark ? AppTheme.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppTheme.premiumShadow,
-        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade50),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: isDark ? [] : AppTheme.premiumShadow,
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+          width: 1,
+        ),
       ),
       child: Column(
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             onTap: () {
               HapticFeedback.lightImpact();
               setState(() => _expandedId = isExpanded ? null : faq['id']);
               if (!isExpanded) _logFeedback(faq['id'], null);
             },
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
-                      faq['question'] ?? '',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      locale == 'si' && faq['question_si'] != null && faq['question_si'].toString().isNotEmpty
+                          ? faq['question_si']
+                          : locale == 'ta' && faq['question_ta'] != null && faq['question_ta'].toString().isNotEmpty
+                              ? faq['question_ta']
+                              : faq['question'] ?? '',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800, 
+                        fontSize: 16,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 12),
                   Icon(
                     isExpanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
                     color: isDark ? AppTheme.primaryLight : AppTheme.primary,
@@ -238,13 +276,18 @@ class _FaqScreenState extends State<FaqScreen> {
           ),
           if (isExpanded)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: Text(
-                faq['answer'] ?? '',
+                locale == 'si' && faq['answer_si'] != null && faq['answer_si'].toString().isNotEmpty
+                    ? faq['answer_si']
+                    : locale == 'ta' && faq['answer_ta'] != null && faq['answer_ta'].toString().isNotEmpty
+                        ? faq['answer_ta']
+                        : faq['answer'] ?? '',
                 style: TextStyle(
                   color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
                   height: 1.6,
                   fontSize: 15,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -255,11 +298,11 @@ class _FaqScreenState extends State<FaqScreen> {
 
   Widget _buildOtherIssueCard(String role, String locale, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withOpacity(0.08),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withOpacity(0.15)),
+        color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withOpacity(0.06),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -267,19 +310,23 @@ class _FaqScreenState extends State<FaqScreen> {
           Text(
             Translations.get('other_issue', locale),
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
               color: isDark ? AppTheme.primaryLight : AppTheme.primary,
+              letterSpacing: -0.5,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             Translations.get('contact_support_desc', locale),
-            style: TextStyle(color: isDark ? Colors.grey.shade400 : Colors.grey.shade700, fontSize: 14),
+            style: TextStyle(
+              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600, 
+              fontSize: 14,
+              height: 1.4,
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
           
-          // PRIMARY: CALL CC
           if (role == 'farmer' && _ccPhone != null && _ccPhone!.isNotEmpty) ...[
             _buildCallButton(
               title: Translations.get('call_cc', locale),
@@ -291,7 +338,6 @@ class _FaqScreenState extends State<FaqScreen> {
             const SizedBox(height: 16),
           ],
           
-          // SECONDARY: CALL NESTLE
           if (_nestlePhone != null && _nestlePhone!.isNotEmpty)
             _buildCallButton(
               title: Translations.get('call_nestle', locale),
@@ -319,44 +365,53 @@ class _FaqScreenState extends State<FaqScreen> {
         _makePhoneCall(phone);
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: isDark ? AppTheme.surfaceDark : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: AppTheme.premiumShadow,
-          border: isPrimary ? Border.all(color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withOpacity(0.3)) : null,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: isDark ? [] : AppTheme.premiumShadow,
+          border: isPrimary ? Border.all(color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withOpacity(0.3), width: 1.5) : null,
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: (isPrimary ? Colors.green : Colors.blue).withOpacity(0.1),
+                color: (isPrimary ? Colors.green : Colors.blue).withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 isPrimary ? LucideIcons.phoneCall : LucideIcons.phone, 
                 color: isPrimary ? Colors.green : Colors.blue, 
-                size: 20
+                size: 22
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 18),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900, 
+                      fontSize: 17,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    style: TextStyle(
+                      color: isDark ? Colors.grey.shade500 : Colors.grey.shade500, 
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
             ),
-            Icon(LucideIcons.chevronRight, color: Colors.grey.shade400, size: 18),
+            Icon(LucideIcons.chevronRight, color: Colors.grey.shade400, size: 20),
           ],
         ),
       ),

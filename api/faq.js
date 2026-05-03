@@ -40,7 +40,7 @@ export default async function handler(req, res) {
 
     try {
       const body = getBody(req);
-      const { id, question, answer, role } = body;
+      const { id, question, answer, question_si, answer_si, question_ta, answer_ta, role } = body;
       
       if (!question || !answer || !role) {
         return res.status(400).json({ error: 'Question, answer, and role are required' });
@@ -48,9 +48,19 @@ export default async function handler(req, res) {
 
       let query;
       if (id) {
-        query = supabase.from('faq').update({ question, answer, role }).eq('id', id).select().single();
+        query = supabase.from('faq').update({ 
+          question, answer, 
+          question_si, answer_si, 
+          question_ta, answer_ta, 
+          role 
+        }).eq('id', id).select().single();
       } else {
-        query = supabase.from('faq').insert({ question, answer, role }).select().single();
+        query = supabase.from('faq').insert({ 
+          question, answer, 
+          question_si, answer_si, 
+          question_ta, answer_ta, 
+          role 
+        }).select().single();
       }
 
       const { data, error } = await query;

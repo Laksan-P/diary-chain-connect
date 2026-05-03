@@ -15,7 +15,12 @@ const SupportManagement: React.FC = () => {
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<any>(null);
   
-  const [faqForm, setFaqForm] = useState({ question: '', answer: '', role: 'farmer' });
+  const [faqForm, setFaqForm] = useState({ 
+    question: '', answer: '', 
+    question_si: '', answer_si: '', 
+    question_ta: '', answer_ta: '', 
+    role: 'farmer' 
+  });
   const [nestlePhone, setNestlePhone] = useState('');
 
   // Fetch configs
@@ -58,7 +63,12 @@ const SupportManagement: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['faqs'] });
       setIsFaqOpen(false);
       setEditingFaq(null);
-      setFaqForm({ question: '', answer: '', role: 'farmer' });
+      setFaqForm({ 
+        question: '', answer: '', 
+        question_si: '', answer_si: '', 
+        question_ta: '', answer_ta: '', 
+        role: 'farmer' 
+      });
     },
     onError: () => toast.error('Failed to save FAQ')
   });
@@ -86,7 +96,12 @@ const SupportManagement: React.FC = () => {
 
   const openEditFaq = (faq: any) => {
     setEditingFaq(faq);
-    setFaqForm({ question: faq.question, answer: faq.answer, role: faq.role });
+    setFaqForm({ 
+      question: faq.question, answer: faq.answer, 
+      question_si: faq.question_si || '', answer_si: faq.answer_si || '', 
+      question_ta: faq.question_ta || '', answer_ta: faq.answer_ta || '', 
+      role: faq.role 
+    });
     setIsFaqOpen(true);
   };
 
@@ -138,7 +153,15 @@ const SupportManagement: React.FC = () => {
             <CardTitle className="text-lg">FAQ Management</CardTitle>
             <Dialog open={isFaqOpen} onOpenChange={setIsFaqOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={() => { setEditingFaq(null); setFaqForm({ question: '', answer: '', role: 'farmer' }); }}>
+                <Button size="sm" onClick={() => { 
+                  setEditingFaq(null); 
+                  setFaqForm({ 
+                    question: '', answer: '', 
+                    question_si: '', answer_si: '', 
+                    question_ta: '', answer_ta: '', 
+                    role: 'farmer' 
+                  }); 
+                }}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add FAQ
                 </Button>
@@ -158,17 +181,52 @@ const SupportManagement: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Question</Label>
-                    <Input value={faqForm.question} onChange={e => setFaqForm({ ...faqForm, question: e.target.value })} />
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="text-sm font-semibold text-primary">English (Default)</h4>
+                    <div className="space-y-2">
+                      <Label>Question (EN)</Label>
+                      <Input value={faqForm.question} onChange={e => setFaqForm({ ...faqForm, question: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Answer (EN)</Label>
+                      <textarea 
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={faqForm.answer} 
+                        onChange={e => setFaqForm({ ...faqForm, answer: e.target.value })} 
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Answer</Label>
-                    <textarea 
-                      className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                      value={faqForm.answer} 
-                      onChange={e => setFaqForm({ ...faqForm, answer: e.target.value })} 
-                    />
+
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="text-sm font-semibold text-primary">Sinhala Translation</h4>
+                    <div className="space-y-2">
+                      <Label>Question (SI)</Label>
+                      <Input value={faqForm.question_si} onChange={e => setFaqForm({ ...faqForm, question_si: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Answer (SI)</Label>
+                      <textarea 
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={faqForm.answer_si} 
+                        onChange={e => setFaqForm({ ...faqForm, answer_si: e.target.value })} 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="text-sm font-semibold text-primary">Tamil Translation</h4>
+                    <div className="space-y-2">
+                      <Label>Question (TA)</Label>
+                      <Input value={faqForm.question_ta} onChange={e => setFaqForm({ ...faqForm, question_ta: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Answer (TA)</Label>
+                      <textarea 
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={faqForm.answer_ta} 
+                        onChange={e => setFaqForm({ ...faqForm, answer_ta: e.target.value })} 
+                      />
+                    </div>
                   </div>
                 </div>
                 <DialogFooter>

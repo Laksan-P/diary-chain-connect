@@ -8,6 +8,10 @@ CREATE TABLE IF NOT EXISTS faq (
   id BIGSERIAL PRIMARY KEY,
   question TEXT NOT NULL,
   answer TEXT NOT NULL,
+  question_si TEXT,
+  answer_si TEXT,
+  question_ta TEXT,
+  answer_ta TEXT,
   role TEXT NOT NULL CHECK (role IN ('farmer', 'chilling_center')),
   created_at TIMESTAMPTZ DEFAULT now()
 );
