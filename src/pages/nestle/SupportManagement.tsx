@@ -233,9 +233,9 @@ const SupportManagement: React.FC = () => {
                 ) : (
                   feedbackLogs.map((log: any) => (
                     <tr key={log.id} className="border-b transition-colors hover:bg-muted/50">
-                      <td className="p-4">{new Date(log.timestamp).toLocaleString()}</td>
-                      <td className="p-4 capitalize">{log.role.replace('_', ' ')}</td>
-                      <td className="p-4 font-mono text-xs">{log.user_id.substring(0, 8)}...</td>
+                      <td className="p-4">{log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</td>
+                      <td className="p-4 capitalize">{log.role ? log.role.replace('_', ' ') : 'Unknown'}</td>
+                      <td className="p-4 font-mono text-xs">{log.user_id ? log.user_id.toString().substring(0, 8) : 'System'}...</td>
                       <td className="p-4">
                         {log.question_id ? (
                           <span><span className="text-muted-foreground">Viewed FAQ:</span> {log.faq?.question || `ID ${log.question_id}`}</span>

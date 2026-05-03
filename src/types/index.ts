@@ -42,6 +42,7 @@ export interface ChillingCenter {
   name: string;
   location: string;
   phone_number?: string;
+  email?: string;
   totalQuantity?: number;
   avgQuantity?: number;
   qualityRate?: number;
