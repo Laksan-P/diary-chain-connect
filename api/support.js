@@ -84,7 +84,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Message is required' });
       }
 
-      const finalCcId = cc_id || (user.role === 'chilling_center' ? user.chillingCenterId : (user.farmerInfo?.center_id || null));
+      const finalCcId = cc_id || user.chillingCenterId || null;
 
       const { data, error } = await supabase
         .from('support_tickets')

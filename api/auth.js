@@ -71,6 +71,7 @@ export default async function handler(req, res) {
         if (fRows) {
           farmerId = fRows.id;
           farmerCode = fRows.farmer_id;
+          chillingCenterId = fRows.chilling_center_id;
         }
       }
 

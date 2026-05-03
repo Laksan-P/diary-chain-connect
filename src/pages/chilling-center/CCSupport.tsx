@@ -155,8 +155,13 @@ export default function CCSupport() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ['support_tickets'] })}>
-            <RefreshCw className="w-4 h-4" />
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['support_tickets'] })}
+            disabled={ticketsLoading}
+          >
+            <RefreshCw className={`w-4 h-4 ${ticketsLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
