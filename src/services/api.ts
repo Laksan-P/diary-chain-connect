@@ -284,19 +284,19 @@ export const getCenterPerformance = async (): Promise<CenterPerformance[]> => {
   return apiFetch<CenterPerformance[]>('/api/chilling-centers?action=performance');
 };
 
-/** GET /api/performance?type=farmer&id=X */
+/** GET /api/operations?action=performance&type=farmer&id=X */
 export const getFarmerPerformance = async (id?: number): Promise<any> => {
-  return apiFetch<any>(`/api/performance?type=farmer${id ? `&id=${id}` : ''}`);
+  return apiFetch<any>(`/api/operations?action=performance&type=farmer${id ? `&id=${id}` : ''}`);
 };
 
-/** GET /api/performance?type=center&id=X */
+/** GET /api/operations?action=performance&type=center&id=X */
 export const getCenterPerformanceDetailed = async (id?: number): Promise<any> => {
-  return apiFetch<any>(`/api/performance?type=center${id ? `&id=${id}` : ''}`);
+  return apiFetch<any>(`/api/operations?action=performance&type=center${id ? `&id=${id}` : ''}`);
 };
 
-/** GET /api/performance */
+/** GET /api/operations?action=performance */
 export const getAllPerformance = async (): Promise<any> => {
-  return apiFetch<any>('/api/performance');
+  return apiFetch<any>('/api/operations?action=performance');
 };
 
 // ============ NOTIFICATIONS ============

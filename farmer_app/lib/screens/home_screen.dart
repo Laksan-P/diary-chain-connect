@@ -159,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _api.get('/payments?action=list&farmerId=$farmerId'),
         _api.get('/notifications?action=list'),
         _api.get('/support'),
-        _api.get('/performance?type=farmer'),
+        _api.get('/operations?action=performance&type=farmer'),
       ]);
 
       if (!mounted) return;

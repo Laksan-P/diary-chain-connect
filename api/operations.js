@@ -613,5 +613,85 @@ export default async function handler(req, res) {
     }
   }
 
+  // ══════════════════════════════════════════════════
+  //  QUALITY TESTS (ADDITIONAL)
+  // ══════════════════════════════════════════════════
+
+  // ────────── GET /api/operations?action=quality-tests&collectionId=X ──────────
+  if (action === 'quality-tests' && req.method === 'GET') {
+    try {
+      const { collectionId } = req.query;
+      if (!collectionId) return res.status(400).json({ error: 'collectionId required' });
+      const { data: qts, error } = await supabase
+         .from('quality_tests')
+         .select('*')
+         .eq('collection_id', collectionId)
+         .order('tested_at', { ascending: false });
+      if (error) throw error;
+      return res.status(200).json(qts);
+    } catch (err) {
+      console.error('Get quality tests error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
+  // ══════════════════════════════════════════════════
+  //  PERFORMANCE ANALYTICS
+  // ══════════════════════════════════════════════════
+
+  // ────────── GET /api/operations?action=performance ──────────
+  if (action === 'performance' && req.method === 'GET') {
+    const { type, id: targetId } = req.query;
+    try {
+      if (type === 'farmer') {
+        const farmerId = targetId || user.farmerId;
+        if (!farmerId) return res.status(400).json({ error: 'Farmer ID required' });
+        const { data: farmer } = await supabase.from('farmers').select('name, performance_status, performance_recommendation').eq('id', farmerId).single();
+        const { data: tests } = await supabase.from('quality_tests').select('result, tested_at').eq('collection_id', (await supabase.from('milk_collections').select('id').eq('farmer_id', farmerId)).data?.map(c => c.id) || []);
+        const total = tests?.length || 0;
+        const passed = tests?.filter(t => t.result === 'Pass').length || 0;
+        const passRate = total > 0 ? (passed / total) * 100 : 100;
+        const threeMonthsAgo = new Date(); threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        const { data: collections } = await supabase.from('milk_collections').select('date, quantity, quality_result').eq('farmer_id', farmerId).gte('date', threeMonthsAgo.toISOString().split('T')[0]).order('date', { ascending: true });
+        const trends = {};
+        collections?.forEach(c => {
+          const month = c.date.substring(0, 7);
+          if (!trends[month]) trends[month] = { month, volume: 0, passCount: 0, total: 0 };
+          trends[month].volume += parseFloat(c.quantity) || 0; trends[month].total++;
+          if (c.quality_result === 'Pass') trends[month].passCount++;
+        });
+        const trendArray = Object.values(trends).map(t => ({ ...t, passRate: t.total > 0 ? (t.passCount / t.total) * 100 : 100 }));
+        return res.status(200).json({ status: farmer?.performance_status || 'Good', recommendation: farmer?.performance_recommendation, passRate, frequency: total > 0 ? 'Regular' : 'New', trends: trendArray });
+      }
+      if (type === 'center') {
+        const centerId = targetId || user.chillingCenterId;
+        if (!centerId) return res.status(400).json({ error: 'Center ID required' });
+        const { data: center } = await supabase.from('chilling_centers').select('name, performance_status, performance_recommendation').eq('id', centerId).single();
+        const { data: dispatches } = await supabase.from('dispatches').select('status, dispatch_date, quantity:dispatch_items(milk_collections(quantity))').eq('chilling_center_id', centerId);
+        const totalD = dispatches?.length || 0;
+        const rejectedD = dispatches?.filter(d => d.status === 'Rejected').length || 0;
+        const rejectionRate = totalD > 0 ? (rejectedD / totalD) * 100 : 0;
+        const trends = {};
+        dispatches?.forEach(d => {
+          const month = d.dispatch_date.substring(0, 7);
+          if (!trends[month]) trends[month] = { month, volume: 0, rejected: 0, total: 0 };
+          trends[month].total++; if (d.status === 'Rejected') trends[month].rejected++;
+          const vol = d.quantity?.reduce((sum, item) => sum + (parseFloat(item.milk_collections?.quantity) || 0), 0) || 0;
+          trends[month].volume += vol;
+        });
+        return res.status(200).json({ status: center?.performance_status || 'Good', recommendation: center?.performance_recommendation, passRate: 100 - rejectionRate, rejectionRate, trends: Object.values(trends) });
+      }
+      if (['nestle', 'nestle_officer'].includes(user.role)) {
+        const { data: farmers } = await supabase.from('farmers').select('id, name, performance_status');
+        const { data: centers } = await supabase.from('chilling_centers').select('id, name, performance_status');
+        return res.status(200).json({ farmers, centers });
+      }
+      return res.status(400).json({ error: 'Invalid type' });
+    } catch (err) {
+      console.error('Performance API error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   return res.status(400).json({ error: 'Invalid action' });
 }
