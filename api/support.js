@@ -190,6 +190,7 @@ export default async function handler(req, res) {
           reply_si: reply_si?.trim(),
           reply_ta: reply_ta?.trim(),
           status: 'replied',
+          replied_by: isNestle ? 'nestle' : 'chilling_center',
           replied_at: ticket.replied_at || new Date().toISOString(),
           last_activity_at: new Date().toISOString(),
           is_read_by_user: false,

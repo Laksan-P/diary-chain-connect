@@ -235,7 +235,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        Translations.get('nestle_reply', locale).toUpperCase(),
+                        Translations.get(
+                          ticket['replied_by'] == 'chilling_center' ? 'cc_reply' : 'nestle_reply', 
+                          locale
+                        ).toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -292,7 +295,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    Translations.get('waiting_for_reply', locale),
+                    Translations.get(
+                      ticket['cc_id'] != null ? 'waiting_for_cc' : 'waiting_for_nestle', 
+                      locale
+                    ),
                     style: const TextStyle(
                       fontSize: 10,
                       color: Colors.amber,
