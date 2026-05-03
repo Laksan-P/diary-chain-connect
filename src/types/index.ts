@@ -162,3 +162,18 @@ export interface FarmerRegistration {
   email: string;
   password: string;
 }
+
+export interface PredictionData {
+  actualData: { week: string; value: number }[];
+  forecastData: { week: string; value: number }[];
+  centerPredictions: {
+    centerId: string;
+    name: string;
+    predictions: { week: string; value: number }[];
+  }[];
+  alerts: {
+    level: 'Critical' | 'Warning';
+    type: 'Red' | 'Amber';
+    message: string;
+  }[];
+}

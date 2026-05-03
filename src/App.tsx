@@ -26,6 +26,7 @@ import NestleMilkHistory from "./pages/nestle/NestleMilkHistory";
 import ChillingCentersView from "./pages/nestle/ChillingCentersView";
 import SupportManagement from "@/pages/nestle/SupportManagement";
 import PerformanceDashboard from "./pages/nestle/PerformanceDashboard";
+import SupplyPredictions from "./pages/nestle/SupplyPredictions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => (
               <Route path="payments" element={<PaymentsPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
               <Route path="performance" element={<PerformanceDashboard />} />
+              <Route path="predictions" element={<SupplyPredictions />} />
               <Route path="support" element={<SupportManagement />} />
             </Route>
 

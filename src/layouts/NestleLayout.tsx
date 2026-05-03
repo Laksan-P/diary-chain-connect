@@ -15,6 +15,7 @@ const navItems = [
   { title: 'Farmers', path: '/nestle/farmers', icon: Users },
   { title: 'Dispatches', path: '/nestle/dispatches', icon: Truck },
   { title: 'Performance', path: '/nestle/performance', icon: TrendingUp },
+  { title: 'Supply Prediction', path: '/nestle/predictions', icon: BarChart3 },
   { title: 'Pricing Rules', path: '/nestle/pricing', icon: Settings },
   { title: 'Payments', path: '/nestle/payments', icon: DollarSign },
   { title: 'Support & FAQ', path: '/nestle/support', icon: HelpCircle },

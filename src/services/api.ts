@@ -7,7 +7,7 @@
 import type {
   AuthResponse, User, Farmer, FarmerRegistration, ChillingCenter,
   MilkCollection, QualityTest, Dispatch, PricingRule, Payment,
-  Notification, CenterPerformance,
+  Notification, CenterPerformance, PredictionData
 } from '@/types';
 
 const API_BASE_URL = ''; // Same origin on Vercel
@@ -297,6 +297,11 @@ export const getCenterPerformanceDetailed = async (id?: number): Promise<any> =>
 /** GET /api/operations?action=performance */
 export const getAllPerformance = async (): Promise<any> => {
   return apiFetch<any>('/api/operations?action=performance');
+};
+
+/** GET /api/predictions */
+export const getPredictions = async (): Promise<PredictionData> => {
+  return apiFetch<PredictionData>('/api/predictions');
 };
 
 // ============ NOTIFICATIONS ============
