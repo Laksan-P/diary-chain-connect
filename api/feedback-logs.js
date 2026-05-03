@@ -45,7 +45,7 @@ export default async function handler(req, res) {
   // GET /api/feedback-logs
   if (req.method === 'GET') {
     const user = authenticate(req, res);
-    if (!user || user.role !== 'nestle_officer') return res.status(403).json({ error: 'Forbidden' });
+    if (!user || !['nestle', 'nestle_officer'].includes(user.role)) return res.status(403).json({ error: 'Forbidden' });
 
     try {
       const { data, error } = await supabase

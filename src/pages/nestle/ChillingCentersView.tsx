@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { getCenterPerformance, registerChillingCenterByAdmin, getChillingCenters } from '@/services/api';
+import { getCenterPerformance, registerChillingCenterByAdmin, getChillingCenters, apiFetch } from '@/services/api';
 import type { CenterPerformance, ChillingCenter } from '@/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const ChillingCentersView: React.FC = () => {
   const [centers, setCenters] = useState<(CenterPerformance & { location?: string })[]>([]);
@@ -26,7 +27,7 @@ const ChillingCentersView: React.FC = () => {
       
       const combined = perfs.map(p => {
         const matching = list.find(l => l.id === p.centerId);
-        return { ...p, location: matching?.location || 'Unknown' };
+        return { ...p, location: matching?.location || 'Unknown', phone_number: matching?.phone_number || '' };
       });
       setCenters(combined);
     } catch (err) {
@@ -37,6 +38,10 @@ const ChillingCentersView: React.FC = () => {
   };
 
   useEffect(() => { loadData(); }, []);
+
+  const [editingCenter, setEditingCenter] = useState<any>(null);
+  const [editPhone, setEditPhone] = useState('');
+  const [updatingPhone, setUpdatingPhone] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +65,25 @@ const ChillingCentersView: React.FC = () => {
     }
   };
 
+  const handleUpdatePhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCenter) return;
+    setUpdatingPhone(true);
+    try {
+      await apiFetch('/api/chilling-centers?action=update-phone', {
+        method: 'POST',
+        body: JSON.stringify({ id: editingCenter.centerId, phone_number: editPhone })
+      });
+      toast({ title: 'Success', description: 'Phone number updated successfully.' });
+      setEditingCenter(null);
+      loadData();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to update phone number.', variant: 'destructive' });
+    } finally {
+      setUpdatingPhone(false);
+    }
+  };
+
   const columns = [
     { key: 'rank', header: 'Rank' },
     { key: 'centerName', header: 'Center Name' },
@@ -67,10 +91,20 @@ const ChillingCentersView: React.FC = () => {
     { key: 'collectionCount', header: 'Total Collections' },
     { key: 'totalQuantity', header: 'Total Milk (L)', render: (r: any) => `${r.totalQuantity.toLocaleString()} L` },
     { key: 'qualityRate', header: 'Pass Rate', render: (r: any) => `${r.qualityRate}%` },
+    { 
+      key: 'actions', 
+      header: 'Actions', 
+      render: (r: any) => (
+        <Button size="sm" variant="outline" onClick={() => {
+          setEditingCenter(r);
+          setEditPhone(r.phone_number || '');
+        }}>Edit Mobile</Button>
+      )
+    },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -132,6 +166,24 @@ const ChillingCentersView: React.FC = () => {
       )}
 
       <DataTable columns={columns} data={centers} loading={loading} />
+
+      <Dialog open={!!editingCenter} onOpenChange={(open) => !open && setEditingCenter(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Mobile Number</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdatePhone} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Mobile Number for {editingCenter?.centerName}</Label>
+              <Input type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="Enter mobile number" required />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingCenter(null)}>Cancel</Button>
+              <Button type="submit" disabled={updatingPhone}>{updatingPhone ? 'Saving...' : 'Save'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

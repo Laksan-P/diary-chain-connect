@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
-export default function SupportManagement() {
+const SupportManagement: React.FC = () => {
   const queryClient = useQueryClient();
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<any>(null);
@@ -249,4 +249,6 @@ export default function SupportManagement() {
       </Card>
     </div>
   );
-}
+};
+
+export default SupportManagement;

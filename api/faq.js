@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   // POST /api/faq (create/update) - nestle dashboard
   if (req.method === 'POST') {
     const user = authenticate(req, res);
-    if (!user || user.role !== 'nestle_officer') return res.status(403).json({ error: 'Forbidden' });
+    if (!user || !['nestle', 'nestle_officer'].includes(user.role)) return res.status(403).json({ error: 'Forbidden' });
 
     try {
       const body = getBody(req);
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
   // DELETE /api/faq?id=... - nestle dashboard
   if (req.method === 'DELETE') {
     const user = authenticate(req, res);
-    if (!user || user.role !== 'nestle_officer') return res.status(403).json({ error: 'Forbidden' });
+    if (!user || !['nestle', 'nestle_officer'].includes(user.role)) return res.status(403).json({ error: 'Forbidden' });
 
     try {
       const { id } = req.query;

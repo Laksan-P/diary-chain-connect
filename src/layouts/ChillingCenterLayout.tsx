@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import NotificationBell from '@/components/NotificationBell';
+import FloatingFaqButton from '@/components/FloatingFaqButton';
 
 const navItems = [
   { title: 'Dashboard', path: '/chilling-center', icon: Milk },
@@ -94,10 +95,11 @@ const ChillingCenterLayout: React.FC = () => {
             <span className="text-xs font-medium text-destructive">Offline Mode – Data will sync when connection is restored</span>
           </div>
         )}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-6 relative">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
             <Outlet />
           </motion.div>
+          <FloatingFaqButton role="chilling_center" />
         </main>
       </div>
     </div>

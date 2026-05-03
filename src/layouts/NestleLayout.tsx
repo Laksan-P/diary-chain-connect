@@ -6,6 +6,7 @@ import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import NotificationBell from '@/components/NotificationBell';
+import FloatingFaqButton from '@/components/FloatingFaqButton';
 
 const navItems = [
   { title: 'Dashboard', path: '/nestle', icon: BarChart3 },
@@ -74,10 +75,11 @@ const NestleLayout: React.FC = () => {
           <h1 className="font-display font-semibold text-foreground flex-1">Nestlé Dashboard</h1>
           <NotificationBell />
         </header>
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-6 relative">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
             <Outlet />
           </motion.div>
+          <FloatingFaqButton role="nestle" />
         </main>
       </div>
     </div>

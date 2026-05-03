@@ -24,7 +24,7 @@ import PaymentsPage from "./pages/nestle/PaymentsPage";
 import AnalyticsPage from "./pages/nestle/AnalyticsPage";
 import NestleMilkHistory from "./pages/nestle/NestleMilkHistory";
 import ChillingCentersView from "./pages/nestle/ChillingCentersView";
-import SupportManagement from "./pages/nestle/SupportManagement";
+import SupportManagement from "@/pages/nestle/SupportManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

@@ -106,5 +106,30 @@ export default async function handler(req, res) {
     }
   }
 
+  // ────────── POST /api/chilling-centers?action=update-phone ──────────
+  if (action === 'update-phone' && req.method === 'POST') {
+    const user = authenticate(req, res);
+    if (!user || !['nestle', 'nestle_officer'].includes(user.role)) return res.status(403).json({ error: 'Forbidden' });
+
+    try {
+      const body = getBody(req);
+      const { id, phone_number } = body;
+      if (!id || typeof phone_number === 'undefined') return res.status(400).json({ error: 'ID and phone_number required' });
+
+      const { data, error } = await supabase
+        .from('chilling_centers')
+        .update({ phone_number })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.status(200).json(data);
+    } catch (err) {
+      console.error('Update phone error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   return res.status(400).json({ error: 'Invalid action' });
 }
