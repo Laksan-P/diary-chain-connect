@@ -100,16 +100,29 @@ export default async function handler(req, res) {
       return weightedSum / weightSum;
     };
 
+    // Calculate momentum trend to prevent flat-lining
+    const calculateTrend = (dataPoints) => {
+      if (dataPoints.length < 2) return 0;
+      const recent = dataPoints.slice(-4); // Use last 4 weeks momentum
+      if (recent.length < 2) return 0;
+      const first = recent[0];
+      const last = recent[recent.length - 1];
+      return (last - first) / (recent.length - 1);
+    };
+
     // Predict next 4 weeks for Total
     let totalDataPoints = sortedWeeks.map(w => weeklyTotal[w]);
     const totalPredictions = [];
     let currentWeekTotal = sortedWeeks.length > 0 ? sortedWeeks[sortedWeeks.length - 1] : getWeekNumber(new Date());
 
+    let baseTotalWMA = calculateWMA(totalDataPoints);
+    let totalTrend = calculateTrend(totalDataPoints);
+
     for (let i = 0; i < 4; i++) {
-      const pred = calculateWMA(totalDataPoints);
       currentWeekTotal = getNextWeekString(currentWeekTotal);
-      totalPredictions.push({ week: currentWeekTotal, value: Math.round(pred) });
-      totalDataPoints.push(pred); // feed prediction back in for next step
+      let stepValue = baseTotalWMA + (totalTrend * (i + 1));
+      if (stepValue < 0) stepValue = 0; // Prevent negative supply
+      totalPredictions.push({ week: currentWeekTotal, value: Math.round(stepValue) });
     }
 
     // Predict next 4 weeks per center
@@ -120,11 +133,14 @@ export default async function handler(req, res) {
       const cPreds = [];
       let cWeekStr = sortedWeeks.length > 0 ? sortedWeeks[sortedWeeks.length - 1] : getWeekNumber(new Date());
       
+      let baseCenterWMA = calculateWMA(centerDataPoints);
+      let centerTrend = calculateTrend(centerDataPoints);
+      
       for (let i = 0; i < 4; i++) {
-        const pred = calculateWMA(centerDataPoints);
         cWeekStr = getNextWeekString(cWeekStr);
-        cPreds.push({ week: cWeekStr, value: Math.round(pred) });
-        centerDataPoints.push(pred);
+        let stepValue = baseCenterWMA + (centerTrend * (i + 1));
+        if (stepValue < 0) stepValue = 0;
+        cPreds.push({ week: cWeekStr, value: Math.round(stepValue) });
       }
       centerWisePredictions.push({
         centerId: cid,
