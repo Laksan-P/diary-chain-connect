@@ -162,10 +162,14 @@ export default async function handler(req, res) {
 
         // ────────── PERFORMANCE TRACKING TRIGGER ──────────
         try {
+          // Get last 3 tests for THIS FARMER across all collections
+          const { data: farmerCols } = await supabase.from('milk_collections').select('id').eq('farmer_id', col.farmer_id);
+          const colIds = farmerCols?.map(c => c.id) || [];
+
           const { data: lastTests } = await supabase
             .from('quality_tests')
             .select('result, fat, snf, water')
-            .eq('collection_id', collectionId)
+            .in('collection_id', colIds)
             .order('tested_at', { ascending: false })
             .limit(3);
 
@@ -647,7 +651,11 @@ export default async function handler(req, res) {
         const farmerId = targetId || user.farmerId;
         if (!farmerId) return res.status(400).json({ error: 'Farmer ID required' });
         const { data: farmer } = await supabase.from('farmers').select('name, performance_status, performance_recommendation').eq('id', farmerId).single();
-        const { data: tests } = await supabase.from('quality_tests').select('result, tested_at').eq('collection_id', (await supabase.from('milk_collections').select('id').eq('farmer_id', farmerId)).data?.map(c => c.id) || []);
+        
+        const { data: fCols } = await supabase.from('milk_collections').select('id').eq('farmer_id', farmerId);
+        const fColIds = fCols?.map(c => c.id) || [];
+        
+        const { data: tests } = await supabase.from('quality_tests').select('result, tested_at').in('collection_id', fColIds);
         const total = tests?.length || 0;
         const passed = tests?.filter(t => t.result === 'Pass').length || 0;
         const passRate = total > 0 ? (passed / total) * 100 : 100;
