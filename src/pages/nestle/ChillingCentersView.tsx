@@ -130,10 +130,7 @@ const ChillingCentersView: React.FC = () => {
           className="glass-card p-8 space-y-6 border-primary/20 shadow-xl"
         >
           <div className="flex items-center justify-between border-b pb-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-primary">Register New Chilling Center</h3>
-              <span className="text-[10px] bg-red-500 text-white px-1 rounded">LATEST v2</span>
-            </div>
+            <h3 className="text-lg font-bold text-primary">Register New Chilling Center</h3>
             <p className="text-xs text-muted-foreground italic">* All fields are required</p>
           </div>
           
