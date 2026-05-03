@@ -28,6 +28,8 @@ const SupportManagement: React.FC = () => {
   const [logSearch, setLogSearch] = useState('');
   const [logRoleFilter, setLogRoleFilter] = useState('all');
   const [replyText, setReplyText] = useState('');
+  const [replySi, setReplySi] = useState('');
+  const [replyTa, setReplyTa] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [isReplyOpen, setIsReplyOpen] = useState(false);
 
@@ -62,7 +64,8 @@ const SupportManagement: React.FC = () => {
   // Fetch Support Tickets
   const { data: tickets = [] } = useQuery({
     queryKey: ['support_tickets'],
-    queryFn: () => apiFetch<any[]>('/api/support')
+    queryFn: () => apiFetch<any[]>('/api/support'),
+    refetchInterval: 30000
   });
 
   const saveConfigMutation = useMutation({
@@ -105,19 +108,21 @@ const SupportManagement: React.FC = () => {
   });
 
   const replyMutation = useMutation({
-    mutationFn: ({ id, reply }: { id: number, reply: string }) => 
+    mutationFn: ({ id, reply, reply_si, reply_ta }: { id: number, reply: string, reply_si: string, reply_ta: string }) => 
       apiFetch<any>(`/api/support?id=${id}`, { 
         method: 'PATCH', 
-        body: JSON.stringify({ reply }) 
+        body: JSON.stringify({ reply, reply_si, reply_ta }) 
       }),
     onSuccess: () => {
-      toast.success('Reply sent successfully');
+      toast.success('Reply saved successfully');
       queryClient.invalidateQueries({ queryKey: ['support_tickets'] });
       setIsReplyOpen(false);
       setReplyText('');
+      setReplySi('');
+      setReplyTa('');
       setSelectedTicket(null);
     },
-    onError: () => toast.error('Failed to send reply')
+    onError: () => toast.error('Failed to save reply')
   });
 
   const handleSaveFaq = () => {
@@ -126,6 +131,21 @@ const SupportManagement: React.FC = () => {
       return;
     }
     saveFaqMutation.mutate({ ...faqForm, id: editingFaq?.id });
+  };
+
+  const openReply = async (ticket: any) => {
+    setSelectedTicket(ticket);
+    setReplyText(ticket.reply || '');
+    setReplySi(ticket.reply_si || '');
+    setReplyTa(ticket.reply_ta || '');
+    setIsReplyOpen(true);
+    
+    // Mark as read in background
+    if (!ticket.is_read_by_admin) {
+      apiFetch(`/api/support?id=${ticket.id}&markRead=true`).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['support_tickets'] });
+      });
+    }
   };
 
   const openEditFaq = (faq: any) => {
@@ -354,7 +374,10 @@ const SupportManagement: React.FC = () => {
               <p className="text-sm text-muted-foreground text-center py-8">No custom issues reported.</p>
             ) : (
               tickets.map((ticket: any) => (
-                <div key={ticket.id} className="p-4 border rounded-xl bg-card hover:shadow-md transition-all">
+                <div key={ticket.id} className="p-4 border rounded-xl bg-card hover:shadow-md transition-all relative overflow-hidden">
+                  {!ticket.is_read_by_admin && (
+                    <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-bl-xl shadow-lg" />
+                  )}
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
@@ -375,74 +398,43 @@ const SupportManagement: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <Badge variant={ticket.status === 'replied' ? 'secondary' : 'destructive'} className="rounded-full">
-                      {ticket.status === 'replied' ? 'Replied' : 'Pending'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={ticket.status === 'replied' ? 'secondary' : 'destructive'} className="rounded-full">
+                        {ticket.status === 'replied' ? 'Replied' : 'Pending'}
+                      </Badge>
+                    </div>
                   </div>
                   
                   <div className="pl-13 ml-13 border-l-2 border-primary/20 pl-4 py-1">
                     <p className="text-sm leading-relaxed">{ticket.message}</p>
                   </div>
 
-                  {ticket.reply ? (
-                    <div className="mt-4 pl-13 ml-13 border-l-2 border-emerald-500/20 pl-4 py-2 bg-emerald-50/30 rounded-r-lg">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Reply className="w-3 h-3 text-emerald-600" />
-                        <span className="text-[10px] font-bold uppercase text-emerald-600">Nestlé Reply</span>
-                        <span className="text-[10px] text-muted-foreground italic">
-                          at {new Date(ticket.replied_at).toLocaleString()}
-                        </span>
+                  <div className="mt-4 flex flex-col gap-2">
+                    {ticket.reply && (
+                      <div className="pl-13 ml-13 border-l-2 border-emerald-500/20 pl-4 py-2 bg-emerald-50/30 rounded-r-lg">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Reply className="w-3 h-3 text-emerald-600" />
+                          <span className="text-[10px] font-bold uppercase text-emerald-600">Your Last Response</span>
+                          <span className="text-[10px] text-muted-foreground italic">
+                            at {new Date(ticket.replied_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{ticket.reply}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground">{ticket.reply}</p>
+                    )}
+                    
+                    <div className="flex justify-end">
+                      <Button 
+                        size="sm" 
+                        variant={ticket.status === 'replied' ? 'outline' : 'default'}
+                        className="gap-2"
+                        onClick={() => openReply(ticket)}
+                      >
+                        {ticket.status === 'replied' ? <Edit2 className="w-4 h-4" /> : <Reply className="w-4 h-4" />}
+                        {ticket.status === 'replied' ? 'Edit Response' : `Reply to ${ticket.role === 'farmer' ? 'Farmer' : 'CC'}`}
+                      </Button>
                     </div>
-                  ) : (
-                    <div className="mt-4 pl-13 ml-13 flex justify-end">
-                      <Dialog open={isReplyOpen && selectedTicket?.id === ticket.id} onOpenChange={(open) => {
-                        setIsReplyOpen(open);
-                        if (!open) setSelectedTicket(null);
-                      }}>
-                        <DialogTrigger asChild>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="gap-2"
-                            onClick={() => setSelectedTicket(ticket)}
-                          >
-                            <Reply className="w-4 h-4" />
-                            Reply to {ticket.role === 'farmer' ? 'Farmer' : 'CC'}
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Reply to Support Issue</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            <div className="p-3 bg-muted/50 rounded-lg text-sm italic">
-                              "{ticket.message}"
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Your Answer</Label>
-                              <textarea 
-                                className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                placeholder="Type your reply here..."
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsReplyOpen(false)}>Cancel</Button>
-                            <Button 
-                              onClick={() => replyMutation.mutate({ id: ticket.id, reply: replyText })}
-                              disabled={replyMutation.isPending || !replyText.trim()}
-                            >
-                              Send Reply
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  )}
+                  </div>
                 </div>
               ))
             )}
@@ -509,6 +501,65 @@ const SupportManagement: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Shared Reply Dialog */}
+      <Dialog open={isReplyOpen} onOpenChange={(open) => {
+        setIsReplyOpen(open);
+        if (!open) setSelectedTicket(null);
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{selectedTicket?.reply ? 'Edit Response' : 'Reply to Support Issue'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-3 bg-muted/50 rounded-lg text-sm italic">
+              "{selectedTicket?.message}"
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">English Reply</Label>
+              <textarea 
+                className="w-full min-h-[80px] p-2 rounded-md border bg-background text-sm"
+                placeholder="Type English reply..."
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Sinhala Reply (සිංහල)</Label>
+              <textarea 
+                className="w-full min-h-[80px] p-2 rounded-md border bg-background text-sm"
+                placeholder="Type Sinhala reply..."
+                value={replySi}
+                onChange={(e) => setReplySi(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Tamil Reply (தமிழ்)</Label>
+              <textarea 
+                className="w-full min-h-[80px] p-2 rounded-md border bg-background text-sm"
+                placeholder="Type Tamil reply..."
+                value={replyTa}
+                onChange={(e) => setReplyTa(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsReplyOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={() => replyMutation.mutate({ 
+                id: selectedTicket.id, 
+                reply: replyText,
+                reply_si: replySi,
+                reply_ta: replyTa
+              })}
+              disabled={replyMutation.isPending || (!replyText.trim() && !replySi.trim() && !replyTa.trim())}
+            >
+              {selectedTicket?.reply ? 'Update Response' : 'Send Reply'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

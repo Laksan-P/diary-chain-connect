@@ -11,7 +11,8 @@ import 'app_theme.dart';
 import '../widgets/bouncing_button.dart';
 
 class SupportChatScreen extends StatefulWidget {
-  const SupportChatScreen({super.key});
+  final VoidCallback? onBack;
+  const SupportChatScreen({super.key, this.onBack});
 
   @override
   State<SupportChatScreen> createState() => _SupportChatScreenState();
@@ -48,7 +49,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   Future<void> _fetchTickets({bool isSilent = false}) async {
     if (!isSilent) setState(() => _isLoading = true);
     try {
-      final res = await _api.get('/support');
+      final res = await _api.get('/support?markRead=true');
       if (mounted) {
         setState(() {
           _tickets = res is List ? res : [];
@@ -111,6 +112,17 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           ? AppTheme.backgroundDark
           : AppTheme.backgroundLight,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            if (widget.onBack != null) {
+              widget.onBack!();
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
         title: Text(
           Translations.get('support_chat', locale),
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -216,25 +228,29 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         LucideIcons.building,
                         size: 12,
-                        color: AppTheme.primary,
+                        color: isDark ? AppTheme.primaryLight : AppTheme.primary,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'NESTLÉ REPLY',
+                        Translations.get('nestle_reply', locale).toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.primary.withOpacity(0.7),
+                          color: isDark ? AppTheme.primaryLight : AppTheme.primary.withOpacity(0.7),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    ticket['reply'],
+                    (locale == 'si' && ticket['reply_si'] != null && ticket['reply_si'].toString().isNotEmpty)
+                        ? ticket['reply_si']
+                        : (locale == 'ta' && ticket['reply_ta'] != null && ticket['reply_ta'].toString().isNotEmpty)
+                            ? ticket['reply_ta']
+                            : ticket['reply'] ?? '',
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
                       fontSize: 15,

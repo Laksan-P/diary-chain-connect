@@ -345,7 +345,7 @@ class _FaqScreenState extends State<FaqScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SupportChatScreen()),
+                MaterialPageRoute(builder: (context) => SupportChatScreen(onBack: () => Navigator.pop(context))),
               );
             },
             child: Container(

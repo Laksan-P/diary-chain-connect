@@ -16,7 +16,8 @@ import 'faq_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onBack;
-  const ProfileScreen({super.key, this.onBack});
+  final bool hasUnreadSupport;
+  const ProfileScreen({super.key, this.onBack, this.hasUnreadSupport = false});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -37,7 +38,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _isEditing = false;
   bool _isLoading = false;
+  bool _hasUnreadSupport = false;
   String? _selectedBank;
+  Timer? _supportCheckTimer;
 
   final Map<String, int> _bankRules = {
     'Bank of Ceylon': 12,
@@ -58,8 +61,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _hasUnreadSupport = widget.hasUnreadSupport;
     _initControllers();
     _fetchFarmerDetails();
+    _checkSupportUnread();
+    _supportCheckTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted && !_isEditing) _checkSupportUnread();
+    });
+  }
+
+  Future<void> _checkSupportUnread() async {
+    try {
+      final tickets = await _api.get('/support');
+      if (mounted && tickets is List) {
+        final unread = tickets.any((t) => t['is_read_by_user'] == false);
+        if (unread != _hasUnreadSupport) {
+          setState(() => _hasUnreadSupport = unread);
+        }
+      }
+    } catch (e) {
+      debugPrint("Support unread check error: $e");
+    }
   }
 
   Future<void> _fetchFarmerDetails() async {
@@ -131,6 +153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    _supportCheckTimer?.cancel();
     _nameController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
@@ -323,14 +346,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Translations.get('faq_support', locale),
                         Translations.get('faq_support_desc', locale),
                         LucideIcons.helpCircle,
-                        onTap: () {
+                        trailing: _hasUnreadSupport ? _buildUnreadDot() : null,
+                        onTap: () async {
                           HapticFeedback.selectionClick();
-                          Navigator.push(
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => FaqScreen(onBack: () => Navigator.pop(context)),
                             ),
                           );
+                          // Re-check after returning
+                          _checkSupportUnread();
                         },
                       ),
                       const SizedBox(height: 16),
@@ -432,7 +458,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _settingsTile(String title, String subtitle, IconData icon, {VoidCallback? onTap}) {
+  Widget _buildUnreadDot() {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: const BoxDecoration(
+        color: Colors.redAccent,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.redAccent,
+            blurRadius: 8,
+            spreadRadius: 1,
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _settingsTile(String title, String subtitle, IconData icon, {VoidCallback? onTap, Widget? trailing}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -464,7 +508,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Row(
+                        children: [
+                          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          if (trailing != null) ...[
+                            const SizedBox(width: 8),
+                            trailing,
+                          ],
+                        ],
+                      ),
                       const SizedBox(height: 2),
                       Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
                     ],

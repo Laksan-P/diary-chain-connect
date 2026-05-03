@@ -168,6 +168,8 @@ class Translations {
       'waiting_for_reply': 'Waiting for Nestlé reply...',
       'type_your_issue': 'Describe your issue...',
       'other_issues': 'Other Issues / Custom Questions',
+      'nestle_reply': 'NESTLÉ REPLY',
+      'custom_issue_feedback': 'New feedback message on your custom issue.',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -339,6 +341,8 @@ class Translations {
       'waiting_for_reply': 'නෙස්ලේ පිළිතුරක් ලැබෙන තෙක්...',
       'type_your_issue': 'ඔබේ ගැටලුව විස්තර කරන්න...',
       'other_issues': 'වෙනත් ගැටළු / අභිරුචි ප්‍රශ්න',
+      'nestle_reply': 'නෙස්ලේ පිළිතුර',
+      'custom_issue_feedback': 'ඔබේ අභිරුචි ගැටලුව පිළිබඳ නව ප්‍රතිපෝෂණ පණිවිඩයක්.',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -511,6 +515,8 @@ class Translations {
       'waiting_for_reply': 'நெஸ்லே பதிலுக்காக காத்திருக்கிறது...',
       'type_your_issue': 'உங்கள் சிக்கலை விவரிக்கவும்...',
       'other_issues': 'වෙනත් ගැටළු / தனிப்பயன் கேள்விகள்',
+      'nestle_reply': 'நெஸ்லே பதில்',
+      'custom_issue_feedback': 'உங்கள் தனிப்பயன் சிக்கலில் புதிய கருத்துச் செய்தி.',
     },
   };
 

@@ -12,6 +12,8 @@ import 'package:intl/intl.dart';
 import 'passbook_screen.dart';
 import 'profile_screen.dart';
 import 'notifications_screen.dart';
+import 'faq_screen.dart';
+import 'support_chat_screen.dart';
 
 import '../providers/preferences_provider.dart';
 import '../services/translations.dart';
@@ -43,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _lastSeenPaymentCount = 0;
   bool _hasNewCollections = false;
   bool _hasNewPayments = false;
+  bool _hasUnreadSupport = false;
 
   @override
   void initState() {
@@ -152,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _api.get('/collections?action=list&farmerId=$farmerId'),
         _api.get('/payments?action=list&farmerId=$farmerId'),
         _api.get('/notifications?action=list'),
+        _api.get('/support'),
       ]);
 
       if (!mounted) return;
@@ -173,6 +177,10 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         _notifications = notifs;
         _synthesizeNotifications();
+
+        final supportTickets = results[3] as List<dynamic>;
+        _hasUnreadSupport = supportTickets.any((t) => t['is_read_by_user'] == false);
+
         _updateBadges();
       });
 
@@ -309,7 +317,10 @@ class _HomeScreenState extends State<HomeScreen> {
             onBack: _handleBack,
             mode: 'payments',
           ),
-          ProfileScreen(onBack: _handleBack),
+          ProfileScreen(
+            onBack: _handleBack,
+            hasUnreadSupport: _hasUnreadSupport,
+          ),
           NotificationsScreen(
             notifications: _notifications,
             isLoading: _isLoading,
@@ -331,11 +342,50 @@ class _HomeScreenState extends State<HomeScreen> {
             onBack: _handleBack,
             locale: locale,
             userId: user['id']?.toString() ?? '',
+            onSupportTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SupportChatScreen(onBack: () => Navigator.pop(context)),
+                ),
+              );
+            },
           ),
         ],
       ),
       bottomNavigationBar: _buildIntegratedNavBar(locale),
-      floatingActionButton: null,
+      floatingActionButton: _currentIndex == 0 ? _buildFloatingFaqButton(context) : null,
+    );
+  }
+
+  Widget _buildFloatingFaqButton(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return BouncingButton(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FaqScreen(onBack: () => Navigator.pop(context)),
+          ),
+        );
+      },
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.primaryLight : AppTheme.primary,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: const Icon(LucideIcons.helpCircle, color: Colors.white, size: 28),
+      ),
     );
   }
 
@@ -416,6 +466,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Icons.person_outline_rounded,
               Icons.person_rounded,
               Translations.get('profile', locale),
+              showBadge: _hasUnreadSupport,
             ),
           ),
         ],

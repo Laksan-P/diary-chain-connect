@@ -14,6 +14,7 @@ class NotificationsScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onRefresh;
   final void Function(String id)? onRead;
+  final VoidCallback? onSupportTap;
 
   const NotificationsScreen({
     super.key,
@@ -24,6 +25,7 @@ class NotificationsScreen extends StatefulWidget {
     required this.onBack,
     required this.onRefresh,
     this.onRead,
+    this.onSupportTap,
   });
 
   @override
@@ -379,6 +381,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       onTap: () {
         HapticFeedback.lightImpact();
         if (!isRead) _markAsRead(note['id'].toString());
+        
+        // If it's a support reply notification, navigate to support chat
+        if (note['message']?.toString().contains('custom_issue_feedback') == true) {
+          widget.onSupportTap?.call();
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
