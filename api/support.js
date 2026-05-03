@@ -150,7 +150,13 @@ export default async function handler(req, res) {
       if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
 
       const isNestle = ['nestle', 'nestle_officer'].includes(user.role);
-      const isCcOwner = user.role === 'chilling_center' && ticket.cc_id === user.chillingCenterId;
+      let isCcOwner = user.role === 'chilling_center' && ticket.cc_id === user.chillingCenterId;
+
+      // Fallback: if token is old and doesn't have chillingCenterId, check DB
+      if (user.role === 'chilling_center' && !isCcOwner) {
+        const { data: cc } = await supabase.from('chilling_centers').select('id').eq('user_id', user.id).single();
+        if (cc && cc.id === ticket.cc_id) isCcOwner = true;
+      }
 
       if (!isNestle && !isCcOwner) {
         return res.status(403).json({ error: 'Forbidden' });

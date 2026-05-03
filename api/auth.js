@@ -58,14 +58,6 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Wrong password' });
       }
 
-      const roleMap = { nestle: 'nestle_officer', chilling_center: 'chilling_center', farmer: 'farmer' };
-      const payload = {
-        id: data.id,
-        email: data.email,
-        role: roleMap[data.role] || data.role,
-        name: data.name,
-      };
-
       let farmerId = null;
       let farmerCode = null;
       if (data.role === 'farmer') {
@@ -76,25 +68,9 @@ export default async function handler(req, res) {
           .maybeSingle();
 
         if (fErr) throw fErr;
-        if (!fRows) return res.status(401).json({ error: 'Farmer profile no longer exists' });
-
-        farmerId = fRows.id;
-        farmerCode = fRows.farmer_id;
-        payload.address = fRows.address;
-        payload.phone = fRows.phone;
-        payload.nic = fRows.nic;
-
-        const { data: bRows, error: bErr } = await supabase
-          .from('bank_accounts')
-          .select('bank_name, account_number, branch')
-          .eq('farmer_id', farmerId)
-          .maybeSingle();
-
-        if (bErr) throw bErr;
-        if (bRows) {
-          payload.bankName = bRows.bank_name;
-          payload.accountNumber = bRows.account_number;
-          payload.branch = bRows.branch;
+        if (fRows) {
+          farmerId = fRows.id;
+          farmerCode = fRows.farmer_id;
         }
       }
 
@@ -102,13 +78,11 @@ export default async function handler(req, res) {
       if (data.role === 'chilling_center') {
         const { data: cc, error: ccErr } = await supabase
           .from('chilling_centers')
-          .select('id, name')
+          .select('id')
           .eq('user_id', data.id)
           .maybeSingle();
         if (ccErr) throw ccErr;
-        if (!cc) return res.status(401).json({ error: 'Chilling Center profile no longer exists' });
-        chillingCenterId = cc.id;
-        payload.chillingCenterName = cc.name;
+        if (cc) chillingCenterId = cc.id;
       }
 
       let nestleOfficerId = null;
@@ -119,9 +93,20 @@ export default async function handler(req, res) {
           .eq('user_id', data.id)
           .maybeSingle();
         if (offErr) throw offErr;
-        if (!off) return res.status(401).json({ error: 'Nestle Officer profile no longer exists' });
-        nestleOfficerId = off.id;
+        if (off) nestleOfficerId = off.id;
       }
+
+      const roleMap = { nestle: 'nestle_officer', chilling_center: 'chilling_center', farmer: 'farmer' };
+      const payload = {
+        id: data.id,
+        email: data.email,
+        role: roleMap[data.role] || data.role,
+        name: data.name,
+        farmerId,
+        farmerCode,
+        chillingCenterId,
+        nestleOfficerId
+      };
 
       const token = signToken(payload);
 

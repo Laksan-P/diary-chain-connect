@@ -354,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       bottomNavigationBar: _buildIntegratedNavBar(locale),
-      floatingActionButton: _currentIndex == 0 ? _buildFloatingFaqButton(context) : null,
+      floatingActionButton: _buildFloatingFaqButton(context),
     );
   }
 
@@ -371,20 +371,34 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
       child: Container(
-        width: 60,
-        height: 60,
+        width: 52,
+        height: 52,
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.primaryLight : AppTheme.primary,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark 
+              ? [AppTheme.primaryLight, AppTheme.primaryLight.withOpacity(0.8)]
+              : [AppTheme.primary, AppTheme.primary.withOpacity(0.85)],
+          ),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withOpacity(0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+              color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
           ],
+          border: Border.all(
+            color: Colors.white.withOpacity(0.2),
+            width: 1.5,
+          ),
         ),
-        child: const Icon(LucideIcons.helpCircle, color: Colors.white, size: 28),
+        child: const Icon(
+          LucideIcons.messageSquare, 
+          color: Colors.white, 
+          size: 24,
+        ),
       ),
     );
   }
