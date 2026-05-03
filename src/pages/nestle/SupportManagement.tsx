@@ -22,6 +22,8 @@ const SupportManagement: React.FC = () => {
     role: 'farmer'
   });
   const [nestlePhone, setNestlePhone] = useState('');
+  const [logSearch, setLogSearch] = useState('');
+  const [logRoleFilter, setLogRoleFilter] = useState('all');
 
   // Fetch configs
   const { data: configData } = useQuery({
@@ -104,6 +106,14 @@ const SupportManagement: React.FC = () => {
     });
     setIsFaqOpen(true);
   };
+
+  const filteredLogs = feedbackLogs.filter((log: any) => {
+    const matchesSearch = 
+      (log.user_id?.toString() || '').toLowerCase().includes(logSearch.toLowerCase()) || 
+      (log.additional_info || '').toLowerCase().includes(logSearch.toLowerCase());
+    const matchesRole = logRoleFilter === 'all' || log.role === logRoleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   return (
     <div className="space-y-6">
@@ -269,8 +279,26 @@ const SupportManagement: React.FC = () => {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between py-4">
           <CardTitle className="text-lg">Feedback Logs</CardTitle>
+          <div className="flex items-center gap-4">
+            <Input 
+              placeholder="Search User ID or Action..." 
+              className="max-w-[250px]"
+              value={logSearch}
+              onChange={(e) => setLogSearch(e.target.value)}
+            />
+            <Select value={logRoleFilter} onValueChange={setLogRoleFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="farmer">Farmers</SelectItem>
+                <SelectItem value="chilling_center">Chilling Centers</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -284,12 +312,12 @@ const SupportManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {feedbackLogs.length === 0 ? (
+                {filteredLogs.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="p-4 text-center text-muted-foreground">No logs found</td>
                   </tr>
                 ) : (
-                  feedbackLogs.map((log: any) => (
+                  filteredLogs.map((log: any) => (
                     <tr key={log.id} className="border-b transition-colors hover:bg-muted/50">
                       <td className="p-4">{log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</td>
                       <td className="p-4 capitalize">{log.role ? log.role.replace('_', ' ') : 'Unknown'}</td>
