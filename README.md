@@ -1,132 +1,79 @@
-## Dairy Chain Connect System
+# Dairy Chain Connect System
 
-Overview
+## Overview
+Dairy Chain Connect is a comprehensive, full-stack dairy supply chain management platform designed to streamline and digitize operations between local farmers, regional chilling centers, and Nestlé processing facilities. 
 
-Dairy Chain Connect is a full-stack dairy supply chain management system designed to streamline operations between farmers, chilling centers, and Nestlé.
+The system aims to bring transparency, efficiency, and intelligence to the milk collection process, ensuring quality tracking, logistics management, and fair financial compensation.
 
-The system consists of:
-
-* Web Dashboard (for Nestlé & Chilling Centers)
-* Mobile Application (for Farmers – Android APK)
-* Cloud Backend (Vercel Serverless API)
-* Database (Supabase PostgreSQL)
-
----
-
-Live System Access
-
-## Web Application (Dashboard)
-
-🔗 https://diary-chain-connect.vercel.app/
-
-Accessible on:
-
-* Laptop / Desktop
+The ecosystem consists of:
+* **Web Dashboard** (for Nestlé Corporate & Regional Chilling Centers)
+* **Mobile Application** (for Farmers – Android App)
+* **Cloud Backend** (Vercel Serverless API)
+* **Database** (Supabase PostgreSQL)
 
 ---
 
-## Dashboard Login Credentials
+## How It Works: Development Sprints & Features
 
-Use the following credentials to access the system:
+The platform was iteratively developed across three major sprints, each adding significant capabilities to the supply chain workflow.
 
-## Nestlé Officer
+### Sprint 1: Foundation & Core Collection Operations
+The first sprint focused on establishing the core digital infrastructure and enabling the daily milk collection process.
 
-* **Email:** nestle@nestle.com
-* **Password:** password
+* **Farmer Onboarding & Management:** Farmers can register via the mobile app or be onboarded by chilling center staff. They can manage their profiles, including vital bank details required for transparent digital payments.
+* **Milk Collection & Quality Control:** Chilling centers use their dashboard to log daily milk deposits from farmers. Crucially, the system tracks quality testing metrics (such as Fat and SNF content) for every batch, which dictates the payment rate.
+* **Centralized Dashboarding:** Nestlé officers and chilling center managers gain access to centralized dashboards to monitor collection histories and aggregated volumes in real-time.
 
-## Chilling Center
+### Sprint 2: Logistics, Dispatch & Financials
+The second sprint bridged the gap between regional chilling centers and Nestlé facilities, while automating the financial compensation cycle.
 
-* **Email:** cc@nestle.com
-* **Password:** password
+* **Dispatch Management:** Chilling centers can initiate dispatch records when sending consolidated milk batches to Nestlé. This includes logging transporter details, vehicle numbers, and driver contact info.
+* **Status Tracking:** The system monitors the lifecycle of a dispatch through various states (Pending, Dispatched, Approved, Rejected), ensuring full visibility of goods in transit.
+* **Automated Payments:** Using the volume and quality data collected in Sprint 1, the system automatically calculates fair compensation for farmers, reducing manual errors and ensuring timely payouts.
 
----
+### Sprint 3: Advanced Capabilities & AI Intelligence
+The final sprint focused on user experience, system resilience, and predictive analytics.
 
-## Mobile Application (Farmer App)
-
-### Download APK
-
-Short Link - https://bit.ly/4c5momS
-Short Link - https://appurl.io/Hes0nYM38y
-Back Up Link - https://drive.google.com/file/d/1O7CmCV54LFbprmAod8M7BeM9DUSsq6Uw/view?usp=sharing
-
----
-
-### How to Install
-
-1. Download the APK file
-2. Open it on your Android device
-3. Enable **"Install Unknown Apps"** if prompted
-4. If it ask to scan the app, Then click on the without scan to open the app
-5. Install and open the app
-
----
-
-### Farmer Login
-
-Use a registered farmer account or create a new one via the app.
-
----
-
-## System Features
-
-### Farmer App
-
-* Register & Login
-* View Profile and Edit Profile (including Bank Details)
----
-
-### Chilling Center Dashboard
-
-* Login
-* View Dashboard
-* Register Farmer
-* Record Milk Collection
-* Perform Quality Testing
-* Collection History
-
----
-
-### Nestlé Dashboard
-
-* Login
-* View Dashboard
+* **Offline Functionality (Farmer App):** Recognizing that rural farmers often face poor network connectivity, the app now supports an Offline Mode. Critical data is cached locally, allowing farmers to access information and queue actions that automatically sync once the connection is restored.
+* **Interactive FAQ & Support:** A comprehensive help center and ticketing system were integrated, empowering users to find answers to common questions quickly and request assistance when needed.
+* **Performance Tracking:** Dashboards were upgraded with advanced analytics, allowing stakeholders to track operational efficiency, farmer yield trends, and facility performance over time.
+* **Smart Demand & Supply Predictions:** Utilizing historical data, the system implements predictive algorithms (including Weighted Moving Averages and momentum trends) to forecast future milk supply and demand. This AI-driven insight helps Nestlé and chilling centers optimize resource planning, minimize wastage, and prepare for seasonal fluctuations.
 
 ---
 
 ## System Architecture
 
-Frontend (React + Flutter)
-⬇
-Vercel Serverless API
-⬇
-Supabase PostgreSQL Database
+The application follows a modern, decoupled serverless architecture:
+
+* **Frontend:** 
+  * Web Dashboards: React (Vite) with Tailwind CSS.
+  * Mobile App: Flutter.
+* **Backend:** Node.js Serverless Functions hosted on Vercel.
+* **Database:** Supabase (PostgreSQL) handling relational data, storage, and real-time subscriptions.
+* **Authentication:** Secure JWT-based authentication flow.
 
 ---
 
-## Technologies Used
+## Application Access
 
-* **Frontend:** React (Vite), Flutter
-* **Backend:** Node.js (Serverless on Vercel)
-* **Database:** Supabase (PostgreSQL)
-* **Authentication:** JWT
-* **Hosting:** Vercel
+### Web Application (Dashboard)
+🔗 **Live URL:** https://diary-chain-connect.vercel.app/
 
----
+### Mobile Application (Farmer App)
+* **APK Download Link 1:** https://bit.ly/4c5momS
+* **APK Download Link 2:** https://appurl.io/Hes0nYM38y
+* **Backup Link:** https://drive.google.com/file/d/1O7CmCV54LFbprmAod8M7BeM9DUSsq6Uw/view?usp=sharing
 
-## Notes for Evaluators
-
-* The system is fully deployed and operational
-* Android APK is provided for mobile testing
-* Database access is secured and not publicly exposed
-
----
-
-## ✅ Status
-
-✔ Fully Functional
-✔ Deployed
-✔ Mobile + Web Integrated
+**Installation Instructions:**
+1. Download the APK file to your Android device.
+2. Enable "Install Unknown Apps" in your device settings if prompted.
+3. If prompted by Play Protect to scan the app, you may bypass the scan to proceed.
+4. Install and open the application to begin registration.
 
 ---
 
-Thank you for reviewing this project...
+## ✅ System Status
+✔ Fully Functional  
+✔ Deployed in Production Environment  
+✔ Seamless Mobile & Web Integration
+ 
