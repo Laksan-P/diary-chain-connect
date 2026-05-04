@@ -23,42 +23,59 @@ const QualityTestingPage: React.FC = () => {
   useEffect(() => { 
     const loadCollections = async () => {
       if (user?.chillingCenterId) {
-        let serverCols: MilkCollection[] = [];
-
-        try {
-          serverCols = await getCollections(user.chillingCenterId);
-          saveCache('pending_quality_collections', serverCols);
-        } catch (err) {
-          // Offline — use cache
-          serverCols = getCache('pending_quality_collections') || [];
-        }
-
-        // Server collections that still need quality testing
+        // 1. Load from cache and offline actions immediately for instant UI
         const allPendingQuality = getPendingByType('quality');
         const alreadyTestedOnlineIds = allPendingQuality.map(q => String(q.data.collectionId));
-        const pendingQuality = serverCols.filter(c => !c.qualityResult && !alreadyTestedOnlineIds.includes(String(c.id)));
-
-        // Offline collections that haven't been quality-tested yet
+        const alreadyTestedOfflineIds = allPendingQuality.map(q => q.data.offlineCollectionId).filter(Boolean);
         const cachedFarmers = getCache('farmers') || [];
-        const alreadyTestedOfflineIds = allPendingQuality.map(q => q.data.offlineCollectionId);
 
-        const offlinePending = getPendingByType('collection')
-          .filter(a => !alreadyTestedOfflineIds.includes(a.id)) // hide if already tested offline
-          .map(a => {
-            const farmer = cachedFarmers.find((f: any) => String(f.id) === String(a.data.farmerId));
-            const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
-            return {
-              ...a.data,
-              id: a.id,
-              displayId: `OFF-${a.id.substring(0, 4).toUpperCase()}`,
-              isOffline: true,
-              farmerName: finalFarmerName,
-              qualityResult: undefined,
-            } as MilkCollection;
-          });
+        const getLocalCollections = (sCols: MilkCollection[]) => {
+          const pendingQuality = sCols.filter(c => 
+            !c.qualityResult && 
+            !alreadyTestedOnlineIds.includes(String(c.id))
+          );
 
-        // Combine: offline pending first, then server pending
-        setCollections([...offlinePending, ...pendingQuality]);
+          const offlinePending = getPendingByType('collection')
+            .filter(a => {
+              // Be lenient with chillingCenterId filter for offline records
+              const centerMatch = !user.chillingCenterId || !a.data.chillingCenterId || String(a.data.chillingCenterId) === String(user.chillingCenterId);
+              const alreadyTested = alreadyTestedOfflineIds.includes(a.id);
+              return centerMatch && !alreadyTested;
+            })
+            .map(a => {
+              const farmer = cachedFarmers.find((f: any) => String(f.id) === String(a.data.farmerId));
+              const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
+              return {
+                ...a.data,
+                id: a.id,
+                displayId: `OFF-${a.id.substring(0, 4).toUpperCase()}`,
+                isOffline: true,
+                farmerName: finalFarmerName,
+                qualityResult: undefined,
+              } as unknown as MilkCollection;
+            });
+
+          // De-duplicate: if a record is in both offlinePending and sCols (via cache), prefer offlinePending version
+          const offlineIds = new Set<string | number>(offlinePending.map(o => o.id));
+          const uniquePendingQuality = pendingQuality.filter(c => !offlineIds.has(c.id) && !offlineIds.has(String(c.id)));
+
+          return [...offlinePending, ...uniquePendingQuality];
+        };
+
+        // Show cached version first
+        const initialCols = getCache('pending_quality_collections') || [];
+        setCollections(getLocalCollections(initialCols));
+
+        // 2. Then try to fetch fresh data if online
+        if (isOnline()) {
+          try {
+            const freshCols = await getCollections(user.chillingCenterId);
+            saveCache('pending_quality_collections', freshCols);
+            setCollections(getLocalCollections(freshCols));
+          } catch (err) {
+            console.error("Failed to fetch fresh collections:", err);
+          }
+        }
       }
     };
     loadCollections();

@@ -26,6 +26,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   List<dynamic> _tickets = [];
   bool _isLoading = true;
   bool _isSending = false;
+  String? _errorMessage;
   Timer? _refreshTimer;
 
   @override
@@ -58,7 +59,17 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       }
     } catch (e) {
       debugPrint('Fetch tickets error: $e');
-      if (mounted && !isSilent) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          // If we had tickets before, keep them, otherwise show error
+          if (_tickets.isEmpty) {
+             _errorMessage = e.toString().contains('Exception:') 
+                ? e.toString().split('Exception:')[1].trim() 
+                : e.toString();
+          }
+        });
+      }
     }
   }
 
@@ -136,6 +147,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                ? _buildErrorState(_errorMessage!, locale, isDark)
                 : _tickets.isEmpty
                 ? _buildEmptyState(locale, isDark)
                 : ListView.builder(
@@ -172,6 +185,43 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String error, String locale, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.alertCircle, size: 48, color: Colors.red.shade300),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load messages',
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+            BouncingButton(
+              onTap: _fetchTickets,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text('Try Again', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

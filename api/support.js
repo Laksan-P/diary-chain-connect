@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         .from('support_tickets')
         .select(`
           *,
-          users!support_tickets_user_id_fkey (name, email),
+          users (name, email),
           chilling_centers (name)
         `)
         .order('last_activity_at', { ascending: false });

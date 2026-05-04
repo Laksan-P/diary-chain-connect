@@ -26,11 +26,12 @@ class _FaqScreenState extends State<FaqScreen> {
   final _api = ApiService();
   bool _isLoading = true;
   List<dynamic> _faqs = [];
+  int? _expandedId;
+  String? _errorMessage;
   String? _nestlePhone;
   String? _nestleName;
   String? _ccPhone;
   String? _ccName;
-  int? _expandedId;
   Timer? _refreshTimer;
 
   @override
@@ -88,21 +89,27 @@ class _FaqScreenState extends State<FaqScreen> {
       if (mounted) {
         setState(() {
           _faqs = faqs is List ? faqs : [];
-          _nestlePhone = phoneConfig != null
+          _nestlePhone = (phoneConfig != null && phoneConfig is Map)
               ? phoneConfig['config_value']
               : null;
-          _nestleName = nameConfig != null
+          _nestleName = (nameConfig != null && nameConfig is Map)
               ? nameConfig['config_value']
               : 'Nestlé HQ Support';
           _ccPhone = ccPhone;
           _ccName = ccName;
           _isLoading = false;
+          _errorMessage = null;
         });
       }
     } catch (e) {
       debugPrint('FAQ Fetch Error: $e');
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString().contains('Exception:') 
+              ? e.toString().split('Exception:')[1].trim() 
+              : e.toString();
+        });
       }
     }
   }
@@ -187,6 +194,8 @@ class _FaqScreenState extends State<FaqScreen> {
                 Expanded(
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
+                      : _errorMessage != null
+                      ? _buildErrorState(_errorMessage!, locale, isDark)
                       : RefreshIndicator(
                           onRefresh: _fetchData,
                           child: ListView(
@@ -539,6 +548,43 @@ class _FaqScreenState extends State<FaqScreen> {
               LucideIcons.chevronRight,
               color: Colors.grey.shade400,
               size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String error, String locale, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.alertCircle, size: 48, color: Colors.red.shade300),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load support data',
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+            BouncingButton(
+              onTap: _fetchData,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text('Try Again', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
         ),
