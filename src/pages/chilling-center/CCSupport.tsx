@@ -54,9 +54,9 @@ export default function CCSupport() {
   });
 
   const createTicketMutation = useMutation({
-    mutationFn: (message: string) => apiFetch<any>('/api/support', { 
-      method: 'POST', 
-      body: JSON.stringify({ message, language: 'en' }) 
+    mutationFn: (message: string) => apiFetch<any>('/api/support', {
+      method: 'POST',
+      body: JSON.stringify({ message, language: 'en' })
     }),
     onSuccess: () => {
       toast.success('Your message has been sent to Nestlé');
@@ -68,10 +68,10 @@ export default function CCSupport() {
   });
 
   const replyMutation = useMutation({
-    mutationFn: ({ id, reply, reply_si, reply_ta }: { id: number, reply: string, reply_si: string, reply_ta: string }) => 
-      apiFetch<any>(`/api/support?id=${id}`, { 
-        method: 'PATCH', 
-        body: JSON.stringify({ reply, reply_si, reply_ta }) 
+    mutationFn: ({ id, reply, reply_si, reply_ta }: { id: number, reply: string, reply_si: string, reply_ta: string }) =>
+      apiFetch<any>(`/api/support?id=${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ reply, reply_si, reply_ta })
       }),
     onSuccess: () => {
       toast.success('Reply updated successfully');
@@ -136,7 +136,7 @@ export default function CCSupport() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Describe your issue or question</Label>
-                  <textarea 
+                  <textarea
                     className="w-full min-h-[120px] p-3 rounded-md border bg-background text-sm"
                     placeholder="Type your message to Nestlé here..."
                     value={newTicketMsg}
@@ -146,7 +146,7 @@ export default function CCSupport() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsNewTicketOpen(false)}>Cancel</Button>
-                <Button 
+                <Button
                   onClick={() => createTicketMutation.mutate(newTicketMsg)}
                   disabled={createTicketMutation.isPending || !newTicketMsg.trim()}
                 >
@@ -156,9 +156,9 @@ export default function CCSupport() {
             </DialogContent>
           </Dialog>
 
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => queryClient.invalidateQueries({ queryKey: ['support_tickets'] })}
             disabled={isFetching}
           >
@@ -173,7 +173,7 @@ export default function CCSupport() {
             <MessageSquare className="w-4 h-4" /> Farmer Issues
           </TabsTrigger>
           <TabsTrigger value="my-tickets" className="gap-2">
-            <Send className="w-4 h-4" /> My Tickets
+            <Send className="w-4 h-4" /> Nestle Support
           </TabsTrigger>
           <TabsTrigger value="faq" className="gap-2">
             <Plus className="w-4 h-4" /> Help & FAQ
@@ -212,8 +212,8 @@ export default function CCSupport() {
                               {new Date(ticket.created_at).toLocaleString()}
                             </span>
                           </div>
-                          
-                          <Button 
+
+                          <Button
                             variant={ticket.status === 'replied' ? 'outline' : 'default'}
                             size="sm"
                             className="gap-2"
@@ -223,7 +223,7 @@ export default function CCSupport() {
                             {ticket.status === 'replied' ? 'Edit Reply' : 'Reply'}
                           </Button>
                         </div>
-                        
+
                         {ticket.reply && (
                           <div className="mt-3 p-3 bg-background rounded border-l-4 border-primary">
                             <div className="flex items-center gap-2 mb-1">
@@ -301,7 +301,7 @@ export default function CCSupport() {
                 );
               })
             )}
-            
+
             <Card className="bg-primary/5 border-primary/20 mt-8">
               <CardHeader>
                 <CardTitle className="text-xl text-primary">Need Immediate Help?</CardTitle>
@@ -334,10 +334,10 @@ export default function CCSupport() {
             <div className="p-3 bg-muted/50 rounded-lg text-sm italic">
               "{selectedTicket?.message}"
             </div>
-            
+
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground uppercase">English Reply</Label>
-              <textarea 
+              <textarea
                 className="w-full min-h-[80px] p-2 rounded-md border bg-background text-sm"
                 placeholder="Type English reply..."
                 value={replyText}
@@ -346,7 +346,7 @@ export default function CCSupport() {
             </div>
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground uppercase">Sinhala Reply (සිංහල)</Label>
-              <textarea 
+              <textarea
                 className="w-full min-h-[80px] p-2 rounded-md border bg-background text-sm"
                 placeholder="Type Sinhala reply..."
                 value={replySi}
@@ -355,7 +355,7 @@ export default function CCSupport() {
             </div>
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground uppercase">Tamil Reply (தமிழ்)</Label>
-              <textarea 
+              <textarea
                 className="w-full min-h-[80px] p-2 rounded-md border bg-background text-sm"
                 placeholder="Type Tamil reply..."
                 value={replyTa}
@@ -365,9 +365,9 @@ export default function CCSupport() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsReplyOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={() => replyMutation.mutate({ 
-                id: selectedTicket.id, 
+            <Button
+              onClick={() => replyMutation.mutate({
+                id: selectedTicket.id,
                 reply: replyText,
                 reply_si: replySi,
                 reply_ta: replyTa

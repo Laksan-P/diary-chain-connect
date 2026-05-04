@@ -55,7 +55,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _filteredNotifications = _localNotifications.where((n) {
           final title = _translate(n['title']).toLowerCase();
           final message = _translate(n['message']).toLowerCase();
-          return title.contains(query.toLowerCase()) || message.contains(query.toLowerCase());
+          return title.contains(query.toLowerCase()) ||
+              message.contains(query.toLowerCase());
         }).toList();
       }
     });
@@ -65,7 +66,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void didUpdateWidget(NotificationsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!mounted) return;
-    
+
     // Smart merge: Sync local list if parent list changes, but preserve local "read" status
     if (widget.notifications != oldWidget.notifications) {
       setState(() {
@@ -73,8 +74,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         for (var i = 0; i < newList.length; i++) {
           final id = newList[i]['id'].toString();
           // If we have this notification locally and it's marked as read, keep it read
-          final localIdx = _localNotifications.indexWhere((n) => n['id'].toString() == id);
-          if (localIdx != -1 && _localNotifications[localIdx]['isRead'] == true) {
+          final localIdx = _localNotifications.indexWhere(
+            (n) => n['id'].toString() == id,
+          );
+          if (localIdx != -1 &&
+              _localNotifications[localIdx]['isRead'] == true) {
             newList[i]['isRead'] = true;
           }
         }
@@ -97,7 +101,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _markAsRead(String id) async {
     // 1. Instant Local Update
     setState(() {
-      final index = _localNotifications.indexWhere((n) => n['id'].toString() == id);
+      final index = _localNotifications.indexWhere(
+        (n) => n['id'].toString() == id,
+      );
       if (index != -1) {
         _localNotifications[index]['isRead'] = true;
       }
@@ -128,46 +134,59 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (raw == 'Dispatch Rejected') return 'dispatch_rejected_title';
 
     // Message: "Your milk collection on YYYY-MM-DD passed quality testing."
-    final passMatch = RegExp(r'^Your milk collection on (\S+) passed quality testing\.$').firstMatch(raw);
+    final passMatch = RegExp(
+      r'^Your milk collection on (\S+) passed quality testing\.$',
+    ).firstMatch(raw);
     if (passMatch != null) {
       return 'quality_test_passed_msg|date:${passMatch.group(1)}';
     }
 
     // Message: "Your milk collection on YYYY-MM-DD failed quality testing. Reason: XXX"
-    final failMatch = RegExp(r'^Your milk collection on (\S+) failed quality testing\. Reason: (.+)$').firstMatch(raw);
+    final failMatch = RegExp(
+      r'^Your milk collection on (\S+) failed quality testing\. Reason: (.+)$',
+    ).firstMatch(raw);
     if (failMatch != null) {
       return 'quality_test_failed_msg|date:${failMatch.group(1)},reason:${failMatch.group(2)}';
     }
 
     // Message: "Your milk collection on YYYY-MM-DD has been dispatched to Nestlé."
-    final dispatchMatch = RegExp(r'^Your milk collection on (\S+) has been dispatched').firstMatch(raw);
+    final dispatchMatch = RegExp(
+      r'^Your milk collection on (\S+) has been dispatched',
+    ).firstMatch(raw);
     if (dispatchMatch != null) {
       return 'milk_dispatched_msg|date:${dispatchMatch.group(1)}';
     }
 
     // Message: "Your milk collection on YYYY-MM-DD was approved by Nestlé."
-    final approveMatch = RegExp(r'^Your milk collection on (\S+) was approved').firstMatch(raw);
+    final approveMatch = RegExp(
+      r'^Your milk collection on (\S+) was approved',
+    ).firstMatch(raw);
     if (approveMatch != null) {
       return 'dispatch_approved_msg|date:${approveMatch.group(1)}';
     }
 
     // Message: "Your milk collection on YYYY-MM-DD was rejected by Nestlé. Reason: XXX"
-    final rejectMatch = RegExp(r'^Your milk collection on (\S+) was rejected.*Reason: (.+)$').firstMatch(raw);
+    final rejectMatch = RegExp(
+      r'^Your milk collection on (\S+) was rejected.*Reason: (.+)$',
+    ).firstMatch(raw);
     if (rejectMatch != null) {
       return 'dispatch_rejected_msg|date:${rejectMatch.group(1)},reason:${rejectMatch.group(2)}';
     }
 
-    if (raw == 'dispatch_rejected_title') return 'dispatch_rejected_title'; // Already a key
+    if (raw == 'dispatch_rejected_title') {
+      return 'dispatch_rejected_title'; // Already a key
+    }
     if (raw == 'Payment Received') return 'payment_received_title';
 
     // Message: "Payment of Rs. 129960.00 for 1083L of milk has been processed."
-    final paymentMatch = RegExp(r'^Payment of Rs. (\S+) for (\S+)L of milk has been processed\.$').firstMatch(raw);
+    final paymentMatch = RegExp(
+      r'^Payment of Rs. (\S+) for (\S+)L of milk has been processed\.$',
+    ).firstMatch(raw);
     if (paymentMatch != null) {
       return 'payment_received_msg|amount:${paymentMatch.group(1)},qty:${paymentMatch.group(2)}';
     }
 
     return raw; // No match — return original
-
   }
 
   String _translate(String? raw) {
@@ -209,24 +228,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            SliverToBoxAdapter(
-              child: _buildScrollableHeader(context, isDark),
-            ),
-            SliverToBoxAdapter(
-              child: _buildSearchBar(isDark),
-            ),
+            SliverToBoxAdapter(child: _buildScrollableHeader(context, isDark)),
+            SliverToBoxAdapter(child: _buildSearchBar(isDark)),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-              sliver: widget.isLoading 
-                ? const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
-                : _filteredNotifications.isEmpty
+              sliver: widget.isLoading
+                  ? const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : _filteredNotifications.isEmpty
                   ? SliverFillRemaining(
                       hasScrollBody: false,
                       child: _buildEmptyState(),
                     )
                   : SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildNotificationCard(_filteredNotifications[index], isDark),
+                        (context, index) => _buildNotificationCard(
+                          _filteredNotifications[index],
+                          isDark,
+                        ),
                         childCount: _filteredNotifications.length,
                       ),
                     ),
@@ -246,10 +266,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.grey.shade200,
               ),
             ),
             child: TextField(
@@ -258,18 +282,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               style: TextStyle(color: isDark ? Colors.white : Colors.black87),
               decoration: InputDecoration(
                 hintText: 'Search Archive...',
-                hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.grey),
+                hintStyle: TextStyle(
+                  color: isDark ? Colors.white24 : Colors.grey,
+                ),
                 border: InputBorder.none,
-                icon: Icon(LucideIcons.search, size: 18, color: isDark ? Colors.white24 : Colors.grey),
-                suffixIcon: _searchQuery.isNotEmpty 
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () {
-                        _searchController.clear();
-                        _onSearch('');
-                      },
-                    )
-                  : null,
+                icon: Icon(
+                  LucideIcons.search,
+                  size: 18,
+                  color: isDark ? Colors.white24 : Colors.grey,
+                ),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearch('');
+                        },
+                      )
+                    : null,
               ),
             ),
           ),
@@ -278,7 +308,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Row(
               children: [
-                Icon(LucideIcons.database, size: 12, color: isDark ? Colors.white24 : Colors.grey),
+                Icon(
+                  LucideIcons.database,
+                  size: 12,
+                  color: isDark ? Colors.white24 : Colors.grey,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   'LOCAL ARCHIVE',
@@ -326,7 +360,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildCircleBackButton(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.grey.shade100,
         shape: BoxShape.circle,
       ),
       child: IconButton(
@@ -347,10 +383,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final type = note['type']?.toString() ?? 'general';
     final isRead = note['isRead'] == true;
     final amber = const Color(0xFFFFB000);
-    
+
     IconData icon;
     Color typeColor;
-    
+
     switch (type) {
       case 'quality_result':
         icon = LucideIcons.droplets;
@@ -381,9 +417,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       onTap: () {
         HapticFeedback.lightImpact();
         if (!isRead) _markAsRead(note['id'].toString());
-        
+
         // If it's a support reply notification, navigate to support chat
-        if (note['message']?.toString().contains('custom_issue_feedback') == true) {
+        if (note['message']?.toString().contains('custom_issue_feedback') ==
+            true) {
           widget.onSupportTap?.call();
         }
       },
@@ -391,21 +428,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark 
-              ? AppTheme.surfaceDark.withValues(alpha: isRead ? 0.3 : 0.7) 
+          color: isDark
+              ? AppTheme.surfaceDark.withValues(alpha: isRead ? 0.3 : 0.7)
               : (isRead ? Colors.white : Colors.white),
           borderRadius: BorderRadius.circular(24),
-          boxShadow: isRead ? [] : [
-            BoxShadow(
-              color: unreadBorderColor.withValues(alpha: 0.1),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            )
-          ],
+          boxShadow: isRead
+              ? []
+              : [
+                  BoxShadow(
+                    color: unreadBorderColor.withValues(alpha: 0.1),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
           border: Border.all(
-            color: isRead 
-              ? (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100)
-              : unreadBorderColor.withValues(alpha: 0.4),
+            color: isRead
+                ? (isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.grey.shade100)
+                : unreadBorderColor.withValues(alpha: 0.4),
             width: isRead ? 1 : 2,
           ),
         ),
@@ -425,15 +466,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         _translate(note['title']),
                         style: TextStyle(
-                          fontWeight: isRead ? FontWeight.bold : FontWeight.w900,
+                          fontWeight: isRead
+                              ? FontWeight.bold
+                              : FontWeight.w900,
                           fontSize: 14,
-                          color: isDark ? (isRead ? Colors.white70 : Colors.white) : (isRead ? Colors.black54 : Colors.black87),
+                          color: isDark
+                              ? (isRead ? Colors.white70 : Colors.white)
+                              : (isRead ? Colors.black54 : Colors.black87),
                         ),
                       ),
                       if (!isRead && type != 'payment_reminder')
@@ -441,14 +486,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           width: 12,
                           height: 12,
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFFFFB000) : const Color(0xFF1B264F),
+                            color: isDark
+                                ? const Color(0xFFFFB000)
+                                : const Color(0xFF1B264F),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: (isDark ? const Color(0xFFFFB000) : const Color(0xFF1B264F)).withValues(alpha: 0.2),
+                                color:
+                                    (isDark
+                                            ? const Color(0xFFFFB000)
+                                            : const Color(0xFF1B264F))
+                                        .withValues(alpha: 0.2),
                                 blurRadius: 8,
                                 spreadRadius: 1,
-                              )
+                              ),
                             ],
                           ),
                         ),
@@ -458,16 +509,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Text(
                     _translate(note['message']),
                     style: TextStyle(
-                      color: isDark 
-                          ? (isRead ? Colors.white24 : Colors.white60) 
-                          : (isRead ? Colors.grey.shade400 : Colors.grey.shade800),
+                      color: isDark
+                          ? (isRead ? Colors.white24 : Colors.white60)
+                          : (isRead
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade800),
                       fontSize: 13,
                       height: 1.4,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse(note['createdAt']).toLocal()),
+                    DateFormat(
+                      'MMM dd, yyyy • hh:mm a',
+                    ).format(DateTime.parse(note['createdAt']).toLocal()),
                     style: TextStyle(
                       color: isDark ? Colors.white12 : Colors.grey.shade400,
                       fontSize: 10,
@@ -488,7 +543,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.bellOff, size: 64, color: Colors.grey.withValues(alpha: 0.2)),
+          Icon(
+            LucideIcons.bellOff,
+            size: 64,
+            color: Colors.grey.withValues(alpha: 0.2),
+          ),
           const SizedBox(height: 16),
           Text(
             Translations.get('no_notifications', widget.locale),

@@ -134,8 +134,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
-
   Future<void> _fetchData() async {
     if (!mounted || _auth?.user == null) return;
 
@@ -183,7 +181,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _synthesizeNotifications();
 
         final supportTickets = results[3] as List<dynamic>;
-        _hasUnreadSupport = supportTickets.any((t) => t['is_read_by_user'] == false);
+        _hasUnreadSupport = supportTickets.any(
+          (t) => t['is_read_by_user'] == false,
+        );
 
         _performance = results[4] as Map<String, dynamic>;
 
@@ -210,9 +210,11 @@ class _HomeScreenState extends State<HomeScreen> {
     // 1. Check for New Collections
     for (var col in _collections) {
       final date = col['date']?.toString() ?? '';
-      final qResult = col['qualityResult']?.toString().toLowerCase() ?? 'pending';
-      final reason = col['reason'] ?? col['failureReason'] ?? col['rejectReason'] ?? '';
-      
+      final qResult =
+          col['qualityResult']?.toString().toLowerCase() ?? 'pending';
+      final reason =
+          col['reason'] ?? col['failureReason'] ?? col['rejectReason'] ?? '';
+
       // Look for a notification about this specific date and collection
       final exists = _notifications.any(
         (n) =>
@@ -222,8 +224,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (!exists) {
         String title = 'Milk Collection Recorded';
-        String message = 'Your milk collection on $date has been recorded in the system.';
-        
+        String message =
+            'Your milk collection on $date has been recorded in the system.';
+
         if (qResult == 'pass') {
           title = 'quality_test_passed_title';
           message = 'quality_test_passed_msg|date:$date';
@@ -238,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
           } else if (displayReason.toLowerCase().contains('water')) {
             displayReason = Translations.get('excess_water', locale);
           }
-          
+
           message = 'quality_test_failed_msg|date:$date,reason:$displayReason';
         }
 
@@ -352,7 +355,8 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SupportChatScreen(onBack: () => Navigator.pop(context)),
+                  builder: (context) =>
+                      SupportChatScreen(onBack: () => Navigator.pop(context)),
                 ),
               );
             },
@@ -372,7 +376,8 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => FaqScreen(onBack: () => Navigator.pop(context)),
+            builder: (context) =>
+                FaqScreen(onBack: () => Navigator.pop(context)),
           ),
         );
       },
@@ -383,26 +388,27 @@ class _HomeScreenState extends State<HomeScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark 
-              ? [AppTheme.primaryLight, AppTheme.primaryLight.withOpacity(0.8)]
-              : [AppTheme.primary, AppTheme.primary.withOpacity(0.85)],
+            colors: isDark
+                ? [
+                    AppTheme.primaryLight,
+                    AppTheme.primaryLight.withOpacity(0.8),
+                  ]
+                : [AppTheme.primary, AppTheme.primary.withOpacity(0.85)],
           ),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withOpacity(0.4),
+              color: (isDark ? AppTheme.primaryLight : AppTheme.primary)
+                  .withOpacity(0.4),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
           ],
-          border: Border.all(
-            color: Colors.white.withOpacity(0.2),
-            width: 1.5,
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
         ),
         child: const Icon(
-          LucideIcons.messageSquare, 
-          color: Colors.white, 
+          LucideIcons.messageSquare,
+          color: Colors.white,
           size: 24,
         ),
       ),
@@ -627,7 +633,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 300,
               height: 300,
               decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark 
+                color: Theme.of(context).brightness == Brightness.dark
                     ? Colors.white.withValues(alpha: 0.05)
                     : AppTheme.primary.withValues(alpha: 0.03),
                 shape: BoxShape.circle,
@@ -643,7 +649,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildHeader(user, totalBalance, prefs),
                 const SizedBox(height: 24),
                 _buildSummaryStats(monthlyEarnings, monthlyLiters, locale),
-                if (_performance['status'] != null && _performance['status'] != 'Good') ...[
+                if (_performance['status'] != null &&
+                    _performance['status'] != 'Good') ...[
                   const SizedBox(height: 24),
                   _buildPerformanceCard(locale),
                 ],
@@ -663,43 +670,45 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                  if (_isLoading)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(40),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  else if (_collections.isEmpty && _payments.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Text(
-                          Translations.get('no_records_found', locale),
-                          style: TextStyle(color: Colors.grey.withValues(alpha: 0.5)),
+                if (_isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (_collections.isEmpty && _payments.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Center(
+                      child: Text(
+                        Translations.get('no_records_found', locale),
+                        style: TextStyle(
+                          color: Colors.grey.withValues(alpha: 0.5),
                         ),
                       ),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          ..._collections
-                              .take(3)
-                              .map((c) => _fintechCollectionCard(c, locale)),
-                          ..._payments
-                              .take(2)
-                              .map((p) => _fintechPaymentCard(p, locale)),
-                        ],
-                      ),
                     ),
-                ],
-              ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        ..._collections
+                            .take(3)
+                            .map((c) => _fintechCollectionCard(c, locale)),
+                        ..._payments
+                            .take(2)
+                            .map((p) => _fintechPaymentCard(p, locale)),
+                      ],
+                    ),
+                  ),
+              ],
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPerformanceCard(String locale) {
@@ -733,9 +742,9 @@ class _HomeScreenState extends State<HomeScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark 
-              ? [const Color(0xFF422006), const Color(0xFF451A03)]
-              : [const Color(0xFFFFF7ED), const Color(0xFFFFEDD5)],
+            colors: isDark
+                ? [const Color(0xFF422006), const Color(0xFF451A03)]
+                : [const Color(0xFFFFF7ED), const Color(0xFFFFEDD5)],
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
@@ -754,7 +763,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: const Color(0xFFF97316).withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(LucideIcons.alertTriangle, color: Color(0xFFF97316), size: 20),
+                  child: const Icon(
+                    LucideIcons.alertTriangle,
+                    color: Color(0xFFF97316),
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -766,7 +779,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
-                          color: isDark ? const Color(0xFFFFEDD5) : const Color(0xFF7C2D12),
+                          color: isDark
+                              ? const Color(0xFFFFEDD5)
+                              : const Color(0xFF7C2D12),
                         ),
                       ),
                       Text(
@@ -774,7 +789,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: (isDark ? const Color(0xFFFFEDD5) : const Color(0xFF7C2D12)).withOpacity(0.6),
+                          color:
+                              (isDark
+                                      ? const Color(0xFFFFEDD5)
+                                      : const Color(0xFF7C2D12))
+                                  .withOpacity(0.6),
                         ),
                       ),
                     ],
@@ -789,7 +808,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 13,
                 height: 1.5,
                 fontWeight: FontWeight.w500,
-                color: isDark ? const Color(0xFFFED7AA) : const Color(0xFF9A3412),
+                color: isDark
+                    ? const Color(0xFFFED7AA)
+                    : const Color(0xFF9A3412),
               ),
             ),
           ],

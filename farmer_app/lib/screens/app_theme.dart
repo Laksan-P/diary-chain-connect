@@ -4,9 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   // Professional Navy Blue Palette
   static const Color primary = Color(0xFF1B264F); // Rich Navy
-  static const Color primaryLight = Color(0xFF3B82F6); // Vibrant Royal Blue (better for dark visibility)
+  static const Color primaryLight = Color(
+    0xFF3B82F6,
+  ); // Vibrant Royal Blue (better for dark visibility)
   static const Color accent = Color(0xFF576CA8); // Steel Blue
-  
+
   static const Color backgroundLight = Color(0xFFF8FAFC);
   static const Color backgroundDark = Color(0xFF020617); // Deepest Midnight
   static const Color surfaceDark = Color(0xFF0F172A); // Elevated Surface
@@ -55,7 +57,10 @@ class AppTheme {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: primary,
-      contentTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      contentTextStyle: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 8,
@@ -83,17 +88,26 @@ class AppTheme {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: primaryLight,
-      contentTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      contentTextStyle: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 8,
     ),
   );
 
-  static InputDecoration inputDecoration(String label, IconData icon, {String? hint, BuildContext? context}) {
-    final isDark = context != null && Theme.of(context).brightness == Brightness.dark;
+  static InputDecoration inputDecoration(
+    String label,
+    IconData icon, {
+    String? hint,
+    BuildContext? context,
+  }) {
+    final isDark =
+        context != null && Theme.of(context).brightness == Brightness.dark;
     final primaryColor = isDark ? primaryLight : primary;
-    
+
     return InputDecoration(
       labelText: label,
       hintText: hint,
@@ -102,7 +116,9 @@ class AppTheme {
         child: Icon(icon, size: 20, color: primaryColor),
       ),
       filled: true,
-      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+      fillColor: isDark
+          ? Colors.white.withValues(alpha: 0.05)
+          : Colors.grey.shade50,
       labelStyle: TextStyle(
         color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
         fontSize: 14,
@@ -145,7 +161,11 @@ class AppTheme {
       foregroundColor: Colors.white,
       minimumSize: const Size(double.infinity, 64),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+      textStyle: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 0.5,
+      ),
       elevation: 0,
     );
   }

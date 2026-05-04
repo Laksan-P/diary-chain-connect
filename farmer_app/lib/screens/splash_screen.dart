@@ -10,7 +10,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
@@ -24,8 +25,20 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
 
     _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.8, end: 1.1).chain(CurveTween(curve: Curves.easeOut)), weight: 70),
-      TweenSequenceItem(tween: Tween(begin: 1.1, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 30),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.8,
+          end: 1.1,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 70,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.1,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 30,
+      ),
     ]).animate(_controller);
 
     _opacityAnimation = TweenSequence<double>([
@@ -63,7 +76,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryLight.withValues(alpha: 0.2 * _opacityAnimation.value),
+                        color: AppTheme.primaryLight.withValues(
+                          alpha: 0.2 * _opacityAnimation.value,
+                        ),
                         blurRadius: 100,
                         spreadRadius: 50,
                       ),
@@ -73,7 +88,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               },
             ),
           ),
-          
+
           Center(
             child: AnimatedBuilder(
               animation: _controller,
@@ -100,18 +115,34 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                                   ),
                                 ],
                               ),
-                              child: const Icon(LucideIcons.droplets, size: 48, color: Colors.black),
+                              child: const Icon(
+                                LucideIcons.droplets,
+                                size: 48,
+                                color: Colors.black,
+                              ),
                             ),
                             const SizedBox(width: 24),
-                            Container(width: 2, height: 48, color: Colors.white24),
+                            Container(
+                              width: 2,
+                              height: 48,
+                              color: Colors.white24,
+                            ),
                             const SizedBox(width: 24),
-                            const Icon(LucideIcons.milk, size: 56, color: Colors.blue),
+                            const Icon(
+                              LucideIcons.milk,
+                              size: 56,
+                              color: Colors.blue,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 48),
                         ShaderMask(
                           shaderCallback: (bounds) => LinearGradient(
-                            colors: [Colors.white, Colors.blue.shade400, Colors.white],
+                            colors: [
+                              Colors.white,
+                              Colors.blue.shade400,
+                              Colors.white,
+                            ],
                             stops: const [0.0, 0.5, 1.0],
                           ).createShader(bounds),
                           child: const Text(
@@ -141,7 +172,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               },
             ),
           ),
-          
+
           // Cinematic Lens Flare
           Positioned.fill(
             child: AnimatedBuilder(
@@ -149,13 +180,18 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               builder: (context, child) {
                 double slidePos = _controller.value * 2 - 1; // -1 to 1
                 return Transform.translate(
-                  offset: Offset(slidePos * MediaQuery.of(context).size.width, 0),
+                  offset: Offset(
+                    slidePos * MediaQuery.of(context).size.width,
+                    0,
+                  ),
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
                           Colors.transparent,
-                          Colors.blue.withValues(alpha: 0.1 * _opacityAnimation.value),
+                          Colors.blue.withValues(
+                            alpha: 0.1 * _opacityAnimation.value,
+                          ),
                           Colors.transparent,
                         ],
                       ),

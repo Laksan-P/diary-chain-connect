@@ -45,8 +45,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final isOnline = OfflineService().isOnline;
       if (mounted) {
         ToastService.show(
-          context, 
-          isOnline ? 'Login Successful! Welcome back.' : 'Logged in offline! Showing cached data.',
+          context,
+          isOnline
+              ? 'Login Successful! Welcome back.'
+              : 'Logged in offline! Showing cached data.',
         );
       }
     } catch (e) {
@@ -75,12 +77,12 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Container(
                 width: 300,
                 height: 300,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.white.withValues(alpha: 0.05)
-                          : AppTheme.primary.withValues(alpha: 0.03),
-                      shape: BoxShape.circle,
-                    ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : AppTheme.primary.withValues(alpha: 0.03),
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
             SingleChildScrollView(
@@ -247,7 +249,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(
                           Translations.get('create_account', locale),
                           style: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
                                 ? AppTheme.primaryLight
                                 : AppTheme.primary,
                             fontWeight: FontWeight.w900,

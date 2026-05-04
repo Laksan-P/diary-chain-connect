@@ -46,12 +46,14 @@ class _PassbookScreenState extends State<PassbookScreen> {
       final pending = OfflineService()
           .getPendingActions()
           .where((a) => a['path'] == '/collections' && a['method'] == 'POST')
-          .map((a) => {
-                ...a['body'],
-                'id': a['id'],
-                'qualityResult': 'Pending Sync',
-                'isOffline': true,
-              })
+          .map(
+            (a) => {
+              ...a['body'],
+              'id': a['id'],
+              'qualityResult': 'Pending Sync',
+              'isOffline': true,
+            },
+          )
           .toList();
       source.insertAll(0, pending);
 
@@ -98,7 +100,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
               width: 300,
               height: 300,
               decoration: BoxDecoration(
-                color: isDark 
+                color: isDark
                     ? Colors.white.withValues(alpha: 0.05)
                     : AppTheme.primary.withValues(alpha: 0.03),
                 shape: BoxShape.circle,
@@ -119,7 +121,9 @@ class _PassbookScreenState extends State<PassbookScreen> {
                           child: OfflineBanner(locale: widget.locale),
                         ),
                       ),
-                      SliverToBoxAdapter(child: _buildScrollableHeader(context)),
+                      SliverToBoxAdapter(
+                        child: _buildScrollableHeader(context),
+                      ),
                       SliverToBoxAdapter(child: _buildSummary(context)),
                       if (widget.mode == 'payments')
                         SliverToBoxAdapter(child: _buildPricingInfo(context)),
@@ -588,7 +592,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
                 ],
 
                 if ((c['qualityResult']?.toString().toLowerCase() == 'fail' ||
-                        c['qualityResult']?.toString().toLowerCase() == 'rejected')) ...[
+                    c['qualityResult']?.toString().toLowerCase() ==
+                        'rejected')) ...[
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -618,7 +623,14 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                 ),
                               ),
                               Text(
-                                (c['reason'] ?? c['failureReason'] ?? c['rejectReason'] ?? Translations.get('unknown_error', widget.locale)).toString(),
+                                (c['reason'] ??
+                                        c['failureReason'] ??
+                                        c['rejectReason'] ??
+                                        Translations.get(
+                                          'unknown_error',
+                                          widget.locale,
+                                        ))
+                                    .toString(),
                                 style: TextStyle(
                                   color: isDark
                                       ? Colors.white70
@@ -1149,7 +1161,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark 
+                  color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white.withValues(alpha: 0.05)
                       : AppTheme.primary.withValues(alpha: 0.03),
                   shape: BoxShape.circle,
