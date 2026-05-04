@@ -29,10 +29,13 @@ import PerformanceDashboard from "./pages/nestle/PerformanceDashboard";
 import SupplyPredictions from "./pages/nestle/SupplyPredictions";
 import NotFound from "./pages/NotFound";
 
+import ErrorBoundary from "@/components/ErrorBoundary";
+
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -75,6 +78,7 @@ const App = () => (
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

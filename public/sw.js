@@ -64,22 +64,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. For everything else (JS, CSS, Images): Stale-While-Revalidate
+  // 3. For everything else (JS, CSS, Images): Cache-First then Network
   event.respondWith(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.match(request).then((cachedResponse) => {
+        // If it's in cache, serve it but also update it in background
         const fetchPromise = fetch(request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             cache.put(request, networkResponse.clone());
           }
           return networkResponse;
         }).catch(() => {
-          // Fallback if network fails and no cache
-          return cachedResponse || new Response('Offline', { status: 503 });
+          // If network fails, we've already returned cachedResponse (if any)
+          // This block is for cases where fetchPromise is actually returned
+          return cachedResponse;
         });
 
         return cachedResponse || fetchPromise;
       });
+    }).catch(() => {
+      // Fallback for extreme cases
+      return caches.match('/index.html');
     })
   );
 });

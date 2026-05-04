@@ -18,10 +18,17 @@ const CCDashboard: React.FC = () => {
   useEffect(() => {
     const centerId = user?.chillingCenterId;
     if (centerId) {
-      Promise.all([getCollections(centerId), getFarmers(centerId), getDispatches(centerId)]).then(([cols, farmers, dispatches]) => {
+      Promise.all([
+        getCollections(centerId), 
+        getFarmers(centerId), 
+        getDispatches(centerId)
+      ]).then(([cols, farmers, dispatches]) => {
         setCollections(cols);
         setFarmerCount(farmers.length);
         setDispatchCount(dispatches.length);
+        setLoading(false);
+      }).catch(err => {
+        console.error('Failed to load dashboard data:', err);
         setLoading(false);
       });
     } else {
