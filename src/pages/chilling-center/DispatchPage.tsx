@@ -76,13 +76,28 @@ const DispatchPage: React.FC = () => {
     setIsRefreshing(true);
 
     try {
-      const c = await getCollections(centerId);
+      // 1. Load from cache immediately for instant UI
+      let c = getCache('dispatch_all_collections') || getCache('dispatch_pending_collections') || [];
+      let d = getCache('dispatch_history') || [];
       
+      // 2. Only attempt network fetch if online
+      if (navigator.onLine) {
+        try {
+          c = await getCollections(centerId);
+          d = await getDispatches(centerId);
+          saveCache('dispatch_pending_collections', c.filter((col: any) => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending'));
+          saveCache('dispatch_all_collections', c);
+          saveCache('dispatch_history', d);
+        } catch (err) {
+          console.error('Failed to fetch fresh data:', err);
+        }
+      }
+
       const allQuality = getPendingByType('quality');
       const allDispatches = getPendingByType('dispatch');
 
       // Update server collections with local quality/dispatch tests first
-      const updatedC = c.map(col => {
+      const updatedC = c.map((col: any) => {
         if (!col) return null;
         const qualityTest = allQuality.find(q => q.data && String(q.data.collectionId) === String(col.id));
         const dispatchedLocally = allDispatches.some(d => d.data?.items?.some((i: any) => String(i.collectionId) === String(col.id)));
@@ -94,12 +109,7 @@ const DispatchPage: React.FC = () => {
       }).filter(Boolean) as MilkCollection[];
 
       const filteredCols = updatedC.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
-      saveCache('dispatch_pending_collections', filteredCols);
-      saveCache('dispatch_all_collections', c); // Save ALL for offline mapping
-
-      const d = await getDispatches(centerId);
-      saveCache('dispatch_history', d);
-
+      
       const maxId = d.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
       
       const offlinePendingDispatches = allDispatches.map((a, index) => {
@@ -144,66 +154,7 @@ const DispatchPage: React.FC = () => {
 
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (err) {
-      console.error('Load data error:', err);
-      let cachedCols = getCache('dispatch_all_collections') || getCache('dispatch_pending_collections') || [];
-      if (!Array.isArray(cachedCols)) cachedCols = [];
-      
-      const cachedFarmers = getCache('farmers') || [];
-      const allQuality = getPendingByType('quality');
-      const allDispatches = getPendingByType('dispatch');
-      
-      const updatedCachedCols = cachedCols.map((col: any) => {
-        if (!col) return null;
-        const qualityTest = allQuality.find(q => q.data && String(q.data.collectionId) === String(col.id));
-        const dispatchedLocally = allDispatches.some(d => d.data?.items?.some((i: any) => String(i.collectionId) === String(col.id)));
-        return {
-          ...col,
-          qualityResult: qualityTest ? qualityTest.data.result : col.qualityResult,
-          dispatchStatus: dispatchedLocally ? 'Dispatched' : col.dispatchStatus
-        };
-      }).filter(Boolean) as MilkCollection[];
-
-      const filteredCachedCols = updatedCachedCols.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
-      
-      const alreadyDispatchedIds = allDispatches
-        .flatMap(d => d.data?.items?.map((i: any) => i.offlineCollectionId).filter(Boolean) || []);
-
-      const offlineCollections = getPendingByType('collection')
-        .filter(a => a && !alreadyDispatchedIds.includes(a.id))
-        .map(a => {
-          if (!a.data) return null;
-          const qualityTest = allQuality.find(q => q.data && String(q.data.offlineCollectionId) === String(a.id));
-          if (!qualityTest || qualityTest.data.result !== 'Pass') return null;
-          const farmer = cachedFarmers.find((f: any) => f && String(f.id) === String(a.data.farmerId));
-          const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
-          return {
-            ...a.data,
-            id: a.id,
-            displayId: `OFF-${String(a.id).substring(0, 4).toUpperCase()}`,
-            isOffline: true,
-            farmerName: finalFarmerName,
-            qualityResult: 'Pass',
-            dispatchStatus: 'Pending'
-          };
-        })
-        .filter(Boolean) as MilkCollection[];
-      setCollections([...offlineCollections, ...filteredCachedCols]);
-
-      let cachedDispatches = getCache('dispatch_history') || [];
-      if (!Array.isArray(cachedDispatches)) cachedDispatches = [];
-      const maxId = cachedDispatches.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
-
-      const offlinePendingDispatches = allDispatches.map((d, index) => {
-        if (!d.data) return null;
-        return {
-          ...d.data,
-          id: maxId + index + 1,
-          realOfflineId: d.id,
-          status: 'Pending Sync',
-          isOffline: true
-        };
-      }).filter(Boolean) as Dispatch[];
-      setDispatches([...offlinePendingDispatches, ...cachedDispatches]);
+      console.error('Critical load data error:', err);
     } finally {
       setIsRefreshing(false);
     }
