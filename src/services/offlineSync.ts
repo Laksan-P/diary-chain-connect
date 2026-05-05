@@ -30,10 +30,15 @@ export const savePendingAction = (type: PendingAction['type'], data: any) => {
   return newAction.id;
 };
 
+let isSyncing = false;
+
 export const syncActions = async () => {
+  if (isSyncing) return;
+  
   const actions = getPendingActions();
   if (actions.length === 0) return;
 
+  isSyncing = true;
   const remainingActions: PendingAction[] = [];
 
   // Sync in order: farmer_registration → collection → quality → dispatch
@@ -119,7 +124,12 @@ export const syncActions = async () => {
     }
   }
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(remainingActions));
+  // Preserve any new actions that were created WHILE we were syncing
+  const currentActions = getPendingActions();
+  const newActions = currentActions.filter(ca => !actions.some(a => a.id === ca.id));
+  
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...remainingActions, ...newActions]));
+  isSyncing = false;
   window.dispatchEvent(new CustomEvent('offline-sync-complete'));
 };
 

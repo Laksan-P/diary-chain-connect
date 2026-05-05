@@ -138,6 +138,7 @@ const QualityTestingPage: React.FC = () => {
         title: `Quality: ${localResult}`, 
         description: localReason || 'All parameters within range',
       });
+      setCollections(prev => prev.filter(c => String(c.id) !== String(form.collectionId)));
       setForm({ collectionId: '', snf: '', fat: '', water: '' });
       return;
     }
@@ -148,6 +149,7 @@ const QualityTestingPage: React.FC = () => {
       const res = await submitQualityTest(testData);
       setResult(res);
       toast({ title: `Quality: ${res.result}`, description: res.reason || 'All parameters within range' });
+      setCollections(prev => prev.filter(c => String(c.id) !== String(form.collectionId)));
       setForm({ collectionId: '', snf: '', fat: '', water: '' });
     } catch {
       // API failed — compute locally and save offline
@@ -170,6 +172,7 @@ const QualityTestingPage: React.FC = () => {
         testedAt: new Date().toISOString(),
       });
       toast({ title: `Quality: ${localResult}`, description: localReason || 'All parameters within range' });
+      setCollections(prev => prev.filter(c => String(c.id) !== String(form.collectionId)));
       setForm({ collectionId: '', snf: '', fat: '', water: '' });
     } finally {
       setLoading(false);
