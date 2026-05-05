@@ -143,6 +143,12 @@ export const createChillingCenter = async (data: { name: string; location: strin
   });
 };
 
+/** GET /api/chilling-centers?action=get&id=X */
+export const getChillingCenter = async (id?: number): Promise<ChillingCenter> => {
+  const url = id ? `/api/chilling-centers?action=get&id=${id}` : '/api/chilling-centers?action=get';
+  return apiFetch<ChillingCenter>(url);
+};
+
 // ============ FARMERS ============
 
 /** GET /api/farmers?action=list */

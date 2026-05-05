@@ -434,6 +434,16 @@ export default async function handler(req, res) {
             const rec = `High rejection rate (${rate.toFixed(1)}%). Review farmer collection testing and cooling procedures.`;
             await supabase.from('chilling_centers').update({ performance_status: 'Underperforming', performance_recommendation: rec }).eq('id', dispatch.chilling_center_id);
             
+            // Notify CC owner
+            if (ccUserId) {
+              await supabase.from('notifications').insert({
+                user_id: ccUserId,
+                title: 'performance_warning_title',
+                message: `performance_warning_msg|rate:${rate.toFixed(1)}%`,
+                type: 'system'
+              });
+            }
+
             // Notify Nestle
             const { data: nestleUsers } = await supabase.from('users').select('id').eq('role', 'nestle');
             if (nestleUsers) {
@@ -448,6 +458,18 @@ export default async function handler(req, res) {
             }
           } else {
             // Auto-recovery: If rate is fine, reset to Good
+            const { data: currentCC } = await supabase.from('chilling_centers').select('performance_status').eq('id', dispatch.chilling_center_id).single();
+            if (currentCC?.performance_status === 'Underperforming') {
+              // Only notify if they were previously underperforming
+              if (ccUserId) {
+                await supabase.from('notifications').insert({
+                  user_id: ccUserId,
+                  title: 'performance_restored_title',
+                  message: 'performance_restored_msg',
+                  type: 'system'
+                });
+              }
+            }
             await supabase.from('chilling_centers').update({ performance_status: 'Good', performance_recommendation: null }).eq('id', dispatch.chilling_center_id);
           }
         }

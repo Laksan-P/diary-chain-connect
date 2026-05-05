@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Milk, Users, Beaker, Truck } from 'lucide-react';
+import { Milk, Users, Beaker, Truck, AlertTriangle, TrendingUp, Info } from 'lucide-react';
 import StatCard from '@/components/StatCard';
 import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
-import { getCollections, getFarmers, getDispatches } from '@/services/api';
-import type { MilkCollection } from '@/types';
+import { getCollections, getFarmers, getDispatches, getChillingCenter } from '@/services/api';
+import type { MilkCollection, ChillingCenter } from '@/types';
 import { formatDate, formatQuantity, parseNumber } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const CCDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ const CCDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [farmerCount, setFarmerCount] = useState(0);
   const [dispatchCount, setDispatchCount] = useState(0);
+  const [centerDetails, setCenterDetails] = useState<ChillingCenter | null>(null);
 
   useEffect(() => {
     const centerId = user?.chillingCenterId;
@@ -21,11 +23,13 @@ const CCDashboard: React.FC = () => {
       Promise.all([
         getCollections(centerId), 
         getFarmers(centerId), 
-        getDispatches(centerId)
-      ]).then(([cols, farmers, dispatches]) => {
+        getDispatches(centerId),
+        getChillingCenter(centerId)
+      ]).then(([cols, farmers, dispatches, details]) => {
         setCollections(cols);
         setFarmerCount(farmers.length);
         setDispatchCount(dispatches.length);
+        setCenterDetails(details);
         setLoading(false);
       }).catch(err => {
         console.error('Failed to load dashboard data:', err);
@@ -50,10 +54,38 @@ const CCDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-display font-bold text-foreground">Dashboard Overview</h2>
-        <p className="text-sm text-muted-foreground">{user?.chillingCenterName || 'Chilling Center Dashboard'}</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-display font-bold text-foreground">Dashboard Overview</h2>
+          <p className="text-sm text-muted-foreground">{user?.chillingCenterName || 'Chilling Center Dashboard'}</p>
+        </div>
+        {centerDetails?.performance_status === 'Good' && (
+          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium border border-emerald-100 animate-in fade-in zoom-in">
+            <TrendingUp className="w-3.5 h-3.5" />
+            Performance: High
+          </div>
+        )}
       </div>
+
+      {centerDetails?.performance_status === 'Underperforming' && (
+        <Alert variant="destructive" className="bg-amber-50 border-amber-200 text-amber-900 shadow-sm animate-in slide-in-from-top-2 duration-500">
+          <AlertTriangle className="h-5 w-5 text-amber-600" />
+          <AlertTitle className="text-amber-800 font-bold flex items-center gap-2 text-lg">
+            Performance Alert: Needs Improvement
+          </AlertTitle>
+          <AlertDescription className="text-amber-700 mt-2">
+            <div className="flex flex-col gap-2">
+              <p className="font-medium">
+                {centerDetails.performance_recommendation || 'Your quality pass rate has dropped below the required threshold. Please review your cooling and testing procedures.'}
+              </p>
+              <div className="flex items-center gap-2 mt-1 text-xs opacity-80">
+                <Info className="w-3.5 h-3.5" />
+                This status is automatically calculated based on your last 30 days of dispatch history.
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

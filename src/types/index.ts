@@ -27,6 +27,8 @@ export interface Farmer {
   chillingCenterName?: string;
   totalQuantity?: number;
   createdAt: string;
+  performance_status?: 'Good' | 'Underperforming' | 'Needs Improvement';
+  performance_recommendation?: string | null;
 }
 
 export interface BankAccount {
@@ -47,6 +49,8 @@ export interface ChillingCenter {
   avgQuantity?: number;
   qualityRate?: number;
   revenue?: number;
+  performance_status?: 'Good' | 'Underperforming' | 'Needs Improvement';
+  performance_recommendation?: string | null;
 }
 
 export interface MilkCollection {
@@ -135,7 +139,7 @@ export interface Notification {
   userId: number;
   title: string;
   message: string;
-  type: 'quality_result' | 'payment' | 'dispatch' | 'general';
+  type: 'quality_result' | 'payment' | 'dispatch' | 'general' | 'system';
   isRead: boolean;
   createdAt: string;
 }

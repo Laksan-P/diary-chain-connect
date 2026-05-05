@@ -13,7 +13,30 @@ function getBody(req) {
 export default async function handler(req, res) {
   if (cors(req, res)) return;
 
-  const { action } = req.query;
+  const { action, id: queryId } = req.query;
+  
+  // ────────── GET /api/chilling-centers?action=get&id=X ──────────
+  if (action === 'get' && req.method === 'GET') {
+    const user = authenticate(req, res);
+    if (!user) return;
+    
+    const ccId = queryId || user.chillingCenterId;
+    if (!ccId) return res.status(400).json({ error: 'ID is required' });
+
+    try {
+      const { data, error } = await supabase
+        .from('chilling_centers')
+        .select('*')
+        .eq('id', ccId)
+        .single();
+
+      if (error) throw error;
+      return res.status(200).json(data);
+    } catch (err) {
+      console.error('Get chilling center error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
 
   // ────────── POST /api/chilling-centers?action=create ──────────
   if (action === 'create' && req.method === 'POST') {
