@@ -88,48 +88,67 @@ const DispatchMonitoring: React.FC = () => {
     e.preventDefault();
     if (!testDialog.collectionId || !testDialog.dispatchId) return;
     setTesting(true);
+    const dId = testDialog.dispatchId;
+    const cId = testDialog.collectionId;
+
     try {
       const res = await submitQualityTest({
-        collectionId: testDialog.collectionId,
+        collectionId: cId,
         snf: parseFloat(testForm.snf),
         fat: parseFloat(testForm.fat),
         water: parseFloat(testForm.water),
       });
 
       if (res.result === 'Pass') {
-        toast({ title: 'Quality Check Passed', description: 'Collection has been automatically approved.' });
-        // Update local state instead of full refetch for better performance
-        setDispatches(ds => ds.map(d => {
-          if (d.id === testDialog.dispatchId) {
-            return {
-              ...d,
-              items: (d.items || []).map(i => i.collectionId === testDialog.collectionId ? { ...i, dispatchStatus: 'Approved', qualityResult: 'Pass' } : i)
-            };
-          }
-          return d;
-        }));
+        toast({ title: 'Quality Check Passed', description: 'Collection has been verified.' });
+        
+        // Update local state and check if we should auto-approve the whole dispatch
+        setDispatches(prevDispatches => {
+          return prevDispatches.map(d => {
+            if (d.id === dId) {
+              const updatedItems = (d.items || []).map(i => 
+                i.collectionId === cId ? { ...i, dispatchStatus: 'Approved', qualityResult: 'Pass' } : i
+              );
+              
+              const allItemsApproved = updatedItems.every(i => i.dispatchStatus === 'Approved');
+              
+              if (allItemsApproved) {
+                // Trigger backend approval in the background
+                updateDispatchStatus(dId, 'Approved').then(() => {
+                  toast({ title: 'Dispatch Fully Approved', description: `All items for dispatch #${dId} are verified.` });
+                }).catch(err => console.error('Auto-approval failed:', err));
+                
+                return { ...d, items: updatedItems, status: 'Approved' };
+              }
+              
+              return { ...d, items: updatedItems };
+            }
+            return d;
+          });
+        });
+
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
         setTestForm({ snf: '', fat: '', water: '' });
       } else {
         // Update local state to show 'Fail'
         setDispatches(ds => ds.map(d => {
-          if (d.id === testDialog.dispatchId) {
+          if (d.id === dId) {
             return {
               ...d,
-              items: (d.items || []).map(i => i.collectionId === testDialog.collectionId ? { ...i, dispatchStatus: 'Rejected', qualityResult: 'Fail' } : i)
+              items: (d.items || []).map(i => i.collectionId === cId ? { ...i, dispatchStatus: 'Rejected', qualityResult: 'Fail' } : i)
             };
           }
           return d;
         }));
 
         // Find the farmer info for the failing collection
-        const dispatch = dispatches.find(d => d.id === testDialog.dispatchId);
-        const item = dispatch?.items.find(i => i.collectionId === testDialog.collectionId);
+        const dispatch = dispatches.find(d => d.id === dId);
+        const item = dispatch?.items.find(i => i.collectionId === cId);
         const farmerInfo = item ? ` (ID: ${item.collectionId} - ${item.farmerName})` : '';
 
         // Automatically route to rejection flow with pre-filled reason
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
-        setRejectDialog({ open: true, id: testDialog.dispatchId });
+        setRejectDialog({ open: true, id: dId });
         setRejectReason(`Quality Check Failed: ${res.reason}${farmerInfo}`);
         toast({ title: 'Quality Check Failed', description: `Routing to rejection for: ${res.reason}${farmerInfo}`, variant: 'destructive' });
       }
