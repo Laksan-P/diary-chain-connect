@@ -80,17 +80,36 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      const { data: insertRows, error: insertErr } = await supabase
+      // Soft idempotency check (since offline_id column is missing)
+      const { data: existing } = await supabase
         .from('milk_collections')
-        .insert({
-          farmer_id: farmerId, chilling_center_id: chillingCenterId,
-          date, time, temperature, quantity, milk_type: milkType || 'Cow',
-        })
         .select('id')
-        .single();
+        .match({ 
+          farmer_id: farmerId, 
+          chilling_center_id: chillingCenterId, 
+          date: date, 
+          time: time, 
+          quantity: quantity 
+        })
+        .maybeSingle();
 
-      if (insertErr) throw insertErr;
-      const newId = insertRows.id;
+      let newId;
+      if (existing) {
+        console.log(`[Backend] Collection already exists, skipping duplicate: ${existing.id}`);
+        newId = existing.id;
+      } else {
+        const { data: insertRows, error: insertErr } = await supabase
+          .from('milk_collections')
+          .insert({
+            farmer_id: farmerId, chilling_center_id: chillingCenterId,
+            date, time, temperature, quantity, milk_type: milkType || 'Cow',
+          })
+          .select('id')
+          .single();
+
+        if (insertErr) throw insertErr;
+        newId = insertRows.id;
+      }
 
       const { data: mc, error: fetchErr } = await supabase
         .from('milk_collections')

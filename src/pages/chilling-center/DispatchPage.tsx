@@ -75,10 +75,10 @@ const DispatchPage: React.FC = () => {
   const loadData = async () => {
     if (!centerId) return;
     setIsRefreshing(true);
-    
+
     // Trigger a sync attempt whenever we refresh
     if (navigator.onLine) {
-      syncActions().catch(() => {});
+      syncActions().catch(() => { });
     }
 
     try {
@@ -110,6 +110,7 @@ const DispatchPage: React.FC = () => {
       const allQuality = getPendingByType('quality');
       const allDispatches = getPendingByType('dispatch');
 
+      // Update server collections with local quality/dispatch tests first
       // Update server collections with local quality/dispatch tests first
       const updatedC = c.map((col: any) => {
         if (!col) return null;

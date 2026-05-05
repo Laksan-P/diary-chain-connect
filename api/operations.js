@@ -43,6 +43,18 @@ export default async function handler(req, res) {
       else if (snf < 8.5) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
       else if (water > 0.5) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
 
+      // Soft idempotency check (since offline_id column is missing)
+      const { data: existing } = await supabase
+        .from('quality_tests')
+        .select('id')
+        .match({ collection_id: collectionId })
+        .maybeSingle();
+
+      if (existing) {
+        console.log(`[Backend] Quality test already exists for collection ${collectionId}, skipping.`);
+        return res.status(200).json({ id: existing.id, success: true });
+      }
+
       const { data: qtRows, error: qtErr } = await supabase
         .from('quality_tests')
         .insert({ collection_id: collectionId, fat, snf, water, result: resultValue, reason: reasonValue })
@@ -436,15 +448,30 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      const insertData = {
-        chilling_center_id: chillingCenterId, transporter_name: transporterName,
-        vehicle_number: vehicleNumber, driver_contact: driverContact,
-        dispatch_date: dispatchDate,
-      };
+      // Soft idempotency check (since offline_id column is missing)
+      const { data: existing } = await supabase
+        .from('dispatches')
+        .select('id')
+        .match({
+          chilling_center_id: chillingCenterId,
+          transporter_name: transporterName,
+          dispatch_date: dispatchDate,
+          vehicle_number: vehicleNumber
+        })
+        .maybeSingle();
+
+      if (existing) {
+        console.log(`[Backend] Dispatch already exists, skipping duplicate: ${existing.id}`);
+        return res.status(200).json({ id: existing.id, success: true });
+      }
 
       const { data: dResult, error: dErr } = await supabase
         .from('dispatches')
-        .insert(insertData)
+        .insert({
+          chilling_center_id: chillingCenterId, transporter_name: transporterName,
+          vehicle_number: vehicleNumber, driver_contact: driverContact,
+          dispatch_date: dispatchDate,
+        })
         .select('id')
         .single();
 
@@ -468,25 +495,19 @@ export default async function handler(req, res) {
           throw new Error(`Collection not found for item: ${offId || 'Unknown'}`);
         }
 
-        const numericColId = Number(colId);
-        finalItems.push(numericColId);
+        finalItems.push(colId);
 
         const { error: itemErr } = await supabase.from('dispatch_items').insert({
           dispatch_id: dispatchId,
-          collection_id: numericColId
+          collection_id: colId
         });
         if (itemErr) throw itemErr;
       }
 
       if (finalItems.length > 0) {
-        console.log(`[Backend] Updating ${finalItems.length} collections to Dispatched:`, finalItems);
-        const { error: updateErr } = await supabase.from('milk_collections')
+        await supabase.from('milk_collections')
           .update({ dispatch_status: 'Dispatched' })
           .in('id', finalItems);
-        
-        if (updateErr) {
-          console.error('[Backend] Failed to update collection statuses:', updateErr.message);
-        }
       }
 
       // 2. Fetch farmers and users for these collections (Manual Join for robustness)

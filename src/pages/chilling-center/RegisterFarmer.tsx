@@ -70,9 +70,10 @@ const RegisterFarmer: React.FC = () => {
       
       // Add to local farmers cache so they appear in dropdown immediately
       const cachedFarmers = getCache('farmers') || [];
+      const tempId = `OFF-${Date.now()}`;
       cachedFarmers.push({
         id: tempId,
-        farmerId: `OFF-${tempId.toString().slice(-4)}`,
+        farmerId: tempId,
         name: form.name,
         nic: form.nic,
         phone: form.phone,

@@ -73,18 +73,17 @@ export const syncActions = async () => {
     const allActions = getPendingActions();
     let changed = false;
 
-    allActions.forEach(action => {
+    const updatedActions = allActions.map(action => {
       if (type === 'collection') {
-        // Update dispatches referencing this collection
         if (action.type === 'dispatch' && action.data.items) {
-          action.data.items.forEach((item: any) => {
+          action.data.items = action.data.items.map((item: any) => {
             if (item.offlineCollectionId === offlineId) {
-              item.collectionId = serverId;
               changed = true;
+              return { ...item, collectionId: serverId };
             }
+            return item;
           });
         }
-        // Update quality tests referencing this collection
         if (action.type === 'quality' && action.data.offlineCollectionId === offlineId) {
           action.data.collectionId = serverId;
           changed = true;
@@ -95,43 +94,42 @@ export const syncActions = async () => {
           changed = true;
         }
       }
+      return action;
     });
 
     if (changed) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allActions));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedActions));
     }
   };
 
   for (const action of farmers) {
     try {
-      console.log(`[OfflineSync] Registering farmer: ${action.data.name}`);
+      console.log(`[OfflineSync] Syncing farmer: ${action.data.name}`);
       const result = await registerFarmerByCenter({ ...action.data, offline_id: action.id });
       if (result?.userId) {
         idMappings.farmers[action.id] = result.userId;
         updatePendingIdReferences(action.id, result.userId, 'farmer');
+        removePendingAction(action.id); // Remove immediately on success
       }
     } catch (error) {
-      console.error(`[OfflineSync] Failed to sync farmer ${action.id}:`, error);
-      remainingActions.push(action);
+      console.error(`[OfflineSync] Farmer sync failed:`, error);
     }
   }
 
   for (const action of collections) {
     try {
       const resolvedFarmerId = idMappings.farmers[action.data.farmerId] || action.data.farmerId;
-      console.log(`[OfflineSync] Syncing collection: Farmer ${resolvedFarmerId}, Qty ${action.data.quantity}`);
       const result = await createCollection({ ...action.data, farmerId: resolvedFarmerId, offline_id: action.id });
       if (result?.id) {
         idMappings.collections[action.id] = result.id;
         updatePendingIdReferences(action.id, result.id, 'collection');
+        removePendingAction(action.id); // Remove immediately on success
       }
     } catch (error) {
-      console.error(`[OfflineSync] Failed to sync collection ${action.id}:`, error);
-      remainingActions.push(action);
+      console.error(`[OfflineSync] Collection sync failed:`, error);
     }
   }
 
-  // Save updated mappings
   saveCache('sync_id_mappings', idMappings);
 
   for (const action of qualities) {
@@ -140,61 +138,45 @@ export const syncActions = async () => {
         ? (idMappings.collections[action.data.offlineCollectionId] || action.data.collectionId)
         : action.data.collectionId;
 
-      console.log(`[OfflineSync] Syncing quality test for collection: ${realId}`);
       await submitQualityTest({
         ...action.data,
         collectionId: Number(realId) || 0,
         offlineCollectionId: action.data.offlineCollectionId,
         offline_id: action.id,
       });
+      removePendingAction(action.id); // Remove immediately on success
     } catch (error) {
-      console.error(`[OfflineSync] Failed to sync quality test ${action.id}:`, error);
-      remainingActions.push(action);
+      console.error(`[OfflineSync] Quality sync failed:`, error);
     }
   }
 
   for (const action of dispatches) {
     try {
-      // Final resolution of IDs
       const resolvedItems = action.data.items?.map((item: any) => {
         const realId = item.offlineCollectionId
           ? (idMappings.collections[item.offlineCollectionId] || item.collectionId)
           : item.collectionId;
-
-        return {
-          ...item,
-          collectionId: Number(realId) || 0,
-          offlineCollectionId: item.offlineCollectionId
-        };
+        return { ...item, collectionId: Number(realId) || 0 };
       });
 
-      console.log(`[OfflineSync] Sync started for record ${action.id}`);
-      const payload = {
-        ...action.data,
-        items: resolvedItems,
-        offline_id: action.id,
-      };
-      
-      const result = await createDispatch(payload);
-
+      const result = await createDispatch({ ...action.data, items: resolvedItems, offline_id: action.id });
       if (result && result.id) {
-        console.log(`[OfflineSync] Dispatch sync success. Server ID: ${result.id}`);
-      } else {
-        throw new Error("Invalid sync response");
+        removePendingAction(action.id); // Remove immediately on success
       }
     } catch (error) {
-      console.error(`[OfflineSync] Dispatch sync failed for ${action.id}:`, error);
-      remainingActions.push(action);
+      console.error(`[OfflineSync] Dispatch sync failed:`, error);
     }
   }
 
-  // Preserve any new actions that were created WHILE we were syncing
-  const currentActions = getPendingActions();
-  const newActions = currentActions.filter(ca => !actions.some(a => a.id === ca.id));
+  console.log(`[OfflineSync] Sync cycle complete.`);
+  
+  // Final Cache Cleanup to prevent duplication in UI
+  const farmersCache = getCache('farmers') || [];
+  const updatedFarmersCache = farmersCache.filter((f: any) => !String(f.id).startsWith('OFF-') && !String(f.farmerId).startsWith('OFF-'));
+  if (farmersCache.length !== updatedFarmersCache.length) {
+    saveCache('farmers', updatedFarmersCache);
+  }
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...remainingActions, ...newActions]));
-
-  console.log(`[OfflineSync] Sync cycle complete. Remaining: ${remainingActions.length}`);
   isSyncing = false;
   window.dispatchEvent(new CustomEvent('offline-sync-complete'));
 };
