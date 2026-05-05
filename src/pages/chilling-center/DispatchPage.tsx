@@ -75,6 +75,11 @@ const DispatchPage: React.FC = () => {
   const loadData = async () => {
     if (!centerId) return;
     setIsRefreshing(true);
+    
+    // Trigger a sync attempt whenever we refresh
+    if (navigator.onLine) {
+      syncActions().catch(() => {});
+    }
 
     try {
       // 1. Load from cache immediately for instant UI
@@ -113,16 +118,21 @@ const DispatchPage: React.FC = () => {
 
       const maxId = d.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
 
-      const offlinePendingDispatches = allDispatches.map((a, index) => {
-        if (!a.data) return null;
-        return {
-          ...a.data,
-          id: maxId + index + 1,
-          realOfflineId: a.id,
-          status: 'Pending Sync',
-          isOffline: true
-        };
-      }).filter(Boolean) as Dispatch[];
+      const offlinePendingDispatches = allDispatches
+        .filter(a => {
+          // If the server already has a record with this offline_id, don't show the pending one
+          return !d.some((serverRecord: any) => serverRecord.offline_id === a.id);
+        })
+        .map((a, index) => {
+          if (!a.data) return null;
+          return {
+            ...a.data,
+            id: maxId + index + 1,
+            realOfflineId: a.id,
+            status: 'Pending Sync',
+            isOffline: true
+          };
+        }).filter(Boolean) as Dispatch[];
       const mergedDispatches = [...offlinePendingDispatches, ...d].sort((a, b) => {
         const dateA = new Date(a.dispatchDate || a.createdAt || 0).getTime();
         const dateB = new Date(b.dispatchDate || b.createdAt || 0).getTime();

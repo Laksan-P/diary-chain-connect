@@ -356,7 +356,7 @@ export default async function handler(req, res) {
         .from('dispatches')
         .select(`
           id, chilling_center_id, transporter_name, vehicle_number, driver_contact,
-          dispatch_date, status, rejection_reason, created_at,
+          dispatch_date, status, rejection_reason, created_at, offline_id,
           chilling_centers (name)
         `);
 
