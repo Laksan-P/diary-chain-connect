@@ -176,7 +176,7 @@ const PerformanceDashboard: React.FC = () => {
                   <CardContent>
                     <div className="h-[250px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={detailedPerf.trends}>
+                        <AreaChart key={selectedId} data={detailedPerf.trends}>
                           <defs>
                             <linearGradient id="colorVol" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#0d47a1" stopOpacity={0.1}/>
@@ -206,7 +206,7 @@ const PerformanceDashboard: React.FC = () => {
                   <CardContent>
                     <div className="h-[250px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={detailedPerf.trends}>
+                        <BarChart key={selectedId} data={detailedPerf.trends}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                           <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} domain={[0, 100]} />
@@ -219,6 +219,7 @@ const PerformanceDashboard: React.FC = () => {
                             radius={[4, 4, 0, 0]} 
                             name="Pass Rate %"
                             minPointSize={5}
+                            label={{ position: 'top', fontSize: 8, fill: '#666', formatter: (v: number) => `${v}%` }}
                           />
                         </BarChart>
                       </ResponsiveContainer>

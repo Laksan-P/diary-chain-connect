@@ -709,18 +709,19 @@ export default async function handler(req, res) {
 
         const trendArray = Object.keys(trends).sort().map(month => {
           const t = trends[month];
+          const rate = t.total > 0 ? (t.passCount / t.total) * 100 : 100;
           return {
             month,
-            volume: t.volume,
-            passRate: t.total > 0 ? (t.passCount / t.total) * 100 : 100
+            volume: Number(t.volume.toFixed(2)),
+            passRate: Number(rate.toFixed(1))
           };
         });
 
         return res.status(200).json({ 
           status: center?.performance_status || 'Good', 
           recommendation: center?.performance_recommendation, 
-          passRate: 100 - rejectionRate, 
-          rejectionRate, 
+          passRate: Number((100 - rejectionRate).toFixed(1)), 
+          rejectionRate: Number(rejectionRate.toFixed(1)), 
           trends: trendArray 
         });
       }
