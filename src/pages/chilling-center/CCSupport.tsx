@@ -126,7 +126,7 @@ export default function CCSupport() {
           <Dialog open={isNewTicketOpen} onOpenChange={setIsNewTicketOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
-                <Plus className="w-4 h-4" /> New Ticket to Nestlé
+                <Plus className="w-4 h-4" /> New issue to Nestlé
               </Button>
             </DialogTrigger>
             <DialogContent>
