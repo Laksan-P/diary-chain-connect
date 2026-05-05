@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     try {
       const body = getBody(req);
       let { collectionId, snf, fat, water, offlineCollectionId } = body;
-      
+
       if ((!collectionId || collectionId === 0) && offlineCollectionId) {
         const { data: col } = await supabase.from('milk_collections').select('id').eq('offline_id', offlineCollectionId).maybeSingle();
         if (col) collectionId = col.id;
@@ -364,24 +364,8 @@ export default async function handler(req, res) {
         query = query.eq('chilling_center_id', req.query.centerId);
       }
 
-      let { data: dispatches, error } = await query.order('id', { ascending: false });
-
-      if (error && error.message?.includes('offline_id')) {
-        console.warn('Falling back: offline_id column missing');
-        const fallbackQuery = supabase
-          .from('dispatches')
-          .select(`
-            id, chilling_center_id, transporter_name, vehicle_number, driver_contact,
-            dispatch_date, status, rejection_reason, created_at,
-            chilling_centers (name)
-          `);
-        if (req.query.centerId) fallbackQuery.eq('chilling_center_id', req.query.centerId);
-        const { data: fallbackData, error: fallbackErr } = await fallbackQuery.order('id', { ascending: false });
-        if (fallbackErr) throw fallbackErr;
-        dispatches = fallbackData;
-      } else if (error) {
-        throw error;
-      }
+      const { data: dispatches, error } = await query.order('id', { ascending: false });
+      if (error) throw error;
 
       for (const d of dispatches) {
         const { data: items, error: iErr } = await supabase
@@ -428,7 +412,7 @@ export default async function handler(req, res) {
     try {
       const body = getBody(req);
       const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items, offline_id } = body;
-      
+
       // Idempotency check for offline sync
       if (offline_id) {
         const { data: existing } = await supabase.from('dispatches').select('id').eq('offline_id', offline_id).maybeSingle();
@@ -442,7 +426,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      const { data: dResult, error: dErr } = await supabase
+      let { data: dResult, error: dErr } = await supabase
         .from('dispatches')
         .insert({
           chilling_center_id: chillingCenterId, transporter_name: transporterName,
@@ -452,6 +436,22 @@ export default async function handler(req, res) {
         })
         .select('id')
         .single();
+
+      if (dErr && dErr.message?.includes('offline_id')) {
+        console.warn('POST fallback: offline_id column missing, retrying without it');
+        const fallbackRes = await supabase
+          .from('dispatches')
+          .insert({
+            chilling_center_id: chillingCenterId, transporter_name: transporterName,
+            vehicle_number: vehicleNumber, driver_contact: driverContact,
+            dispatch_date: dispatchDate
+          })
+          .select('id')
+          .single();
+        dResult = fallbackRes.data;
+        dErr = fallbackRes.error;
+      }
+
       if (dErr) throw dErr;
       const dispatchId = dResult.id;
 
@@ -545,6 +545,10 @@ export default async function handler(req, res) {
         items: items.map((item, i) => ({ id: i + 1, dispatchId, collectionId: item.collectionId })),
         totalQuantity: 0,
       });
+
+      console.log(`[Dispatch] Created successfully: ${dispatch.id} with ${items.length} items`);
+
+      console.log(`[Dispatch] Created successfully: ${dispatch.id} with ${items.length} items`);
     } catch (err) {
       console.error('Create dispatch error:', err);
       return res.status(500).json({ error: 'Server error' });

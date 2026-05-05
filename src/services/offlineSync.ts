@@ -66,7 +66,7 @@ export const syncActions = async () => {
   // Map offlineId → real server ID
   const collectionIdMap: Record<string, number | string> = {};
   const farmerIdMap: Record<number, number> = {};
-  
+
   // We need api import for farmer registration
   const { registerFarmerByCenter } = await import('@/services/api');
 
@@ -98,8 +98,8 @@ export const syncActions = async () => {
   for (const action of qualities) {
     try {
       // Replace offlineCollectionId with the real server ID if we just synced it
-      const realId = action.data.offlineCollectionId 
-        ? (collectionIdMap[action.data.offlineCollectionId] || action.data.collectionId) 
+      const realId = action.data.offlineCollectionId
+        ? (collectionIdMap[action.data.offlineCollectionId] || action.data.collectionId)
         : action.data.collectionId;
 
       console.log(`[OfflineSync] Syncing quality test for collection: ${realId || action.data.offlineCollectionId}`);
@@ -119,10 +119,10 @@ export const syncActions = async () => {
     try {
       // Resolve any offline collection IDs to real server IDs
       const resolvedItems = action.data.items?.map((item: any) => {
-        const realId = item.offlineCollectionId 
-          ? (collectionIdMap[item.offlineCollectionId] || item.collectionId) 
+        const realId = item.offlineCollectionId
+          ? (collectionIdMap[item.offlineCollectionId] || item.collectionId)
           : item.collectionId;
-        
+
         return {
           ...item,
           collectionId: realId || 0,
@@ -131,22 +131,31 @@ export const syncActions = async () => {
       });
 
       console.log(`[OfflineSync] Sync started for record ${action.id}`);
-      console.log(`[OfflineSync] Sending record ID ${action.id} to backend API...`);
-      const result = await createDispatch({
+      const payload = {
         ...action.data,
         items: resolvedItems,
         offline_id: action.id,
-      });
+      };
+      
+      console.log("[OfflineSync] Sending payload:", JSON.stringify(payload, null, 2));
+      
+      const result = await createDispatch(payload);
 
-      console.log(`[OfflineSync] API success for record ${action.id}. Server ID: ${result?.id}`);
-      
-      // Option A: Update local status before removal
-      action.data.status = 'Dispatched';
-      action.syncedServerId = result?.id as any;
-      console.log(`[OfflineSync] Updating local status for ${action.id} to "Dispatched"`);
-      
+      if (result && result.id) {
+        console.log(`[OfflineSync] API response success. Server ID: ${result.id}`);
+        console.log(`[OfflineSync] Insert success for record ${action.id}`);
+        
+        // Update local status before removal
+        action.data.status = 'Dispatched';
+        action.syncedServerId = result.id as any;
+        console.log(`[OfflineSync] Updating local status for ${action.id} to "Dispatched"`);
+      } else {
+        console.error(`[OfflineSync] API response error: Invalid result for ${action.id}`);
+        throw new Error("Invalid sync response");
+      }
     } catch (error) {
-      console.error(`[OfflineSync] Failed to sync dispatch ${action.id}:`, error);
+      console.error(`[OfflineSync] Insert failed for ${action.id}:`, error);
+      console.error(`[OfflineSync] API response error for ${action.id}`);
       remainingActions.push(action);
     }
   }
@@ -154,11 +163,10 @@ export const syncActions = async () => {
   // Preserve any new actions that were created WHILE we were syncing
   const currentActions = getPendingActions();
   const newActions = currentActions.filter(ca => !actions.some(a => a.id === ca.id));
-  
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...remainingActions, ...newActions]));
-  
+
   console.log(`[OfflineSync] Sync cycle complete. Remaining: ${remainingActions.length}`);
-  console.log('[OfflineSync] UI refreshed via custom event.');
   isSyncing = false;
   window.dispatchEvent(new CustomEvent('offline-sync-complete'));
 };

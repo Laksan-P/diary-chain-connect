@@ -229,7 +229,7 @@ const DispatchMonitoring: React.FC = () => {
 
                   <tr
                     className={`hover:bg-muted/30 transition-colors cursor-pointer ${expandedRow === dispatch.id ? 'bg-muted/20' : ''}`}
-                    onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : Number(dispatch.id))}
+                    onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id as any)}
                   >
                     <td className="px-6 py-4">
                       <div className="font-semibold text-foreground">#{dispatch.id}</div>
@@ -275,7 +275,7 @@ const DispatchMonitoring: React.FC = () => {
                                 <Button
                                   size="sm"
                                   className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 shadow-sm"
-                                  onClick={() => handleApprove(Number(dispatch.id))}
+                                  onClick={() => handleApprove(dispatch.id as any)}
                                 >
                                   <ClipboardCheck className="w-3.5 h-3.5 mr-1" /> Approve
                                 </Button>
@@ -287,7 +287,7 @@ const DispatchMonitoring: React.FC = () => {
                                 size="sm"
                                 variant="outline"
                                 className="text-primary border-primary/20 hover:bg-primary/5 h-8 px-3"
-                                onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : Number(dispatch.id))}
+                                onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id as any)}
                               >
                                 <Beaker className="w-3.5 h-3.5 mr-1" /> Inspect Quality
                               </Button>
@@ -297,7 +297,7 @@ const DispatchMonitoring: React.FC = () => {
                             size="sm"
                             variant="destructive"
                             className="h-8 px-3 group"
-                            onClick={() => setRejectDialog({ open: true, id: Number(dispatch.id) })}
+                            onClick={() => setRejectDialog({ open: true, id: dispatch.id as any })}
                           >
                             <X className="w-3.5 h-3.5 mr-1 group-hover:rotate-90 transition-transform" /> Reject
                           </Button>
@@ -307,7 +307,7 @@ const DispatchMonitoring: React.FC = () => {
                           size="sm"
                           variant="ghost"
                           className="h-8 px-2 text-muted-foreground"
-                          onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : Number(dispatch.id))}
+                          onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id as any)}
                         >
                           {expandedRow === dispatch.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </Button>
@@ -392,7 +392,7 @@ const DispatchMonitoring: React.FC = () => {
                                                 size="sm"
                                                 variant="outline"
                                                 className="h-6 text-[10px] font-bold uppercase tracking-tight"
-                                                onClick={() => setTestDialog({ open: true, collectionId: item.collectionId, dispatchId: Number(dispatch.id) })}
+                                                onClick={() => setTestDialog({ open: true, collectionId: item.collectionId, dispatchId: dispatch.id as any })}
                                               >
                                                 Verify Quality
                                               </Button>
