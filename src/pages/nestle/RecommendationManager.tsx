@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  Save, 
-  X, 
-  AlertTriangle, 
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  Save,
+  X,
+  AlertTriangle,
   Info,
   BookOpen,
   Languages,
@@ -26,7 +26,7 @@ const RecommendationManager = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState<number | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  
+
   const initialFormState = {
     issue_type: 'SNF',
     title_en: '',
@@ -63,12 +63,12 @@ const RecommendationManager = () => {
     try {
       const payload = isEditing ? { ...form, id: isEditing } : form;
       await saveRecommendation(payload);
-      
-      toast({ 
-        title: 'Success', 
-        description: `Recommendation ${isEditing ? 'updated' : 'created'} successfully` 
+
+      toast({
+        title: 'Success',
+        description: `Recommendation ${isEditing ? 'updated' : 'created'} successfully`
       });
-      
+
       setIsAdding(false);
       setIsEditing(null);
       setForm(initialFormState);
@@ -109,7 +109,7 @@ const RecommendationManager = () => {
   const addGuidanceItem = (lang: 'en' | 'si' | 'ta') => {
     const input = guidanceInput[lang].trim();
     if (!input) return;
-    
+
     setForm(prev => ({
       ...prev,
       [`guidance_${lang}`]: [...(prev[`guidance_${lang}` as keyof typeof form] as string[] || []), input]
@@ -127,8 +127,8 @@ const RecommendationManager = () => {
   return (
     <div className="p-6 space-y-6">
       {(isAdding || isEditing) && (
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={() => { setIsAdding(false); setIsEditing(null); }}
           className="mb-2 -ml-2 text-muted-foreground hover:text-foreground"
         >
@@ -158,14 +158,14 @@ const RecommendationManager = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Issue Type</Label>
-                <Input value={form.issue_type} onChange={e => setForm({...form, issue_type: e.target.value})} placeholder="e.g. SNF, FAT, WATER" />
+                <Input value={form.issue_type} onChange={e => setForm({ ...form, issue_type: e.target.value })} placeholder="e.g. SNF, FAT, WATER" />
               </div>
               <div className="space-y-2">
                 <Label>Severity</Label>
-                <select 
+                <select
                   className="w-full p-2 border rounded-md bg-background"
                   value={form.severity}
-                  onChange={e => setForm({...form, severity: e.target.value as any})}
+                  onChange={e => setForm({ ...form, severity: e.target.value as any })}
                 >
                   <option value="LOW">Low</option>
                   <option value="MEDIUM">Medium</option>
@@ -182,16 +182,16 @@ const RecommendationManager = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Title</Label>
-                  <Input value={form.title_en} onChange={e => setForm({...form, title_en: e.target.value})} />
+                  <Input value={form.title_en} onChange={e => setForm({ ...form, title_en: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
-                  <Textarea value={form.description_en} onChange={e => setForm({...form, description_en: e.target.value})} />
+                  <Textarea value={form.description_en} onChange={e => setForm({ ...form, description_en: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Guidance Items</Label>
                   <div className="flex gap-2">
-                    <Input value={guidanceInput.en} onChange={e => setGuidanceInput({...guidanceInput, en: e.target.value})} placeholder="Add a step..." />
+                    <Input value={guidanceInput.en} onChange={e => setGuidanceInput({ ...guidanceInput, en: e.target.value })} placeholder="Add a step..." />
                     <Button type="button" variant="secondary" onClick={() => addGuidanceItem('en')}>Add</Button>
                   </div>
                   <ul className="mt-2 space-y-1">
@@ -212,16 +212,16 @@ const RecommendationManager = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Title</Label>
-                  <Input value={form.title_si} onChange={e => setForm({...form, title_si: e.target.value})} />
+                  <Input value={form.title_si} onChange={e => setForm({ ...form, title_si: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
-                  <Textarea value={form.description_si} onChange={e => setForm({...form, description_si: e.target.value})} />
+                  <Textarea value={form.description_si} onChange={e => setForm({ ...form, description_si: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Guidance Items</Label>
                   <div className="flex gap-2">
-                    <Input value={guidanceInput.si} onChange={e => setGuidanceInput({...guidanceInput, si: e.target.value})} placeholder="Add a step..." />
+                    <Input value={guidanceInput.si} onChange={e => setGuidanceInput({ ...guidanceInput, si: e.target.value })} placeholder="Add a step..." />
                     <Button type="button" variant="secondary" onClick={() => addGuidanceItem('si')}>Add</Button>
                   </div>
                   <ul className="mt-2 space-y-1">
@@ -242,16 +242,16 @@ const RecommendationManager = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Title</Label>
-                  <Input value={form.title_ta} onChange={e => setForm({...form, title_ta: e.target.value})} />
+                  <Input value={form.title_ta} onChange={e => setForm({ ...form, title_ta: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
-                  <Textarea value={form.description_ta} onChange={e => setForm({...form, description_ta: e.target.value})} />
+                  <Textarea value={form.description_ta} onChange={e => setForm({ ...form, description_ta: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Guidance Items</Label>
                   <div className="flex gap-2">
-                    <Input value={guidanceInput.ta} onChange={e => setGuidanceInput({...guidanceInput, ta: e.target.value})} placeholder="Add a step..." />
+                    <Input value={guidanceInput.ta} onChange={e => setGuidanceInput({ ...guidanceInput, ta: e.target.value })} placeholder="Add a step..." />
                     <Button type="button" variant="secondary" onClick={() => addGuidanceItem('ta')}>Add</Button>
                   </div>
                   <ul className="mt-2 space-y-1">
