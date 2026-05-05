@@ -20,19 +20,23 @@ const CCDashboard: React.FC = () => {
   useEffect(() => {
     const centerId = user?.chillingCenterId;
     if (centerId) {
-      Promise.all([
+      // Use allSettled so one failing API doesn't block the entire dashboard
+      Promise.allSettled([
         getCollections(centerId), 
         getFarmers(centerId), 
         getDispatches(centerId),
         getChillingCenter(centerId)
-      ]).then(([cols, farmers, dispatches, details]) => {
-        setCollections(cols);
-        setFarmerCount(farmers.length);
-        setDispatchCount(dispatches.length);
-        setCenterDetails(details);
-        setLoading(false);
-      }).catch(err => {
-        console.error('Failed to load dashboard data:', err);
+      ]).then(([colsResult, farmersResult, dispatchesResult, detailsResult]) => {
+        if (colsResult.status === 'fulfilled') setCollections(colsResult.value);
+        if (farmersResult.status === 'fulfilled') setFarmerCount(farmersResult.value.length);
+        if (dispatchesResult.status === 'fulfilled') setDispatchCount(dispatchesResult.value.length);
+        if (detailsResult.status === 'fulfilled') setCenterDetails(detailsResult.value);
+        
+        // Log any failures for debugging
+        [colsResult, farmersResult, dispatchesResult, detailsResult].forEach((r, i) => {
+          if (r.status === 'rejected') console.error(`Dashboard API call ${i} failed:`, r.reason);
+        });
+
         setLoading(false);
       });
     } else {
