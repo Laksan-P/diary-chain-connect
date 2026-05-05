@@ -24,14 +24,50 @@ export default async function handler(req, res) {
     if (!ccId) return res.status(400).json({ error: 'ID is required' });
 
     try {
-      const { data, error } = await supabase
+      // 1. Fetch CC details
+      const { data: cc, error: ccErr } = await supabase
         .from('chilling_centers')
         .select('*')
         .eq('id', ccId)
         .single();
 
-      if (error) throw error;
-      return res.status(200).json(data);
+      if (ccErr) throw ccErr;
+
+      // 2. Perform On-demand Performance Check (Last 30 Days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { data: recentDispatches } = await supabase
+        .from('dispatches')
+        .select('status')
+        .eq('chilling_center_id', ccId)
+        .gte('dispatch_date', thirtyDaysAgo.toISOString().split('T')[0]);
+
+      let currentStatus = cc.performance_status;
+      let currentRec = cc.performance_recommendation;
+
+      if (recentDispatches && recentDispatches.length >= 3) { // Lowered threshold to 3 for faster feedback
+        const total = recentDispatches.length;
+        const rejected = recentDispatches.filter(d => d.status === 'Rejected').length;
+        const rate = (rejected / total) * 100;
+
+        if (rate > 10) {
+          currentStatus = 'Underperforming';
+          currentRec = `High rejection rate (${rate.toFixed(1)}%). Please review collection and cooling procedures.`;
+        } else {
+          currentStatus = 'Good';
+          currentRec = null;
+        }
+
+        // Update DB if status changed
+        if (currentStatus !== cc.performance_status) {
+          await supabase.from('chilling_centers')
+            .update({ performance_status: currentStatus, performance_recommendation: currentRec })
+            .eq('id', ccId);
+        }
+      }
+
+      return res.status(200).json({ ...cc, performance_status: currentStatus, performance_recommendation: currentRec });
     } catch (err) {
       console.error('Get chilling center error:', err);
       return res.status(500).json({ error: 'Server error' });
