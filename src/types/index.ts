@@ -99,6 +99,8 @@ export interface Dispatch {
   items: DispatchItem[];
   totalQuantity?: number;
   offline_id?: string;
+  isOffline?: boolean;
+  realOfflineId?: string;
   createdAt: string;
 }
 

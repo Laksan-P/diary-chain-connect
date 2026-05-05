@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Truck, RefreshCcw } from 'lucide-react';
+import { Truck, RefreshCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { getCollections, createDispatch, getDispatches } from '@/services/api';
+import { getCollections, createDispatch, getDispatches, deleteDispatch } from '@/services/api';
 import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, Dispatch } from '@/types';
-import { savePendingAction, isOnline, saveCache, getCache, getPendingByType, syncActions } from '@/services/offlineSync';
+import { savePendingAction, isOnline, saveCache, getCache, getPendingByType, syncActions, removePendingAction } from '@/services/offlineSync';
 import { formatDate } from '@/lib/utils';
 import {
   Dialog,
@@ -252,6 +252,23 @@ const DispatchPage: React.FC = () => {
     }
   };
 
+  const handleDelete = async (dispatch: Dispatch) => {
+    if (!confirm('Are you sure you want to delete this dispatch record?')) return;
+
+    try {
+      if (dispatch.isOffline && dispatch.realOfflineId) {
+        removePendingAction(dispatch.realOfflineId);
+        toast({ title: 'Removed', description: 'Pending dispatch removed locally' });
+      } else {
+        await deleteDispatch(Number(dispatch.id));
+        toast({ title: 'Deleted', description: 'Dispatch record deleted successfully' });
+      }
+      loadData();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to delete dispatch', variant: 'destructive' });
+    }
+  };
+
   const dispatchColumns = [
     { key: 'id', header: 'ID', render: (r: Dispatch) => `#${r.id}` },
     { key: 'transporterName', header: 'Transporter' },
@@ -268,11 +285,24 @@ const DispatchPage: React.FC = () => {
         const isManualReject = r.status === 'Rejected' &&
           r.rejectionReason &&
           !r.rejectionReason.startsWith('Quality Check Failed');
-
         return (
           <StatusBadge status={isManualReject ? 'Rejected' : (hasPass && hasFail ? 'Mixed' : r.status)} />
         );
       }
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (r: Dispatch) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleDelete(r)}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      ),
     },
   ];
 

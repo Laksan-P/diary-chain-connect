@@ -223,6 +223,13 @@ export const updateDispatchStatus = async (id: number, status: 'Approved' | 'Rej
   });
 };
 
+/** DELETE /api/operations?action=delete-dispatch&id=X */
+export const deleteDispatch = async (id: number): Promise<{ success: boolean }> => {
+  return apiFetch<{ success: boolean }>(`/api/operations?action=delete-dispatch&id=${id}`, {
+    method: 'DELETE',
+  });
+};
+
 // ============ PRICING RULES ============
 
 /** GET /api/operations?action=pricing-rules */

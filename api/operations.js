@@ -689,6 +689,31 @@ export default async function handler(req, res) {
     }
   }
 
+  // ────────── DELETE /api/operations?action=delete-dispatch&id=X ──────────
+  if (action === 'delete-dispatch' && req.method === 'DELETE') {
+    if (!id) return res.status(400).json({ error: 'id is required' });
+
+    try {
+      // 1. Get linked collections to reset their status
+      const { data: items } = await supabase.from('dispatch_items').select('collection_id').eq('dispatch_id', id);
+      const colIds = items?.map(i => i.collection_id).filter(Boolean) || [];
+
+      // 2. Revert collections to 'Pending'
+      if (colIds.length > 0) {
+        await supabase.from('milk_collections').update({ dispatch_status: 'Pending' }).in('id', colIds);
+      }
+
+      // 3. Delete dispatch (cascade will handle dispatch_items if set, otherwise delete manually)
+      await supabase.from('dispatch_items').delete().eq('dispatch_id', id);
+      await supabase.from('dispatches').delete().eq('id', id);
+
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('Delete dispatch error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   // ══════════════════════════════════════════════════
   //  PRICING RULES
   // ══════════════════════════════════════════════════
