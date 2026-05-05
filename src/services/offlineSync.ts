@@ -55,7 +55,7 @@ export const syncActions = async () => {
   const dispatches = actions.filter(a => a.type === 'dispatch');
 
   // Map offlineId → real server ID
-  const collectionIdMap: Record<string, number> = {};
+  const collectionIdMap: Record<string, number | string> = {};
   const farmerIdMap: Record<number, number> = {};
   
   // We need api import for farmer registration
@@ -113,12 +113,29 @@ export const syncActions = async () => {
   for (const action of dispatches) {
     try {
       // Resolve any offline collection IDs to real server IDs
-      const resolvedItems = action.data.items?.map((item: any) => ({
-        ...item,
-        collectionId: item.offlineCollectionId
-          ? (collectionIdMap[item.offlineCollectionId] ?? 0)
-          : item.collectionId,
-      }));
+      let allResolved = true;
+      const resolvedItems = action.data.items?.map((item: any) => {
+        const realId = item.offlineCollectionId 
+          ? collectionIdMap[item.offlineCollectionId] 
+          : item.collectionId;
+        
+        // If it was an offline collection but we don't have a real ID yet,
+        // it means the collection sync failed or hasn't happened.
+        if (item.offlineCollectionId && !realId) {
+          allResolved = false;
+        }
+
+        return {
+          ...item,
+          collectionId: realId || 0
+        };
+      });
+
+      if (!allResolved) {
+        console.log(`Dispatch ${action.id} depends on unsynced collections. Retrying later.`);
+        remainingActions.push(action);
+        continue;
+      }
 
       await createDispatch({
         ...action.data,

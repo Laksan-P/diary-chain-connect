@@ -423,18 +423,29 @@ export default async function handler(req, res) {
       const dispatchId = dResult.id;
 
       // 1. Insert dispatch items and update statuses
-      const collectionIds = items.map(i => i.collectionId || i.collection_id).filter(id => id != null);
-      await Promise.all([
-        ...items.map(item =>
-          supabase.from('dispatch_items').insert({
-            dispatch_id: dispatchId,
-            collection_id: item.collectionId || item.collection_id
-          })
-        ),
-        supabase.from('milk_collections')
+      const finalItems = [];
+      for (const item of items) {
+        let colId = item.collectionId || item.collection_id;
+        const offId = item.offlineCollectionId;
+
+        if ((!colId || colId === 0) && offId) {
+          const { data: col } = await supabase.from('milk_collections').select('id').eq('offline_id', offId).maybeSingle();
+          if (col) colId = col.id;
+        }
+
+        if (colId) finalItems.push(colId);
+
+        await supabase.from('dispatch_items').insert({
+          dispatch_id: dispatchId,
+          collection_id: colId
+        });
+      }
+
+      if (finalItems.length > 0) {
+        await supabase.from('milk_collections')
           .update({ dispatch_status: 'Dispatched' })
-          .in('id', collectionIds)
-      ]);
+          .in('id', finalItems);
+      }
 
       // 2. Fetch farmers and users for these collections (Manual Join for robustness)
       const { data: colsData } = await supabase

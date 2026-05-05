@@ -56,7 +56,7 @@ export interface ChillingCenter {
 }
 
 export interface MilkCollection {
-  id: number;
+  id: number | string;
   farmerId: number;
   farmerName?: string;
   farmerCode?: string;
@@ -71,6 +71,7 @@ export interface MilkCollection {
   displayId?: string;
   failureReason?: string;
   dispatchStatus?: 'Pending' | 'Dispatched' | 'Approved' | 'Rejected';
+  isOffline?: boolean;
   createdAt: string;
 }
 
@@ -86,7 +87,7 @@ export interface QualityTest {
 }
 
 export interface Dispatch {
-  id: number;
+  id: number | string;
   chillingCenterId: number;
   chillingCenterName?: string;
   transporterName: string;

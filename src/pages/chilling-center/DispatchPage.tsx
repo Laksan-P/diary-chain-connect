@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, Dispatch } from '@/types';
 import { savePendingAction, isOnline, saveCache, getCache, getPendingByType } from '@/services/offlineSync';
+import { formatDate } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,7 @@ const DispatchPage: React.FC = () => {
   const centerId = user?.chillingCenterId;
   const [collections, setCollections] = useState<MilkCollection[]>([]);
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
-  const [selected, setSelected] = useState<number[]>([]);
+  const [selected, setSelected] = useState<(number | string)[]>([]);
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewingDispatch, setViewingDispatch] = useState<Dispatch | null>(null);
@@ -64,8 +65,8 @@ const DispatchPage: React.FC = () => {
     tankerCapacity: ''
   });
 
-  const selectedTotal = selected.reduce((sum, id) => {
-    const col = collections.find(c => c.id === id);
+  const selectedTotal = selected.reduce<number>((sum, id) => {
+    const col = collections.find(c => String(c.id) === String(id));
     return sum + (col ? Number(col.quantity) : 0);
   }, 0);
   const capacityNum = Number(form.tankerCapacity) || 0;
@@ -181,17 +182,17 @@ const DispatchPage: React.FC = () => {
   }, [centerId]);
 
 
-  const toggleSelect = (id: number) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  const toggleSelect = (id: number | string) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selected.length === 0) { toast({ title: 'Error', description: 'Select at least one collection', variant: 'destructive' }); return; }
 
-    const dispatchData = {
+    const dispatchData: any = {
       chillingCenterId: centerId,
       ...form,
       dispatchDate: toISOWithOffset(form.dispatchDate),
-      totalQuantity: selectedTotal,
+      totalQuantity: Number(selectedTotal),
       items: selected.map(id => {
         const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
         return {
@@ -245,9 +246,10 @@ const DispatchPage: React.FC = () => {
     {
       key: 'status',
       header: 'Status',
-      render: (r: Dispatch) => {
-        const hasPass = r.items?.some(i => i.qualityResult === 'Pass');
-        const hasFail = r.items?.some(i => i.qualityResult === 'Fail');
+      render: (r: any) => {
+        if (r.isOffline) return <StatusBadge status="Pending Sync" />;
+        const hasPass = r.items?.some((i: any) => i.qualityResult === 'Pass');
+        const hasFail = r.items?.some((i: any) => i.qualityResult === 'Fail');
         const isManualReject = r.status === 'Rejected' &&
           r.rejectionReason &&
           !r.rejectionReason.startsWith('Quality Check Failed');
@@ -288,7 +290,11 @@ const DispatchPage: React.FC = () => {
                 {collections.map(c => (
                   <label key={c.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors">
                     <Checkbox checked={selected.includes(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
-                    <span className="text-sm text-foreground">#{c.displayId || c.id} — {c.farmerName} — {c.quantity}L — {c.date}</span>
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="text-sm font-medium">#{c.displayId || c.id}</span>
+                      {c.isOffline && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold">OFF</span>}
+                      <span className="text-sm text-muted-foreground">— {c.farmerName} — {c.quantity}L — {formatDate(c.date)}</span>
+                    </div>
                   </label>
                 ))}
               </div>
@@ -304,7 +310,7 @@ const DispatchPage: React.FC = () => {
               <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
                 <div
                   className={`h-full ${isOverCapacity ? 'bg-red-500' : 'bg-primary'} transition-all duration-300 ease-out`}
-                  style={{ width: `${Math.min(100, (selectedTotal / capacityNum) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (Number(selectedTotal) / capacityNum) * 100)}%` }}
                 />
               </div>
               {isOverCapacity && (
