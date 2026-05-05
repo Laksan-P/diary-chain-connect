@@ -114,11 +114,15 @@ const DispatchPage: React.FC = () => {
       const updatedC = c.map((col: any) => {
         if (!col) return null;
         const qualityTest = allQuality.find(q => q.data && String(q.data.collectionId) === String(col.id));
-        const dispatchedLocally = allDispatches.some(d => d.data?.items?.some((i: any) => String(i.collectionId) === String(col.id)));
+        
+        // Safety check: is this collection in any pending dispatch OR any synced dispatch record?
+        const dispatchedLocally = allDispatches.some(act => act.data?.items?.some((i: any) => String(i.collectionId) === String(col.id)));
+        const dispatchedOnServer = d.some(disp => disp.items?.some((i: any) => String(i.collectionId) === String(col.id)));
+
         return {
           ...col,
           qualityResult: qualityTest ? qualityTest.data.result : col.qualityResult,
-          dispatchStatus: dispatchedLocally ? 'Dispatched' : col.dispatchStatus
+          dispatchStatus: (dispatchedLocally || dispatchedOnServer) ? 'Dispatched' : col.dispatchStatus
         };
       }).filter(Boolean) as MilkCollection[];
 

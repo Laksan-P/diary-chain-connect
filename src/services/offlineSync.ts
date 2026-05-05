@@ -63,18 +63,53 @@ export const syncActions = async () => {
   const qualities = actions.filter(a => a.type === 'quality');
   const dispatches = actions.filter(a => a.type === 'dispatch');
 
-  // Map offlineId → real server ID
-  const collectionIdMap: Record<string, number | string> = {};
-  const farmerIdMap: Record<number, number> = {};
+  // Load persistent mappings (offlineId -> serverId)
+  const idMappings = getCache('sync_id_mappings') || { collections: {}, farmers: {} };
 
-  // We need api import for farmer registration
   const { registerFarmerByCenter } = await import('@/services/api');
+
+  // Helper to update all pending actions when an ID is resolved
+  const updatePendingIdReferences = (offlineId: string, serverId: number | string, type: 'collection' | 'farmer') => {
+    const allActions = getPendingActions();
+    let changed = false;
+
+    allActions.forEach(action => {
+      if (type === 'collection') {
+        // Update dispatches referencing this collection
+        if (action.type === 'dispatch' && action.data.items) {
+          action.data.items.forEach((item: any) => {
+            if (item.offlineCollectionId === offlineId) {
+              item.collectionId = serverId;
+              changed = true;
+            }
+          });
+        }
+        // Update quality tests referencing this collection
+        if (action.type === 'quality' && action.data.offlineCollectionId === offlineId) {
+          action.data.collectionId = serverId;
+          changed = true;
+        }
+      } else if (type === 'farmer') {
+        if (action.type === 'collection' && action.data.farmerId === offlineId) {
+          action.data.farmerId = serverId;
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(allActions));
+    }
+  };
 
   for (const action of farmers) {
     try {
       console.log(`[OfflineSync] Registering farmer: ${action.data.name}`);
       const result = await registerFarmerByCenter({ ...action.data, offline_id: action.id });
-      if (result?.userId) farmerIdMap[action.data.id] = result.userId;
+      if (result?.userId) {
+        idMappings.farmers[action.id] = result.userId;
+        updatePendingIdReferences(action.id, result.userId, 'farmer');
+      }
     } catch (error) {
       console.error(`[OfflineSync] Failed to sync farmer ${action.id}:`, error);
       remainingActions.push(action);
@@ -83,29 +118,32 @@ export const syncActions = async () => {
 
   for (const action of collections) {
     try {
-      const resolvedFarmerId = farmerIdMap[action.data.farmerId] || action.data.farmerId;
+      const resolvedFarmerId = idMappings.farmers[action.data.farmerId] || action.data.farmerId;
       console.log(`[OfflineSync] Syncing collection: Farmer ${resolvedFarmerId}, Qty ${action.data.quantity}`);
       const result = await createCollection({ ...action.data, farmerId: resolvedFarmerId, offline_id: action.id });
-      // Store mapping: offlineId → real DB id
-      if (result?.id) collectionIdMap[action.id] = result.id;
-      // Success — do NOT keep in remaining
+      if (result?.id) {
+        idMappings.collections[action.id] = result.id;
+        updatePendingIdReferences(action.id, result.id, 'collection');
+      }
     } catch (error) {
       console.error(`[OfflineSync] Failed to sync collection ${action.id}:`, error);
       remainingActions.push(action);
     }
   }
 
+  // Save updated mappings
+  saveCache('sync_id_mappings', idMappings);
+
   for (const action of qualities) {
     try {
-      // Replace offlineCollectionId with the real server ID if we just synced it
       const realId = action.data.offlineCollectionId
-        ? (collectionIdMap[action.data.offlineCollectionId] || action.data.collectionId)
+        ? (idMappings.collections[action.data.offlineCollectionId] || action.data.collectionId)
         : action.data.collectionId;
 
-      console.log(`[OfflineSync] Syncing quality test for collection: ${realId || action.data.offlineCollectionId}`);
+      console.log(`[OfflineSync] Syncing quality test for collection: ${realId}`);
       await submitQualityTest({
         ...action.data,
-        collectionId: realId || 0,
+        collectionId: Number(realId) || 0,
         offlineCollectionId: action.data.offlineCollectionId,
         offline_id: action.id,
       });
@@ -117,15 +155,15 @@ export const syncActions = async () => {
 
   for (const action of dispatches) {
     try {
-      // Resolve any offline collection IDs to real server IDs
+      // Final resolution of IDs
       const resolvedItems = action.data.items?.map((item: any) => {
         const realId = item.offlineCollectionId
-          ? (collectionIdMap[item.offlineCollectionId] || item.collectionId)
+          ? (idMappings.collections[item.offlineCollectionId] || item.collectionId)
           : item.collectionId;
 
         return {
           ...item,
-          collectionId: realId || 0,
+          collectionId: Number(realId) || 0,
           offlineCollectionId: item.offlineCollectionId
         };
       });
@@ -137,25 +175,15 @@ export const syncActions = async () => {
         offline_id: action.id,
       };
       
-      console.log("[OfflineSync] Sending payload:", JSON.stringify(payload, null, 2));
-      
       const result = await createDispatch(payload);
 
       if (result && result.id) {
-        console.log(`[OfflineSync] API response success. Server ID: ${result.id}`);
-        console.log(`[OfflineSync] Insert success for record ${action.id}`);
-        
-        // Update local status before removal
-        action.data.status = 'Dispatched';
-        action.syncedServerId = result.id;
-        console.log(`[OfflineSync] Updating local status for ${action.id} to "Dispatched"`);
+        console.log(`[OfflineSync] Dispatch sync success. Server ID: ${result.id}`);
       } else {
-        console.error(`[OfflineSync] API response error: Invalid result for ${action.id}`);
         throw new Error("Invalid sync response");
       }
     } catch (error) {
-      console.error(`[OfflineSync] Insert failed for ${action.id}:`, error);
-      console.error(`[OfflineSync] API response error for ${action.id}`);
+      console.error(`[OfflineSync] Dispatch sync failed for ${action.id}:`, error);
       remainingActions.push(action);
     }
   }

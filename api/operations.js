@@ -468,19 +468,25 @@ export default async function handler(req, res) {
           throw new Error(`Collection not found for item: ${offId || 'Unknown'}`);
         }
 
-        finalItems.push(colId);
+        const numericColId = Number(colId);
+        finalItems.push(numericColId);
 
         const { error: itemErr } = await supabase.from('dispatch_items').insert({
           dispatch_id: dispatchId,
-          collection_id: colId
+          collection_id: numericColId
         });
         if (itemErr) throw itemErr;
       }
 
       if (finalItems.length > 0) {
-        await supabase.from('milk_collections')
+        console.log(`[Backend] Updating ${finalItems.length} collections to Dispatched:`, finalItems);
+        const { error: updateErr } = await supabase.from('milk_collections')
           .update({ dispatch_status: 'Dispatched' })
           .in('id', finalItems);
+        
+        if (updateErr) {
+          console.error('[Backend] Failed to update collection statuses:', updateErr.message);
+        }
       }
 
       // 2. Fetch farmers and users for these collections (Manual Join for robustness)
