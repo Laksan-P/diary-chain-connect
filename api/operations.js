@@ -135,8 +135,17 @@ export default async function handler(req, res) {
           : `date:${date},reason:${reasonValue || 'N/A'}`;
 
         if (userId) {
-          // 1. If tested by Nestle, send the Dispatch status alert immediately
+          // 1. If tested by Nestle, send both the quality test result AND dispatch status
           if (user.role === 'nestle_officer' || user.role === 'nestle') {
+            // Nestlé quality test result notification to farmer
+            await supabase.from('notifications').insert({
+              user_id: userId,
+              title: titleKey,
+              message: `${msgKey}|${params}`,
+              type: 'quality_result'
+            });
+
+            // Dispatch status notification to farmer
             const dispatchTitle = resultValue === 'Pass' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
             const dispatchMsg = resultValue === 'Pass' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
             await supabase.from('notifications').insert({
@@ -146,7 +155,7 @@ export default async function handler(req, res) {
               type: 'dispatch'
             });
 
-            // 3. Notify Chilling Center about Nestlé's verification result
+            // Notify Chilling Center about Nestlé's verification result
             if (ccUserId) {
               const ccTitle = resultValue === 'Pass' ? 'cc_collection_passed_nestle_title' : 'cc_collection_rejected_nestle_title';
               const ccMsg = resultValue === 'Pass' ? 'cc_collection_passed_nestle_msg' : 'cc_collection_rejected_nestle_msg';
@@ -157,6 +166,14 @@ export default async function handler(req, res) {
                 type: 'quality_result'
               });
             }
+          } else {
+            // 2. CC quality test — notify the farmer about the result
+            await supabase.from('notifications').insert({
+              user_id: userId,
+              title: titleKey,
+              message: `${msgKey}|${params}`,
+              type: 'quality_result'
+            });
           }
         }
 
