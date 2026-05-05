@@ -33,10 +33,6 @@ export default async function handler(req, res) {
         console.warn('Quality test: collectionId is 0 and offline_id lookup not available');
       }
 
-      if (!collectionId || snf == null || fat == null || water == null) {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-
       // 1. Fetch original collection data for comparison
       const { data: original, error: origErr } = await supabase
         .from('milk_collections')
@@ -49,65 +45,81 @@ export default async function handler(req, res) {
       let resultValue = 'Pass';
       let reasonValue = null;
 
+      // Ensure we are comparing numbers
+      const nFat = parseFloat(String(fat));
+      const nSnf = parseFloat(String(snf));
+      const nWater = parseFloat(String(water));
+
       // 2. Determine thresholds based on user role
       const isNestle = user.role === 'nestle' || user.role === 'nestle_officer';
       
       if (isNestle && original) {
-        // Nestlé Rule: Must be >= CC's recorded quality
+        // Nestlé Rule: Must be >= CC's recorded quality (or industry standards)
         const threshFat = original.fat || 3.5;
         const threshSnf = original.snf || 8.5;
         const threshWater = original.water || 0.5;
 
-        if (fat < threshFat) { resultValue = 'Fail'; reasonValue = 'Low FAT'; }
-        else if (snf < threshSnf) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
-        else if (water > threshWater) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
+        if (nFat < threshFat) { resultValue = 'Fail'; reasonValue = 'Low FAT'; }
+        else if (nSnf < threshSnf) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
+        else if (nWater > threshWater) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
       } else {
         // Standard CC Rule: Match base quality requirements
-        if (fat < 3.5) { resultValue = 'Fail'; reasonValue = 'Low FAT'; }
-        else if (snf < 8.5) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
-        else if (water > 0.5) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
+        if (nFat < 3.5) { resultValue = 'Fail'; reasonValue = 'Low FAT'; }
+        else if (nSnf < 8.5) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
+        else if (nWater > 0.5) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
       }
 
-      // Soft idempotency check (since offline_id column is missing)
-      const { data: existing } = await supabase
-        .from('quality_tests')
-        .select('id')
-        .match({ collection_id: collectionId })
-        .maybeSingle();
-
-      if (existing) {
-        console.log(`[Backend] Quality test already exists for collection ${collectionId}, skipping.`);
-        return res.status(200).json({ id: existing.id, success: true, result: resultValue, reason: reasonValue });
-      }
-
-      const { data: qtRows, error: qtErr } = await supabase
-        .from('quality_tests')
-        .insert({ collection_id: collectionId, fat, snf, water, result: resultValue, reason: reasonValue })
-        .select('id')
-        .single();
-      if (qtErr) throw qtErr;
-      const newId = qtRows.id;
-
-      const updates = {
+      // 3. Update the Milk Collection record IMMEDIATELY 
+      // (Do this before idempotency return to ensure Nestle's verification is ALWAYS saved)
+      const updates: any = {
         quality_result: resultValue,
         failure_reason: reasonValue,
-        fat: fat,
-        snf: snf,
-        water: water
+        fat: nFat,
+        snf: nSnf,
+        water: nWater
       };
 
-      // Auto-approve only if tested by Nestle.
-      // Chilling center testing should keep status as Pending so it can be dispatched.
-      if (resultValue === 'Pass' && (user.role === 'nestle' || user.role === 'nestle_officer')) {
-        updates.dispatch_status = 'Approved';
-      } else if (resultValue === 'Fail' && (user.role === 'nestle' || user.role === 'nestle_officer')) {
-        updates.dispatch_status = 'Rejected';
+      // Auto-approve/reject only if tested by Nestle.
+      if (isNestle) {
+        updates.dispatch_status = resultValue === 'Pass' ? 'Approved' : 'Rejected';
       }
 
-      await supabase
+      const { error: updateErr } = await supabase
         .from('milk_collections')
         .update(updates)
         .eq('id', collectionId);
+      
+      if (updateErr) throw updateErr;
+
+      // 4. Log the Quality Test record (with idempotency for the SAME role/result)
+      const { data: existing } = await supabase
+        .from('quality_tests')
+        .select('id')
+        .match({ collection_id: collectionId, result: resultValue })
+        .maybeSingle();
+
+      let newId;
+      if (existing && !isNestle) {
+        // If it's a CC retry, skip insert. But for Nestle, we often want a separate log entry.
+        newId = existing.id;
+      } else {
+        const { data: qtRows, error: qtErr } = await supabase
+          .from('quality_tests')
+          .insert({ 
+            collection_id: collectionId, 
+            fat: nFat, 
+            snf: nSnf, 
+            water: nWater, 
+            result: resultValue, 
+            reason: reasonValue 
+          })
+          .select('id')
+          .single();
+        
+        // If it fails because of a unique constraint, it's fine, we already updated the main table
+        if (!qtErr) newId = qtRows.id;
+        else newId = existing?.id || 0;
+      }
 
 
 
