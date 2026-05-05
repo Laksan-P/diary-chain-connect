@@ -11,7 +11,7 @@ import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, Dispatch } from '@/types';
-import { savePendingAction, isOnline, saveCache, getCache, getPendingByType } from '@/services/offlineSync';
+import { savePendingAction, isOnline, saveCache, getCache, getPendingByType, syncActions } from '@/services/offlineSync';
 import { formatDate } from '@/lib/utils';
 import {
   Dialog,
