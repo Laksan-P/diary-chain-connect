@@ -19,8 +19,8 @@ export default async function handler(req, res) {
   if (action === 'get' && req.method === 'GET') {
     const user = authenticate(req, res);
     if (!user) return;
-    
-    const ccId = queryId || user.chillingCenterId;
+
+    const ccId = Number(queryId || user.chillingCenterId);
     if (!ccId) return res.status(400).json({ error: 'ID is required' });
 
     try {
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
 
       if (ccErr) throw ccErr;
 
-      // 2. Perform On-demand Performance Check (Last 30 Days)
+      // 2. Sync Performance Status (Consistent with Nestle's logic)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
@@ -43,10 +43,10 @@ export default async function handler(req, res) {
         .eq('chilling_center_id', ccId)
         .gte('dispatch_date', thirtyDaysAgo.toISOString().split('T')[0]);
 
-      let currentStatus = cc.performance_status;
-      let currentRec = cc.performance_recommendation;
+      let currentStatus = 'Good';
+      let currentRec = null;
 
-      if (recentDispatches && recentDispatches.length >= 3) { // Lowered threshold to 3 for faster feedback
+      if (recentDispatches && recentDispatches.length > 0) {
         const total = recentDispatches.length;
         const rejected = recentDispatches.filter(d => d.status === 'Rejected').length;
         const rate = (rejected / total) * 100;
@@ -54,20 +54,31 @@ export default async function handler(req, res) {
         if (rate > 10) {
           currentStatus = 'Underperforming';
           currentRec = `High rejection rate (${rate.toFixed(1)}%). Please review collection and cooling procedures.`;
-        } else {
-          currentStatus = 'Good';
-          currentRec = null;
-        }
-
-        // Update DB if status changed
-        if (currentStatus !== cc.performance_status) {
-          await supabase.from('chilling_centers')
-            .update({ performance_status: currentStatus, performance_recommendation: currentRec })
-            .eq('id', ccId);
         }
       }
 
-      return res.status(200).json({ ...cc, performance_status: currentStatus, performance_recommendation: currentRec });
+      // 3. Update DB if status changed or recommendation changed
+      if (currentStatus !== cc.performance_status || currentRec !== cc.performance_recommendation) {
+        await supabase.from('chilling_centers')
+          .update({ performance_status: currentStatus, performance_recommendation: currentRec })
+          .eq('id', ccId);
+          
+        // If it became Underperforming, send an immediate notification
+        if (currentStatus === 'Underperforming' && cc.performance_status !== 'Underperforming') {
+          await supabase.from('notifications').insert({
+            user_id: user.id,
+            title: 'performance_warning_title',
+            message: `performance_warning_msg|rate:${((recentDispatches.filter(d => d.status === 'Rejected').length / recentDispatches.length) * 100).toFixed(1)}%`,
+            type: 'system'
+          });
+        }
+      }
+
+      return res.status(200).json({ 
+        ...cc, 
+        performance_status: currentStatus, 
+        performance_recommendation: currentRec 
+      });
     } catch (err) {
       console.error('Get chilling center error:', err);
       return res.status(500).json({ error: 'Server error' });
