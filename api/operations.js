@@ -849,7 +849,33 @@ export default async function handler(req, res) {
           if (c.quality_result === 'Pass') trends[month].passCount++;
         });
         const trendArray = Object.values(trends).map(t => ({ ...t, passRate: t.total > 0 ? (t.passCount / t.total) * 100 : 100 }));
-        return res.status(200).json({ status: farmer?.performance_status || 'Good', recommendation: farmer?.performance_recommendation, passRate, frequency: total > 0 ? 'Regular' : 'New', trends: trendArray });
+        const resData = { 
+          status: farmer?.performance_status || 'Good', 
+          recommendation: farmer?.performance_recommendation, 
+          passRate, 
+          frequency: total > 0 ? 'Regular' : 'New', 
+          trends: trendArray 
+        };
+
+        // If underperforming, attach full recommendation data
+        if (resData.status === 'Underperforming' && resData.recommendation) {
+          const issueType = resData.recommendation.includes('SNF') ? 'SNF' : 
+                           resData.recommendation.includes('FAT') ? 'FAT' : 
+                           resData.recommendation.includes('Water') ? 'WATER' : 'GENERAL';
+          
+          const { data: recDetails } = await supabase
+            .from('performance_recommendations')
+            .select('*')
+            .eq('issue_type', issueType)
+            .limit(1)
+            .single();
+            
+          if (recDetails) {
+            resData.recommendationDetails = recDetails;
+          }
+        }
+
+        return res.status(200).json(resData);
       }
       if (type === 'center') {
         const centerId = Number(targetId || user.chillingCenterId);
@@ -934,6 +960,65 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid type' });
     } catch (err) {
       console.error('Performance API error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
+  // ────────── recommendations ──────────
+  if (action === 'recommendations') {
+    try {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase
+          .from('performance_recommendations')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return res.status(200).json(data);
+      }
+
+      // Admin only for mutations
+      if (!['nestle', 'nestle_officer'].includes(user.role)) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      if (req.method === 'POST') {
+        const body = getBody(req);
+        const { id, ...payload } = body;
+        
+        if (id) {
+          // Update
+          const { data, error } = await supabase
+            .from('performance_recommendations')
+            .update({ ...payload, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .select()
+            .single();
+          if (error) throw error;
+          return res.status(200).json(data);
+        } else {
+          // Create
+          const { data, error } = await supabase
+            .from('performance_recommendations')
+            .insert(payload)
+            .select()
+            .single();
+          if (error) throw error;
+          return res.status(201).json(data);
+        }
+      }
+
+      if (req.method === 'DELETE') {
+        const { id } = req.query;
+        if (!id) return res.status(400).json({ error: 'ID required' });
+        const { error } = await supabase
+          .from('performance_recommendations')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+        return res.status(200).json({ success: true });
+      }
+    } catch (err) {
+      console.error('Recommendations API error:', err);
       return res.status(500).json({ error: 'Server error' });
     }
   }

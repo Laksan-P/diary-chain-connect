@@ -192,6 +192,8 @@ class Translations {
       'rec_fat': 'Low FAT detected. Review breed nutrition or feeding times.',
       'rec_general': 'General quality issue. Please review hygiene and storage.',
       'recommended_actions': 'Recommended Actions',
+      'perf_warning_title': 'Performance Alert: Action Required',
+      'guidance_for_farmer': 'GUIDANCE FOR FARMER',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -387,6 +389,8 @@ class Translations {
       'rec_fat': 'අඩු මේද ප්‍රතිශතයක් (FAT) වාර්තා වේ. සත්ව පෝෂණය හෝ ආහාර ලබාදෙන වේලාවන් පරීක්ෂා කරන්න.',
       'rec_general': 'සාමාන්‍ය තත්ත්ව ගැටලුවකි. කරුණාකර සනීපාරක්ෂාව සහ ගබඩා කිරීම පරීක්ෂා කරන්න.',
       'recommended_actions': 'නිර්දේශිත ක්‍රියාමාර්ග',
+      'perf_warning_title': 'කාර්ය සාධන අනතුරු ඇඟවීම: පියවර ගැනීම අවශ්‍යයි',
+      'guidance_for_farmer': 'ගොවීන් සඳහා මඟපෙන්වීම්',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -583,6 +587,8 @@ class Translations {
       'rec_fat': 'குறைந்த கொழுப்பு கண்டறியப்பட்டுள்ளது. இன ஊட்டச்சத்து அல்லது உணவளிக்கும் நேரங்களை சரிபார்க்கவும்.',
       'rec_general': 'பொதுவான தரப் பிரச்சினை. சுகாதாரம் மற்றும் சேமிப்பை சரிபார்க்கவும்.',
       'recommended_actions': 'பரிந்துரைக்கப்பட்ட நடவடிக்கைகள்',
+      'perf_warning_title': 'செயல்திறன் எச்சரிக்கை: நடவடிக்கை தேவை',
+      'guidance_for_farmer': 'விவசாயிகளுக்கான வழிகாட்டுதல்',
     },
   };
 

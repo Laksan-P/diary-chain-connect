@@ -715,52 +715,44 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPerformanceCard(String locale) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final status = _performance['status'] ?? 'Good';
+    
+    // Only show if NOT Good
+    if (status == 'Good') return const SizedBox.shrink();
+
     final rec = _performance['recommendation'] ?? '';
+    final recData = _performance['recommendationDetails'] as Map<String, dynamic>?;
 
     String displayStatus = status;
     if (status == 'Needs Improvement') {
       displayStatus = Translations.get('perf_needs_improvement', locale);
     } else if (status == 'Improving') {
       displayStatus = Translations.get('perf_improving', locale);
-    } else if (status == 'Good') {
-      displayStatus = Translations.get('perf_good', locale);
+    } else if (status == 'Underperforming') {
+      displayStatus = Translations.get('perf_warning_title', locale) ?? 'Underperforming';
     }
-
-    Map<String, dynamic>? recData;
-    try {
-      if (rec.startsWith('{')) {
-        recData = jsonDecode(rec);
-      }
-    } catch (_) {}
 
     String displayTitle = Translations.get('performance_alert', locale);
     String displayRec = rec;
+    List<dynamic> guidance = [];
 
-    if (recData == null) {
-      if (rec.contains('dilution')) {
-        displayRec = Translations.get('rec_water', locale);
-      } else if (rec.contains('SNF')) {
-        displayRec = Translations.get('rec_snf', locale);
-      } else if (rec.contains('FAT')) {
-        displayRec = Translations.get('rec_fat', locale);
-      } else if (rec.contains('General quality')) {
-        displayRec = Translations.get('rec_general', locale);
-      }
-    } else {
-      if (locale == 'ta' && recData['message_title_ta'] != null) {
-        displayTitle = recData['message_title_ta'];
-        displayRec = recData['short_message_ta'] ?? recData['short_message'];
-      } else if (locale == 'si' && recData['message_title_si'] != null) {
-        displayTitle = recData['message_title_si'];
-        displayRec = recData['short_message_si'] ?? recData['short_message'];
+    if (recData != null) {
+      if (locale == 'ta') {
+        displayTitle = recData['title_ta'] ?? recData['title_en'];
+        displayRec = recData['description_ta'] ?? recData['description_en'];
+        guidance = recData['guidance_ta'] ?? recData['guidance_en'] ?? [];
+      } else if (locale == 'si') {
+        displayTitle = recData['title_si'] ?? recData['title_en'];
+        displayRec = recData['description_si'] ?? recData['description_en'];
+        guidance = recData['guidance_si'] ?? recData['guidance_en'] ?? [];
       } else {
-        displayTitle = recData['message_title'] ?? displayTitle;
-        displayRec = recData['short_message'] ?? displayRec;
+        displayTitle = recData['title_en'] ?? displayTitle;
+        displayRec = recData['description_en'] ?? displayRec;
+        guidance = recData['guidance_en'] ?? [];
       }
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -778,192 +770,123 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: recData != null
-              ? ExpansionTile(
-                  iconColor: isDark ? const Color(0xFFFED7AA) : const Color(0xFF9A3412),
-                  collapsedIconColor: isDark ? const Color(0xFFFED7AA) : const Color(0xFF9A3412),
-                  tilePadding: const EdgeInsets.all(20),
-                  childrenPadding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
-                  title: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF97316).withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          LucideIcons.alertTriangle,
-                          color: Color(0xFFF97316),
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              displayTitle,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: isDark
-                                    ? const Color(0xFFFFEDD5)
-                                    : const Color(0xFF7C2D12),
-                              ),
-                            ),
-                            Text(
-                              displayStatus,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color:
-                                    (isDark
-                                            ? const Color(0xFFFFEDD5)
-                                            : const Color(0xFF7C2D12))
-                                        .withOpacity(0.6),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+          child: ExpansionTile(
+            iconColor: isDark ? const Color(0xFFFED7AA) : const Color(0xFF9A3412),
+            collapsedIconColor: isDark ? const Color(0xFFFED7AA) : const Color(0xFF9A3412),
+            tilePadding: const EdgeInsets.all(20),
+            childrenPadding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF97316).withOpacity(0.1),
+                    shape: BoxShape.circle,
                   ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      displayRec,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.5,
-                        fontWeight: FontWeight.w500,
-                        color: isDark
-                            ? const Color(0xFFFED7AA)
-                            : const Color(0xFF9A3412),
-                      ),
-                    ),
+                  child: const Icon(
+                    LucideIcons.alertTriangle,
+                    color: Color(0xFFF97316),
+                    size: 20,
                   ),
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.black26 : Colors.white54,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            Translations.get('recommended_actions', locale) ?? "Recommended Actions",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? const Color(0xFFFFEDD5) : const Color(0xFF7C2D12),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ...List<Widget>.generate(
-                            (locale == 'ta' ? recData['tips_ta'] : locale == 'si' ? recData['tips_si'] : recData['tips'])?.length ?? 0,
-                            (index) {
-                              final tip = (locale == 'ta' ? recData!['tips_ta'] : locale == 'si' ? recData!['tips_si'] : recData!['tips'])[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      LucideIcons.checkCircle2,
-                                      size: 14,
-                                      color: isDark ? const Color(0xFFF97316) : const Color(0xFFEA580C),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        tip,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          height: 1.4,
-                                          color: isDark ? const Color(0xFFFED7AA) : const Color(0xFF9A3412),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                )
-              : Padding(
-                  padding: const EdgeInsets.all(20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF97316).withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              LucideIcons.alertTriangle,
-                              color: Color(0xFFF97316),
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  displayTitle,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: isDark
-                                        ? const Color(0xFFFFEDD5)
-                                        : const Color(0xFF7C2D12),
-                                  ),
-                                ),
-                                Text(
-                                  displayStatus,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        (isDark
-                                                ? const Color(0xFFFFEDD5)
-                                                : const Color(0xFF7C2D12))
-                                            .withOpacity(0.6),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
                       Text(
-                        displayRec,
+                        displayTitle,
                         style: TextStyle(
-                          fontSize: 13,
-                          height: 1.5,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
                           color: isDark
-                              ? const Color(0xFFFED7AA)
-                              : const Color(0xFF9A3412),
+                              ? const Color(0xFFFFEDD5)
+                              : const Color(0xFF7C2D12),
+                        ),
+                      ),
+                      Text(
+                        displayStatus,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              (isDark
+                                      ? const Color(0xFFFFEDD5)
+                                      : const Color(0xFF7C2D12))
+                                  .withOpacity(0.6),
                         ),
                       ),
                     ],
                   ),
                 ),
+              ],
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                displayRec,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.5,
+                  fontWeight: FontWeight.w500,
+                  color: isDark
+                      ? const Color(0xFFFED7AA)
+                      : const Color(0xFF9A3412),
+                ),
+              ),
+            ),
+            children: [
+              if (guidance.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black26 : Colors.white54,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        Translations.get('guidance_for_farmer', locale) ?? "GUIDANCE FOR FARMER",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? const Color(0xFFFFEDD5) : const Color(0xFF7C2D12),
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...guidance.map((tip) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                LucideIcons.checkCircle2,
+                                size: 14,
+                                color: isDark ? const Color(0xFFF97316) : const Color(0xFFEA580C),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  tip.toString(),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    height: 1.4,
+                                    color: isDark ? const Color(0xFFFED7AA) : const Color(0xFF9A3412),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

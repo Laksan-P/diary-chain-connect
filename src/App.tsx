@@ -27,6 +27,7 @@ import ChillingCentersView from "./pages/nestle/ChillingCentersView";
 import SupportManagement from "@/pages/nestle/SupportManagement";
 import PerformanceDashboard from "./pages/nestle/PerformanceDashboard";
 import SupplyPredictions from "./pages/nestle/SupplyPredictions";
+import RecommendationManager from "./pages/nestle/RecommendationManager";
 import NotFound from "./pages/NotFound";
 
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="analytics" element={<AnalyticsPage />} />
               <Route path="performance" element={<PerformanceDashboard />} />
               <Route path="predictions" element={<SupplyPredictions />} />
+              <Route path="recommendations" element={<RecommendationManager />} />
               <Route path="support" element={<SupportManagement />} />
             </Route>
 

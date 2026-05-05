@@ -181,3 +181,19 @@ export interface PredictionData {
     message: string;
   }[];
 }
+export interface PerformanceRecommendation {
+  id: number;
+  issue_type: string;
+  title_en: string;
+  title_si?: string;
+  title_ta?: string;
+  description_en?: string;
+  description_si?: string;
+  description_ta?: string;
+  guidance_en?: string[];
+  guidance_si?: string[];
+  guidance_ta?: string[];
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  created_at: string;
+  updated_at: string;
+}

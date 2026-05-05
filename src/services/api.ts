@@ -7,7 +7,7 @@
 import type {
   AuthResponse, User, Farmer, FarmerRegistration, ChillingCenter,
   MilkCollection, QualityTest, Dispatch, PricingRule, Payment,
-  Notification, CenterPerformance, PredictionData
+  Notification, CenterPerformance, PredictionData, PerformanceRecommendation
 } from '@/types';
 
 const API_BASE_URL = ''; // Same origin on Vercel
@@ -321,6 +321,25 @@ export const getNotifications = async (): Promise<Notification[]> => {
 export const markNotificationRead = async (id: string | number): Promise<void> => {
   await apiFetch<void>(`/api/notifications?action=mark-read&id=${id}`, {
     method: 'PATCH'
+  });
+};
+
+// ============ RECOMMENDATIONS ============
+
+export const getRecommendations = async (): Promise<PerformanceRecommendation[]> => {
+  return apiFetch<PerformanceRecommendation[]>('/api/operations?action=recommendations');
+};
+
+export const saveRecommendation = async (data: any): Promise<void> => {
+  await apiFetch<void>('/api/operations?action=recommendations', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+};
+
+export const deleteRecommendation = async (id: number): Promise<void> => {
+  await apiFetch<void>(`/api/operations?action=recommendations&id=${id}`, {
+    method: 'DELETE'
   });
 };
 
