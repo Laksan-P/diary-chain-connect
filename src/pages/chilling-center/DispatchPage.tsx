@@ -123,7 +123,12 @@ const DispatchPage: React.FC = () => {
           isOffline: true
         };
       }).filter(Boolean) as Dispatch[];
-      setDispatches([...offlinePendingDispatches, ...d]);
+      const mergedDispatches = [...offlinePendingDispatches, ...d].sort((a, b) => {
+        const dateA = new Date(a.dispatchDate || a.createdAt || 0).getTime();
+        const dateB = new Date(b.dispatchDate || b.createdAt || 0).getTime();
+        return dateB - dateA; // Newest first
+      });
+      setDispatches(mergedDispatches);
 
       // Always merge offline collections that passed quality testing
       const cachedFarmers = getCache('farmers') || [];

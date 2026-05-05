@@ -475,7 +475,7 @@ export default async function handler(req, res) {
       const { data: colsData } = await supabase
         .from('milk_collections')
         .select('id, date, farmer_id, farmers (user_id)')
-        .in('id', collectionIds);
+        .in('id', finalItems);
 
       // 3. Insert notifications one-by-one (matches working quality-test pattern)
       if (colsData) {

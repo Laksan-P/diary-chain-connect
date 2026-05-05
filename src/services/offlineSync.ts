@@ -40,7 +40,8 @@ export const removePendingAction = (id: string) => {
 // Trigger sync whenever something is saved and we are online
 window.addEventListener('offline-action-saved', () => {
   if (navigator.onLine && !isSyncing) {
-    syncActions().catch(err => console.error('Auto-sync failed:', err));
+    console.log('[OfflineSync] Action saved. Triggering auto-sync...');
+    syncActions().catch(err => console.error('[OfflineSync] Auto-sync failed:', err));
   }
 });
 
@@ -48,11 +49,12 @@ let isSyncing = false;
 
 export const syncActions = async () => {
   if (isSyncing) return;
-  
   const actions = getPendingActions();
   if (actions.length === 0) return;
 
+  console.log(`[OfflineSync] Starting sync for ${actions.length} actions...`);
   isSyncing = true;
+
   const remainingActions: PendingAction[] = [];
 
   // Sync in order: farmer_registration → collection → quality → dispatch
@@ -70,12 +72,11 @@ export const syncActions = async () => {
 
   for (const action of farmers) {
     try {
+      console.log(`[OfflineSync] Registering farmer: ${action.data.name}`);
       const result = await registerFarmerByCenter({ ...action.data, offline_id: action.id });
-      if (result?.id && action.data.tempId) {
-        farmerIdMap[action.data.tempId] = result.id;
-      }
+      if (result?.userId) farmerIdMap[action.data.id] = result.userId;
     } catch (error) {
-      console.error(`Failed to sync farmer ${action.id}:`, error);
+      console.error(`[OfflineSync] Failed to sync farmer ${action.id}:`, error);
       remainingActions.push(action);
     }
   }
@@ -83,12 +84,13 @@ export const syncActions = async () => {
   for (const action of collections) {
     try {
       const resolvedFarmerId = farmerIdMap[action.data.farmerId] || action.data.farmerId;
+      console.log(`[OfflineSync] Syncing collection: Farmer ${resolvedFarmerId}, Qty ${action.data.quantity}`);
       const result = await createCollection({ ...action.data, farmerId: resolvedFarmerId, offline_id: action.id });
       // Store mapping: offlineId → real DB id
       if (result?.id) collectionIdMap[action.id] = result.id;
       // Success — do NOT keep in remaining
     } catch (error) {
-      console.error(`Failed to sync collection ${action.id}:`, error);
+      console.error(`[OfflineSync] Failed to sync collection ${action.id}:`, error);
       remainingActions.push(action);
     }
   }
@@ -100,6 +102,7 @@ export const syncActions = async () => {
         ? (collectionIdMap[action.data.offlineCollectionId] || action.data.collectionId) 
         : action.data.collectionId;
 
+      console.log(`[OfflineSync] Syncing quality test for collection: ${realId || action.data.offlineCollectionId}`);
       await submitQualityTest({
         ...action.data,
         collectionId: realId || 0,
@@ -107,7 +110,7 @@ export const syncActions = async () => {
         offline_id: action.id,
       });
     } catch (error) {
-      console.error(`Failed to sync quality test ${action.id}:`, error);
+      console.error(`[OfflineSync] Failed to sync quality test ${action.id}:`, error);
       remainingActions.push(action);
     }
   }
@@ -127,13 +130,15 @@ export const syncActions = async () => {
         };
       });
 
+      console.log(`[OfflineSync] Syncing dispatch: ${action.data.vehicleNumber}, ${action.data.transporterName}`);
       await createDispatch({
         ...action.data,
         items: resolvedItems,
         offline_id: action.id,
       });
+      console.log(`[OfflineSync] Dispatch synced successfully: ${action.id}`);
     } catch (error) {
-      console.error(`Failed to sync dispatch ${action.id}:`, error);
+      console.error(`[OfflineSync] Failed to sync dispatch ${action.id}:`, error);
       remainingActions.push(action);
     }
   }
@@ -143,6 +148,8 @@ export const syncActions = async () => {
   const newActions = currentActions.filter(ca => !actions.some(a => a.id === ca.id));
   
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...remainingActions, ...newActions]));
+  
+  console.log(`[OfflineSync] Sync cycle complete. Remaining: ${remainingActions.length}`);
   isSyncing = false;
   window.dispatchEvent(new CustomEvent('offline-sync-complete'));
 };
