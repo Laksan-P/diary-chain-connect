@@ -71,7 +71,7 @@ export default async function handler(req, res) {
 
       // 3. Update the Milk Collection record IMMEDIATELY 
       // (Do this before idempotency return to ensure Nestle's verification is ALWAYS saved)
-      const updates: any = {
+      const updates = {
         quality_result: resultValue,
         failure_reason: reasonValue,
         fat: nFat,
