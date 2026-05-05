@@ -37,6 +37,13 @@ export const removePendingAction = (id: string) => {
   window.dispatchEvent(new CustomEvent('offline-action-saved'));
 };
 
+// Trigger sync whenever something is saved and we are online
+window.addEventListener('offline-action-saved', () => {
+  if (navigator.onLine && !isSyncing) {
+    syncActions().catch(err => console.error('Auto-sync failed:', err));
+  }
+});
+
 let isSyncing = false;
 
 export const syncActions = async () => {
