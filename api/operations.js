@@ -183,7 +183,7 @@ export default async function handler(req, res) {
               else break;
             }
 
-            if (consecutiveFails > 0) {
+            if (consecutiveFails >= 3) {
               const newSeverity = consecutiveFails >= 3 ? 'HIGH' : 'LOW';
 
               // Only proceed if status is not already "Needs Improvement" OR severity has increased to HIGH
@@ -335,19 +335,17 @@ export default async function handler(req, res) {
                 await supabase.from('farmers').update({ performance_status: 'Needs Improvement', performance_recommendation: recString }).eq('id', col.farmer_id);
 
                 // Notify only if 3 fails OR if severity increased to HIGH
-                if (consecutiveFails >= 3 && !alreadyHigh) {
-                  const { data: nestleUsers } = await supabase.from('users').select('id').eq('role', 'nestle');
-                  const targetUsers = [...(nestleUsers?.map(u => u.id) || [])];
-                  if (ccUserId) targetUsers.push(ccUserId);
+                const { data: nestleUsers } = await supabase.from('users').select('id').eq('role', 'nestle');
+                const targetUsers = [...(nestleUsers?.map(u => u.id) || [])];
+                if (ccUserId) targetUsers.push(ccUserId);
 
-                  for (const uid of targetUsers) {
-                    await supabase.from('notifications').insert({
-                      user_id: uid,
-                      title: 'farmer_performance_alert_title',
-                      message: `farmer_performance_alert_msg|farmer:${farmerName},issue:${recObj.short_message}`,
-                      type: 'system'
-                    });
-                  }
+                for (const uid of targetUsers) {
+                  await supabase.from('notifications').insert({
+                    user_id: uid,
+                    title: 'farmer_performance_alert_title',
+                    message: `farmer_performance_alert_msg|farmer:${farmerName},issue:${recObj.short_message}`,
+                    type: 'system'
+                  });
                 }
               }
             } else if (lastTests[0].result === 'Pass') {
@@ -575,29 +573,25 @@ export default async function handler(req, res) {
         const { data: currentCC } = await supabase.from('chilling_centers').select('performance_status').eq('id', dispatch.chilling_center_id).single();
         const currentStatus = currentCC?.performance_status;
 
-        // Get last 10 dispatches to check performance trends
-        const { data: recentDispatches } = await supabase
-          .from('dispatches')
-          .select('status, rejection_reason')
+        // Use milk_collections to calculate pass rate consistently with Nestle logic
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const { data: recentCollections } = await supabase
+          .from('milk_collections')
+          .select('quality_result')
           .eq('chilling_center_id', dispatch.chilling_center_id)
-          .order('dispatch_date', { ascending: false })
-          .limit(10);
+          .not('quality_result', 'is', null)
+          .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
 
-        if (recentDispatches && recentDispatches.length > 0) {
-          const total = recentDispatches.length;
-          const rejectedList = recentDispatches.filter(d => d.status === 'Rejected');
-          const rejectedCount = rejectedList.length;
-          const rejectionRate = (rejectedCount / total) * 100;
+        if (recentCollections && recentCollections.length > 0) {
+          const total = recentCollections.length;
+          const passed = recentCollections.filter(c => c.quality_result === 'Pass').length;
+          const passRate = (passed / total) * 100;
 
-          // Recovery streak (last 5 approved)
-          const streak = recentDispatches.slice(0, 5);
-          const isOnRecoveryStreak = streak.length >= 5 && streak.every(d => d.status === 'Approved');
-
-          // NEW RULE: Threshold is 25% rejection (75% pass rate)
-          if (rejectionRate > 25 && !isOnRecoveryStreak) {
-            // Underperforming if > 25% rejections
-            const reasons = Array.from(new Set(rejectedList.map(d => d.rejection_reason).filter(Boolean))).slice(0, 2).join(', ');
-            const rec = `High rejection rate (${rejectionRate.toFixed(1)}%). ${reasons ? `Primary issues: ${reasons}.` : 'Please review testing procedures.'}`;
+          // NEW RULE: Threshold is 75% pass rate
+          if (passRate < 75) {
+            const rec = `Low quality pass rate (${passRate.toFixed(1)}%). Please review collection and cooling procedures.`;
 
             await supabase.from('chilling_centers').update({ performance_status: 'Underperforming', performance_recommendation: rec }).eq('id', dispatch.chilling_center_id);
 
@@ -605,12 +599,11 @@ export default async function handler(req, res) {
               await supabase.from('notifications').insert({
                 user_id: ccUserId,
                 title: 'performance_warning_title',
-                message: `performance_warning_msg|rate:${rejectionRate.toFixed(1)}%`,
+                message: `performance_warning_msg|rate:${passRate.toFixed(1)}%`,
                 type: 'system'
               });
             }
-          } else if (isOnRecoveryStreak || rejectionRate <= 25) {
-            // Good if <= 25% rejection OR recovery streak
+          } else {
             if (currentStatus !== 'Good') {
               await supabase.from('chilling_centers').update({
                 performance_status: 'Good',
@@ -626,9 +619,6 @@ export default async function handler(req, res) {
                 });
               }
             }
-          } else if (currentStatus === 'Underperforming' && recentDispatches[0].status === 'Approved') {
-            // If they are underperforming but starting to pass, show "Improving"
-            await supabase.from('chilling_centers').update({ performance_status: 'Improving' }).eq('id', dispatch.chilling_center_id);
           }
         }
       } catch (ccPErr) { console.error('CC Performance err:', ccPErr); }

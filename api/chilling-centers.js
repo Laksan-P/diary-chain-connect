@@ -37,24 +37,25 @@ export default async function handler(req, res) {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      const { data: recentDispatches } = await supabase
-        .from('dispatches')
-        .select('status')
+      const { data: recentCollections } = await supabase
+        .from('milk_collections')
+        .select('quality_result')
         .eq('chilling_center_id', ccId)
-        .gte('dispatch_date', thirtyDaysAgo.toISOString().split('T')[0]);
+        .not('quality_result', 'is', null)
+        .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
 
       let currentStatus = 'Good';
       let currentRec = null;
 
-      if (recentDispatches && recentDispatches.length > 0) {
-        const total = recentDispatches.length;
-        const rejected = recentDispatches.filter(d => d.status === 'Rejected').length;
-        const rate = (rejected / total) * 100;
+      if (recentCollections && recentCollections.length > 0) {
+        const total = recentCollections.length;
+        const passed = recentCollections.filter(c => c.quality_result === 'Pass').length;
+        const passRate = (passed / total) * 100;
 
-        // NEW RULE: Threshold is 25% rejection (75% pass rate)
-        if (rate > 25) {
+        // NEW RULE: Threshold is 75% pass rate
+        if (passRate < 75) {
           currentStatus = 'Underperforming';
-          currentRec = `High rejection rate (${rate.toFixed(1)}%). Please review collection and cooling procedures.`;
+          currentRec = `Low quality pass rate (${passRate.toFixed(1)}%). Please review collection and cooling procedures.`;
         }
       }
 
@@ -66,10 +67,12 @@ export default async function handler(req, res) {
           
         // If it became Underperforming, send an immediate notification
         if (currentStatus === 'Underperforming' && cc.performance_status !== 'Underperforming') {
+          const passedCount = recentCollections.filter(c => c.quality_result === 'Pass').length;
+          const currPassRate = (passedCount / recentCollections.length) * 100;
           await supabase.from('notifications').insert({
             user_id: user.id,
             title: 'performance_warning_title',
-            message: `performance_warning_msg|rate:${((recentDispatches.filter(d => d.status === 'Rejected').length / recentDispatches.length) * 100).toFixed(1)}%`,
+            message: `performance_warning_msg|rate:${currPassRate.toFixed(1)}%`,
             type: 'system'
           });
         }
