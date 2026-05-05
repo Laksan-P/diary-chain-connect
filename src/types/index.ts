@@ -98,6 +98,7 @@ export interface Dispatch {
   rejectionReason?: string;
   items: DispatchItem[];
   totalQuantity?: number;
+  offline_id?: string;
   createdAt: string;
 }
 
@@ -105,6 +106,7 @@ export interface DispatchItem {
   id: number;
   dispatchId: number;
   collectionId: number;
+  offlineCollectionId?: string;
   farmerName?: string;
   quantity?: number;
   qualityResult?: string;

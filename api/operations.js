@@ -26,7 +26,13 @@ export default async function handler(req, res) {
   if (action === 'quality-test' && req.method === 'POST') {
     try {
       const body = getBody(req);
-      const { collectionId, snf, fat, water } = body;
+      let { collectionId, snf, fat, water, offlineCollectionId } = body;
+      
+      if ((!collectionId || collectionId === 0) && offlineCollectionId) {
+        const { data: col } = await supabase.from('milk_collections').select('id').eq('offline_id', offlineCollectionId).maybeSingle();
+        if (col) collectionId = col.id;
+      }
+
       if (!collectionId || snf == null || fat == null || water == null) {
         return res.status(400).json({ error: 'Missing required fields' });
       }

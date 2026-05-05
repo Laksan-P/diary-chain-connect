@@ -96,19 +96,14 @@ export const syncActions = async () => {
   for (const action of qualities) {
     try {
       // Replace offlineCollectionId with the real server ID if we just synced it
-      const realId = action.data.offlineCollectionId
-        ? collectionIdMap[action.data.offlineCollectionId]
+      const realId = action.data.offlineCollectionId 
+        ? (collectionIdMap[action.data.offlineCollectionId] || action.data.collectionId) 
         : action.data.collectionId;
-
-      if (action.data.offlineCollectionId && !realId) {
-        // Collection hasn't synced yet, retry later
-        remainingActions.push(action);
-        continue;
-      }
 
       await submitQualityTest({
         ...action.data,
-        collectionId: realId,
+        collectionId: realId || 0,
+        offlineCollectionId: action.data.offlineCollectionId,
         offline_id: action.id,
       });
     } catch (error) {
@@ -120,29 +115,17 @@ export const syncActions = async () => {
   for (const action of dispatches) {
     try {
       // Resolve any offline collection IDs to real server IDs
-      let allResolved = true;
       const resolvedItems = action.data.items?.map((item: any) => {
         const realId = item.offlineCollectionId 
-          ? collectionIdMap[item.offlineCollectionId] 
+          ? (collectionIdMap[item.offlineCollectionId] || item.collectionId) 
           : item.collectionId;
         
-        // If it was an offline collection but we don't have a real ID yet,
-        // it means the collection sync failed or hasn't happened.
-        if (item.offlineCollectionId && !realId) {
-          allResolved = false;
-        }
-
         return {
           ...item,
-          collectionId: realId || 0
+          collectionId: realId || 0,
+          offlineCollectionId: item.offlineCollectionId
         };
       });
-
-      if (!allResolved) {
-        console.log(`Dispatch ${action.id} depends on unsynced collections. Retrying later.`);
-        remainingActions.push(action);
-        continue;
-      }
 
       await createDispatch({
         ...action.data,

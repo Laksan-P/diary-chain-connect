@@ -191,7 +191,7 @@ export const createCollection = async (data: Partial<MilkCollection>): Promise<M
 // ============ QUALITY TESTS ============
 
 /** POST /api/operations?action=quality-test */
-export const submitQualityTest = async (data: { collectionId: number; snf: number; fat: number; water: number }): Promise<QualityTest> => {
+export const submitQualityTest = async (data: { collectionId: number; snf: number; fat: number; water: number; offlineCollectionId?: string; offline_id?: string }): Promise<QualityTest> => {
   return apiFetch<QualityTest>('/api/operations?action=quality-test', {
     method: 'POST',
     body: JSON.stringify(data),
