@@ -18,11 +18,11 @@ const DispatchMonitoring: React.FC = () => {
   const [centers, setCenters] = useState<ChillingCenter[]>([]);
   const [filterCenterId, setFilterCenterId] = useState<string>('all');
   const [loading, setLoading] = useState(true);
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
-  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
+  const [expandedRow, setExpandedRow] = useState<number | string | null>(null);
+  const [rejectDialog, setRejectDialog] = useState<{ open: boolean; id: number | string | null }>({ open: false, id: null });
   const [rejectReason, setRejectReason] = useState('');
   const { toast } = useToast();
-  const [testDialog, setTestDialog] = useState<{ open: boolean; collectionId: number | null; dispatchId: number | null }>({ open: false, collectionId: null, dispatchId: null });
+  const [testDialog, setTestDialog] = useState<{ open: boolean; collectionId: number | null; dispatchId: number | string | null }>({ open: false, collectionId: null, dispatchId: null });
   const [testForm, setTestForm] = useState({ snf: '', fat: '', water: '' });
   const [testing, setTesting] = useState(false);
 
@@ -50,12 +50,12 @@ const DispatchMonitoring: React.FC = () => {
       : dispatches.filter(d => d.chillingCenterId === parseInt(filterCenterId));
   }, [dispatches, filterCenterId]);
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = async (id: number | string) => {
     // Optimistic Update
     setDispatches(ds => ds.map(d => d.id === id ? { ...d, status: 'Approved' as const } : d));
 
     try {
-      await updateDispatchStatus(id, 'Approved');
+      await updateDispatchStatus(Number(id), 'Approved');
       toast({ title: 'Dispatch Approved', description: `Dispatch #${id} has been accepted.` });
     } catch (error) {
       // Rollback on failure
@@ -75,7 +75,7 @@ const DispatchMonitoring: React.FC = () => {
     setRejectReason('');
 
     try {
-      await updateDispatchStatus(id, 'Rejected', reason);
+      await updateDispatchStatus(Number(id), 'Rejected', reason);
       toast({ title: 'Dispatch Rejected', description: `Dispatch #${id} has been rejected.`, variant: 'destructive' });
     } catch (error) {
       // Rollback on failure
@@ -114,7 +114,7 @@ const DispatchMonitoring: React.FC = () => {
               
               if (allItemsApproved) {
                 // Trigger backend approval in the background
-                updateDispatchStatus(dId, 'Approved').then(() => {
+                updateDispatchStatus(Number(dId), 'Approved').then(() => {
                   toast({ title: 'Dispatch Fully Approved', description: `All items for dispatch #${dId} are verified.` });
                 }).catch(err => console.error('Auto-approval failed:', err));
                 
@@ -229,7 +229,7 @@ const DispatchMonitoring: React.FC = () => {
 
                   <tr
                     className={`hover:bg-muted/30 transition-colors cursor-pointer ${expandedRow === dispatch.id ? 'bg-muted/20' : ''}`}
-                    onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id as any)}
+                    onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
                   >
                     <td className="px-6 py-4">
                       <div className="font-semibold text-foreground">#{dispatch.id}</div>
@@ -275,7 +275,7 @@ const DispatchMonitoring: React.FC = () => {
                                 <Button
                                   size="sm"
                                   className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 shadow-sm"
-                                  onClick={() => handleApprove(dispatch.id as any)}
+                                  onClick={() => handleApprove(dispatch.id)}
                                 >
                                   <ClipboardCheck className="w-3.5 h-3.5 mr-1" /> Approve
                                 </Button>
@@ -287,7 +287,7 @@ const DispatchMonitoring: React.FC = () => {
                                 size="sm"
                                 variant="outline"
                                 className="text-primary border-primary/20 hover:bg-primary/5 h-8 px-3"
-                                onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id as any)}
+                                onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
                               >
                                 <Beaker className="w-3.5 h-3.5 mr-1" /> Inspect Quality
                               </Button>
@@ -297,7 +297,7 @@ const DispatchMonitoring: React.FC = () => {
                             size="sm"
                             variant="destructive"
                             className="h-8 px-3 group"
-                            onClick={() => setRejectDialog({ open: true, id: dispatch.id as any })}
+                            onClick={() => setRejectDialog({ open: true, id: dispatch.id })}
                           >
                             <X className="w-3.5 h-3.5 mr-1 group-hover:rotate-90 transition-transform" /> Reject
                           </Button>
@@ -307,7 +307,7 @@ const DispatchMonitoring: React.FC = () => {
                           size="sm"
                           variant="ghost"
                           className="h-8 px-2 text-muted-foreground"
-                          onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id as any)}
+                          onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
                         >
                           {expandedRow === dispatch.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </Button>
@@ -392,7 +392,7 @@ const DispatchMonitoring: React.FC = () => {
                                                 size="sm"
                                                 variant="outline"
                                                 className="h-6 text-[10px] font-bold uppercase tracking-tight"
-                                                onClick={() => setTestDialog({ open: true, collectionId: item.collectionId, dispatchId: dispatch.id as any })}
+                                                onClick={() => setTestDialog({ open: true, collectionId: item.collectionId, dispatchId: dispatch.id })}
                                               >
                                                 Verify Quality
                                               </Button>

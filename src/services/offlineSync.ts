@@ -6,7 +6,7 @@ export interface PendingAction {
   type: 'collection' | 'quality' | 'dispatch' | 'farmer_registration';
   data: any;
   timestamp: number;
-  syncedServerId?: number; // Set after successful sync
+  syncedServerId?: number | string; // Set after successful sync
 }
 
 const STORAGE_KEY = 'pending_actions';
@@ -147,7 +147,7 @@ export const syncActions = async () => {
         
         // Update local status before removal
         action.data.status = 'Dispatched';
-        action.syncedServerId = result.id as any;
+        action.syncedServerId = result.id;
         console.log(`[OfflineSync] Updating local status for ${action.id} to "Dispatched"`);
       } else {
         console.error(`[OfflineSync] API response error: Invalid result for ${action.id}`);

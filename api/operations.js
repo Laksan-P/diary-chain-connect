@@ -352,20 +352,36 @@ export default async function handler(req, res) {
   // ────────── GET /api/operations?action=dispatches ──────────
   if (action === 'dispatches' && req.method === 'GET') {
     try {
-      let query = supabase
-        .from('dispatches')
-        .select(`
-          id, chilling_center_id, transporter_name, vehicle_number, driver_contact,
-          dispatch_date, status, rejection_reason, created_at, offline_id,
-          chilling_centers (name)
-        `);
+      // Try with offline_id first, fall back without it if column doesn't exist
+      let selectFields = `
+        id, chilling_center_id, transporter_name, vehicle_number, driver_contact,
+        dispatch_date, status, rejection_reason, created_at, offline_id,
+        chilling_centers (name)
+      `;
 
+      let query = supabase.from('dispatches').select(selectFields);
       if (req.query.centerId) {
         query = query.eq('chilling_center_id', req.query.centerId);
       }
 
-      const { data: dispatches, error } = await query.order('id', { ascending: false });
-      if (error) throw error;
+      let { data: dispatches, error } = await query.order('id', { ascending: false });
+
+      // If offline_id column doesn't exist, retry without it
+      if (error) {
+        console.warn('Dispatches GET fallback (offline_id may not exist):', error.message);
+        selectFields = `
+          id, chilling_center_id, transporter_name, vehicle_number, driver_contact,
+          dispatch_date, status, rejection_reason, created_at,
+          chilling_centers (name)
+        `;
+        let fallbackQuery = supabase.from('dispatches').select(selectFields);
+        if (req.query.centerId) {
+          fallbackQuery = fallbackQuery.eq('chilling_center_id', req.query.centerId);
+        }
+        const fallback = await fallbackQuery.order('id', { ascending: false });
+        if (fallback.error) throw fallback.error;
+        dispatches = fallback.data;
+      }
 
       for (const d of dispatches) {
         const { data: items, error: iErr } = await supabase
@@ -413,12 +429,16 @@ export default async function handler(req, res) {
       const body = getBody(req);
       const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items, offline_id } = body;
 
-      // Idempotency check for offline sync
+      // Idempotency check for offline sync (safely handle missing offline_id column)
       if (offline_id) {
-        const { data: existing } = await supabase.from('dispatches').select('id').eq('offline_id', offline_id).maybeSingle();
-        if (existing) {
-          // Already created, return success
-          return res.status(200).json({ id: existing.id, success: true });
+        try {
+          const { data: existing } = await supabase.from('dispatches').select('id').eq('offline_id', offline_id).maybeSingle();
+          if (existing) {
+            return res.status(200).json({ id: existing.id, success: true });
+          }
+        } catch (idempotencyErr) {
+          // offline_id column may not exist — just skip the check and proceed
+          console.warn('Idempotency check skipped (offline_id column may not exist)');
         }
       }
 
@@ -426,30 +446,29 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
+      // Try insert with offline_id, fall back without it
+      const insertData = {
+        chilling_center_id: chillingCenterId, transporter_name: transporterName,
+        vehicle_number: vehicleNumber, driver_contact: driverContact,
+        dispatch_date: dispatchDate,
+      };
+
       let { data: dResult, error: dErr } = await supabase
         .from('dispatches')
-        .insert({
-          chilling_center_id: chillingCenterId, transporter_name: transporterName,
-          vehicle_number: vehicleNumber, driver_contact: driverContact,
-          dispatch_date: dispatchDate,
-          offline_id: offline_id || null
-        })
+        .insert({ ...insertData, offline_id: offline_id || null })
         .select('id')
         .single();
 
-      if (dErr && dErr.message?.includes('offline_id')) {
-        console.warn('POST fallback: offline_id column missing, retrying without it');
-        const fallbackRes = await supabase
+      if (dErr) {
+        // Retry without offline_id in case column doesn't exist
+        console.warn('Insert fallback: retrying without offline_id:', dErr.message);
+        const fallback = await supabase
           .from('dispatches')
-          .insert({
-            chilling_center_id: chillingCenterId, transporter_name: transporterName,
-            vehicle_number: vehicleNumber, driver_contact: driverContact,
-            dispatch_date: dispatchDate
-          })
+          .insert(insertData)
           .select('id')
           .single();
-        dResult = fallbackRes.data;
-        dErr = fallbackRes.error;
+        dResult = fallback.data;
+        dErr = fallback.error;
       }
 
       if (dErr) throw dErr;
@@ -545,10 +564,6 @@ export default async function handler(req, res) {
         items: items.map((item, i) => ({ id: i + 1, dispatchId, collectionId: item.collectionId })),
         totalQuantity: 0,
       });
-
-      console.log(`[Dispatch] Created successfully: ${dispatch.id} with ${items.length} items`);
-
-      console.log(`[Dispatch] Created successfully: ${dispatch.id} with ${items.length} items`);
     } catch (err) {
       console.error('Create dispatch error:', err);
       return res.status(500).json({ error: 'Server error' });

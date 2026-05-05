@@ -94,7 +94,7 @@ export interface Dispatch {
   vehicleNumber: string;
   driverContact: string;
   dispatchDate: string;
-  status: 'Dispatched' | 'Approved' | 'Rejected';
+  status: 'Dispatched' | 'Approved' | 'Rejected' | 'Pending Sync';
   rejectionReason?: string;
   items: DispatchItem[];
   totalQuantity?: number;
