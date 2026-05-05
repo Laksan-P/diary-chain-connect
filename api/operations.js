@@ -29,12 +29,8 @@ export default async function handler(req, res) {
       let { collectionId, snf, fat, water, offlineCollectionId } = body;
 
       if ((!collectionId || collectionId === 0) && offlineCollectionId) {
-        try {
-          const { data: col } = await supabase.from('milk_collections').select('id').eq('offline_id', offlineCollectionId).maybeSingle();
-          if (col) collectionId = col.id;
-        } catch (lookupErr) {
-          console.warn('Quality test: offline_id lookup skipped (column may not exist)');
-        }
+        // offline_id column doesn't exist — the sync engine resolves IDs before calling this
+        console.warn('Quality test: collectionId is 0 and offline_id lookup not available');
       }
 
       if (!collectionId || snf == null || fat == null || water == null) {
@@ -436,47 +432,21 @@ export default async function handler(req, res) {
       const body = getBody(req);
       const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items, offline_id } = body;
 
-      // Idempotency check for offline sync (safely handle missing offline_id column)
-      if (offline_id) {
-        try {
-          const { data: existing } = await supabase.from('dispatches').select('id').eq('offline_id', offline_id).maybeSingle();
-          if (existing) {
-            return res.status(200).json({ id: existing.id, success: true });
-          }
-        } catch (idempotencyErr) {
-          // offline_id column may not exist — just skip the check and proceed
-          console.warn('Idempotency check skipped (offline_id column may not exist)');
-        }
-      }
-
       if (!chillingCenterId || !transporterName || !vehicleNumber || !driverContact || !dispatchDate || !items?.length) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      // Try insert with offline_id, fall back without it
       const insertData = {
         chilling_center_id: chillingCenterId, transporter_name: transporterName,
         vehicle_number: vehicleNumber, driver_contact: driverContact,
         dispatch_date: dispatchDate,
       };
 
-      let { data: dResult, error: dErr } = await supabase
+      const { data: dResult, error: dErr } = await supabase
         .from('dispatches')
-        .insert({ ...insertData, offline_id: offline_id || null })
+        .insert(insertData)
         .select('id')
         .single();
-
-      if (dErr) {
-        // Retry without offline_id in case column doesn't exist
-        console.warn('Insert fallback: retrying without offline_id:', dErr.message);
-        const fallback = await supabase
-          .from('dispatches')
-          .insert(insertData)
-          .select('id')
-          .single();
-        dResult = fallback.data;
-        dErr = fallback.error;
-      }
 
       if (dErr) throw dErr;
       const dispatchId = dResult.id;
@@ -488,12 +458,8 @@ export default async function handler(req, res) {
         const offId = item.offlineCollectionId;
 
         if ((!colId || colId === 0) && offId) {
-          try {
-            const { data: col } = await supabase.from('milk_collections').select('id').eq('offline_id', offId).maybeSingle();
-            if (col) colId = col.id;
-          } catch (lookupErr) {
-            console.warn('Dispatch item: offline_id lookup skipped (column may not exist)');
-          }
+          // offline_id column doesn't exist — the sync engine resolves IDs before calling this
+          console.warn(`Dispatch item: collection not resolved for offline ID ${offId}`);
         }
 
         if (!colId || colId === 0) {

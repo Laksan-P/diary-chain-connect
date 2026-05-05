@@ -76,64 +76,18 @@ export default async function handler(req, res) {
       const body = getBody(req);
       const { farmerId, chillingCenterId, date, time, temperature, quantity, milkType, offline_id } = body;
 
-      // Idempotency check for offline sync (safely handle missing offline_id column)
-      if (offline_id) {
-        try {
-          const { data: existing } = await supabase.from('milk_collections').select('id').eq('offline_id', offline_id).maybeSingle();
-          if (existing) {
-            const { data: mc } = await supabase
-              .from('milk_collections')
-              .select(`
-                id, farmer_id, chilling_center_id, date, time, temperature, quantity, milk_type,
-                quality_result, failure_reason, dispatch_status, created_at,
-                farmers (name, farmer_id),
-                chilling_centers (name)
-              `)
-              .eq('id', existing.id)
-              .single();
-            return res.status(200).json({
-              id: mc.id, farmerId: mc.farmer_id,
-              farmerName: mc.farmers?.name, farmerCode: mc.farmers?.farmer_id,
-              chillingCenterId: mc.chilling_center_id,
-              chillingCenterName: mc.chilling_centers?.name,
-              date: mc.date, time: mc.time,
-              temperature: mc.temperature, quantity: mc.quantity,
-              milkType: mc.milk_type, qualityResult: mc.quality_result,
-              failureReason: mc.failure_reason, dispatchStatus: mc.dispatch_status,
-              createdAt: mc.created_at,
-            });
-          }
-        } catch (idempotencyErr) {
-          console.warn('Collection idempotency check skipped (offline_id column may not exist)');
-        }
-      }
-
       if (!farmerId || !chillingCenterId || !date || !time || temperature == null || !quantity) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      const insertData = {
-        farmer_id: farmerId, chilling_center_id: chillingCenterId,
-        date, time, temperature, quantity, milk_type: milkType || 'Cow',
-      };
-
-      let { data: insertRows, error: insertErr } = await supabase
+      const { data: insertRows, error: insertErr } = await supabase
         .from('milk_collections')
-        .insert({ ...insertData, offline_id: offline_id || null })
+        .insert({
+          farmer_id: farmerId, chilling_center_id: chillingCenterId,
+          date, time, temperature, quantity, milk_type: milkType || 'Cow',
+        })
         .select('id')
         .single();
-
-      // Retry without offline_id if column doesn't exist
-      if (insertErr) {
-        console.warn('Collection insert fallback: retrying without offline_id:', insertErr.message);
-        const fallback = await supabase
-          .from('milk_collections')
-          .insert(insertData)
-          .select('id')
-          .single();
-        insertRows = fallback.data;
-        insertErr = fallback.error;
-      }
 
       if (insertErr) throw insertErr;
       const newId = insertRows.id;

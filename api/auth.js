@@ -219,26 +219,6 @@ export default async function handler(req, res) {
     try {
       const body = getBody(req);
       const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password, offline_id } = body;
-      
-      // Idempotency check for offline sync (safely handle missing offline_id column)
-      if (offline_id) {
-        try {
-          const { data: existingFarmer } = await supabase.from('farmers').select('id, user_id, farmer_id').eq('offline_id', offline_id).maybeSingle();
-          if (existingFarmer) {
-            const { data: userData } = await supabase.from('users').select('name').eq('id', existingFarmer.user_id).single();
-            return res.status(200).json({ 
-              id: existingFarmer.id, 
-              farmerId: existingFarmer.farmer_id, 
-              userId: existingFarmer.user_id, 
-              name: userData?.name || name,
-              address, phone, nic
-            });
-          }
-        } catch (idempotencyErr) {
-          console.warn('Farmer idempotency check skipped (offline_id column may not exist)');
-        }
-      }
-
       if (!email || !password || !name || !chillingCenterId) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -268,29 +248,15 @@ export default async function handler(req, res) {
       const { count: farmerCount } = await supabase.from('farmers').select('*', { count: 'exact', head: true });
       const farmerCode = `FRM-${String(farmerCount + 1).padStart(3, '0')}`;
 
-      const farmerInsertData = {
-        farmer_id: farmerCode, user_id: userId, name,
-        address: address || '', phone: phone || '', nic: nic || '',
-        chilling_center_id: chillingCenterId,
-      };
-
-      let { data: farmerResult, error: fErr } = await supabase
+      const { data: farmerResult, error: fErr } = await supabase
         .from('farmers')
-        .insert({ ...farmerInsertData, offline_id: offline_id || null })
+        .insert({
+          farmer_id: farmerCode, user_id: userId, name,
+          address: address || '', phone: phone || '', nic: nic || '',
+          chilling_center_id: chillingCenterId,
+        })
         .select('id')
         .single();
-
-      // Retry without offline_id if column doesn't exist
-      if (fErr) {
-        console.warn('Farmer insert fallback: retrying without offline_id:', fErr.message);
-        const fallback = await supabase
-          .from('farmers')
-          .insert(farmerInsertData)
-          .select('id')
-          .single();
-        farmerResult = fallback.data;
-        fErr = fallback.error;
-      }
 
       if (fErr) throw fErr;
       const farmerRowId = farmerResult.id;
