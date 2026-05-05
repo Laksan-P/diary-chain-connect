@@ -44,9 +44,11 @@ const DispatchMonitoring: React.FC = () => {
     getChillingCenters().then(setCenters);
   }, []);
 
-  const filteredDispatches = filterCenterId === 'all'
-    ? dispatches
-    : dispatches.filter(d => d.chillingCenterId === parseInt(filterCenterId));
+  const filteredDispatches = React.useMemo(() => {
+    return filterCenterId === 'all'
+      ? dispatches
+      : dispatches.filter(d => d.chillingCenterId === parseInt(filterCenterId));
+  }, [dispatches, filterCenterId]);
 
   const handleApprove = async (id: number) => {
     // Optimistic Update
@@ -96,17 +98,34 @@ const DispatchMonitoring: React.FC = () => {
 
       if (res.result === 'Pass') {
         toast({ title: 'Quality Check Passed', description: 'Collection has been automatically approved.' });
-        await fetchDispatches();
+        // Update local state instead of full refetch for better performance
+        setDispatches(ds => ds.map(d => {
+          if (d.id === testDialog.dispatchId) {
+            return {
+              ...d,
+              items: (d.items || []).map(i => i.collectionId === testDialog.collectionId ? { ...i, dispatchStatus: 'Approved', qualityResult: 'Pass' } : i)
+            };
+          }
+          return d;
+        }));
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
         setTestForm({ snf: '', fat: '', water: '' });
       } else {
+        // Update local state to show 'Fail'
+        setDispatches(ds => ds.map(d => {
+          if (d.id === testDialog.dispatchId) {
+            return {
+              ...d,
+              items: (d.items || []).map(i => i.collectionId === testDialog.collectionId ? { ...i, dispatchStatus: 'Rejected', qualityResult: 'Fail' } : i)
+            };
+          }
+          return d;
+        }));
+
         // Find the farmer info for the failing collection
         const dispatch = dispatches.find(d => d.id === testDialog.dispatchId);
         const item = dispatch?.items.find(i => i.collectionId === testDialog.collectionId);
         const farmerInfo = item ? ` (ID: ${item.collectionId} - ${item.farmerName})` : '';
-
-        // Immediately fetch to show the "Fail" state in the background
-        await fetchDispatches();
 
         // Automatically route to rejection flow with pre-filled reason
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
@@ -211,28 +230,50 @@ const DispatchMonitoring: React.FC = () => {
                     <td className="px-6 py-4 text-center">
                       <StatusBadge
                         status={(() => {
-                          const hasPass = dispatch.items?.some(i => i.qualityResult === 'Pass');
-                          const hasFail = dispatch.items?.some(i => i.qualityResult === 'Fail');
-                          const isManualReject = dispatch.status === 'Rejected' && 
-                                               dispatch.rejectionReason && 
-                                               !dispatch.rejectionReason.startsWith('Quality Check Failed');
+                          if (dispatch.status === 'Approved') return 'Approved';
+                          if (dispatch.status === 'Rejected') {
+                            const isManualReject = !dispatch.rejectionReason?.startsWith('Quality Check Failed');
+                            return isManualReject ? 'Rejected' : 'Rejected'; 
+                          }
                           
-                          if (isManualReject) return 'Rejected';
-                          return hasPass && hasFail ? 'Mixed' : dispatch.status;
+                          const allApproved = dispatch.items?.every(i => i.dispatchStatus === 'Approved');
+                          const hasFail = dispatch.items?.some(i => i.qualityResult === 'Fail');
+                          
+                          if (allApproved && dispatch.status === 'Dispatched') return 'Ready';
+                          return hasFail ? 'Mixed' : dispatch.status;
                         })()}
                       />
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                       {dispatch.status === 'Dispatched' ? (
                         <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-primary border-primary/20 hover:bg-primary/5 h-8 px-3"
-                            onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
-                          >
-                            <Beaker className="w-3.5 h-3.5 mr-1" /> Inspect Quality
-                          </Button>
+                          {(() => {
+                            const allVerified = dispatch.items?.every(i => i.dispatchStatus === 'Approved' || i.dispatchStatus === 'Rejected');
+                            const allApproved = dispatch.items?.every(i => i.dispatchStatus === 'Approved');
+                            
+                            if (allVerified && allApproved) {
+                              return (
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 shadow-sm"
+                                  onClick={() => handleApprove(dispatch.id)}
+                                >
+                                  <ClipboardCheck className="w-3.5 h-3.5 mr-1" /> Approve
+                                </Button>
+                              );
+                            }
+                            
+                            return (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-primary border-primary/20 hover:bg-primary/5 h-8 px-3"
+                                onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
+                              >
+                                <Beaker className="w-3.5 h-3.5 mr-1" /> Inspect Quality
+                              </Button>
+                            );
+                          })()}
                           <Button
                             size="sm"
                             variant="destructive"
