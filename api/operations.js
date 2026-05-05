@@ -864,11 +864,8 @@ export default async function handler(req, res) {
         const passRateRaw = 100 - rejectionRate;
         const passRate = Number(passRateRaw.toFixed(1));
 
-        // Dynamically override status if they meet the 75% threshold
-        let displayStatus = center?.performance_status || 'Good';
-        if (passRate >= 75) {
-          displayStatus = 'Good';
-        }
+        // STRICT RULE: Directly determine status based on 75% threshold
+        const displayStatus = passRate >= 75 ? 'Good' : 'Underperforming';
 
         const trends = {};
         dispatches?.forEach(d => {
@@ -926,8 +923,8 @@ export default async function handler(req, res) {
           const rejected = cDispatches.filter(d => d.status === 'Rejected').length;
           const passRate = total > 0 ? ((total - rejected) / total) * 100 : 100;
           
-          let displayStatus = c.performance_status || 'Good';
-          if (passRate >= 75) displayStatus = 'Good';
+          // STRICT RULE: Directly determine status based on 75% threshold
+          const displayStatus = passRate >= 75 ? 'Good' : 'Underperforming';
           
           return { ...c, performance_status: displayStatus };
         });
