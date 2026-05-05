@@ -213,11 +213,13 @@ const PerformanceDashboard: React.FC = () => {
                           <Tooltip 
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                           />
-                          <Bar dataKey="passRate" radius={[4, 4, 0, 0]} name="Pass Rate %">
-                            {detailedPerf.trends?.map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={entry.passRate > 80 ? '#10b981' : '#f59e0b'} />
-                            ))}
-                          </Bar>
+                          <Bar 
+                            dataKey="passRate" 
+                            fill="#10b981"
+                            radius={[4, 4, 0, 0]} 
+                            name="Pass Rate %"
+                            minPointSize={5}
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>

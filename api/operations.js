@@ -686,27 +686,35 @@ export default async function handler(req, res) {
         dispatches?.forEach(d => {
           if (!d.dispatch_date) return;
           const month = d.dispatch_date.substring(0, 7);
-          if (!trends[month]) trends[month] = { month, volume: 0, rejected: 0, total: 0 };
-          
-          trends[month].total++;
-          if (d.status === 'Rejected') {
-            trends[month].rejected++;
+          if (!trends[month]) {
+            trends[month] = { month, volume: 0, passCount: 0, total: 0 };
           }
           
-          const vol = d.quantity?.reduce((sum, item) => {
-            const mc = item.milk_collections;
-            const q = (mc && !Array.isArray(mc)) ? mc.quantity : (Array.isArray(mc) ? mc[0]?.quantity : 0);
-            return sum + (parseFloat(q) || 0);
-          }, 0) || 0;
+          trends[month].total++;
+          if (d.status === 'Approved' || d.status === 'Pending' || !d.status) {
+            trends[month].passCount++;
+          }
+          
+          // Safer volume calculation
+          let vol = 0;
+          if (Array.isArray(d.quantity)) {
+            vol = d.quantity.reduce((sum, item) => {
+              const mc = item.milk_collections;
+              const q = (mc && !Array.isArray(mc)) ? mc.quantity : (Array.isArray(mc) ? mc[0]?.quantity : 0);
+              return sum + (parseFloat(q) || 0);
+            }, 0);
+          }
           trends[month].volume += vol;
         });
 
-        const trendArray = Object.values(trends)
-          .map((t) => ({
-            ...t,
-            passRate: t.total > 0 ? ((t.total - t.rejected) / t.total) * 100 : 100
-          }))
-          .sort((a, b) => a.month.localeCompare(b.month));
+        const trendArray = Object.keys(trends).sort().map(month => {
+          const t = trends[month];
+          return {
+            month,
+            volume: t.volume,
+            passRate: t.total > 0 ? (t.passCount / t.total) * 100 : 100
+          };
+        });
 
         return res.status(200).json({ 
           status: center?.performance_status || 'Good', 
