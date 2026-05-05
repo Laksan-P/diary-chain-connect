@@ -86,14 +86,22 @@ const DispatchPage: React.FC = () => {
       let c = getCache('dispatch_all_collections') || getCache('dispatch_pending_collections') || [];
       let d = getCache('dispatch_history') || [];
 
-      // 2. Only attempt network fetch if online
+      // 2. Only attempt network fetch if online — parallel for speed
       if (navigator.onLine) {
         try {
-          c = await getCollections(centerId);
-          d = await getDispatches(centerId);
-          saveCache('dispatch_pending_collections', c.filter((col: any) => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending'));
-          saveCache('dispatch_all_collections', c);
-          saveCache('dispatch_history', d);
+          const [colsResult, dispResult] = await Promise.allSettled([
+            getCollections(centerId),
+            getDispatches(centerId)
+          ]);
+          if (colsResult.status === 'fulfilled') {
+            c = colsResult.value;
+            saveCache('dispatch_pending_collections', c.filter((col: any) => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending'));
+            saveCache('dispatch_all_collections', c);
+          }
+          if (dispResult.status === 'fulfilled') {
+            d = dispResult.value;
+            saveCache('dispatch_history', d);
+          }
         } catch (err) {
           console.error('Failed to fetch fresh data:', err);
         }
@@ -119,10 +127,6 @@ const DispatchPage: React.FC = () => {
       const maxId = d.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
 
       const offlinePendingDispatches = allDispatches
-        .filter(a => {
-          // If the server already has a record with this offline_id, don't show the pending one
-          return !d.some((serverRecord: any) => serverRecord.offline_id === a.id);
-        })
         .map((a, index) => {
           if (!a.data) return null;
           return {

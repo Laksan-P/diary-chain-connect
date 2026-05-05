@@ -372,12 +372,11 @@ export default async function handler(req, res) {
       if (error) throw error;
 
       for (const d of dispatches) {
-        // Use left join (no !inner) so dispatches show even if collection is pending
         const { data: items, error: iErr } = await supabase
           .from('dispatch_items')
           .select(`
             id, dispatch_id, collection_id,
-            milk_collections (
+            milk_collections!inner (
               quantity, quality_result, dispatch_status, failure_reason,
               farmers (name)
             )
@@ -394,13 +393,13 @@ export default async function handler(req, res) {
         d.rejectionReason = d.rejection_reason;
         d.createdAt = d.created_at;
 
-        d.items = (items || []).map((item) => ({
+        d.items = items.map((item) => ({
           id: item.id, dispatchId: item.dispatch_id, collectionId: item.collection_id,
-          quantity: item.milk_collections?.quantity || 0,
+          quantity: item.milk_collections?.quantity,
           qualityResult: item.milk_collections?.quality_result,
           dispatchStatus: item.milk_collections?.dispatch_status,
           failureReason: item.milk_collections?.failure_reason,
-          farmerName: item.milk_collections?.farmers?.name || 'Unknown',
+          farmerName: item.milk_collections?.farmers?.name,
         }));
         d.totalQuantity = d.items.reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
       }
