@@ -27,7 +27,7 @@ export interface Farmer {
   chillingCenterName?: string;
   totalQuantity?: number;
   createdAt: string;
-  performance_status?: 'Good' | 'Underperforming' | 'Needs Improvement';
+  performance_status?: 'Good' | 'Underperforming' | 'Needs Improvement' | 'Improving';
   performance_recommendation?: string | null;
 }
 
@@ -49,7 +49,7 @@ export interface ChillingCenter {
   avgQuantity?: number;
   qualityRate?: number;
   revenue?: number;
-  performance_status?: 'Good' | 'Underperforming' | 'Needs Improvement';
+  performance_status?: 'Good' | 'Underperforming' | 'Needs Improvement' | 'Improving';
   performance_recommendation?: string | null;
 }
 

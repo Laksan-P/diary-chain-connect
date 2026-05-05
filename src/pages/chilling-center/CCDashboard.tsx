@@ -65,6 +65,12 @@ const CCDashboard: React.FC = () => {
             Performance: High
           </div>
         )}
+        {centerDetails?.performance_status === 'Improving' && (
+          <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-xs font-medium border border-blue-100 animate-in fade-in zoom-in">
+            <TrendingUp className="w-3.5 h-3.5" />
+            Performance: Improving
+          </div>
+        )}
       </div>
 
       {centerDetails?.performance_status === 'Underperforming' && (
@@ -80,7 +86,7 @@ const CCDashboard: React.FC = () => {
               </p>
               <div className="flex items-center gap-2 mt-1 text-xs opacity-80">
                 <Info className="w-3.5 h-3.5" />
-                This status is automatically calculated based on your last 30 days of dispatch history.
+                This status is automatically calculated based on your recent dispatch history (Flagged if 5+ rejections in last 10; Cleared after 5 approvals in a row).
               </div>
             </div>
           </AlertDescription>

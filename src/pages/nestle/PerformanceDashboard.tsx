@@ -64,7 +64,11 @@ const PerformanceDashboard: React.FC = () => {
                   >
                     <div>
                       <p className="text-sm font-semibold">{f.name}</p>
-                      <Badge variant="outline" className={`text-[10px] uppercase mt-1 ${f.performance_status === 'Good' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      <Badge variant="outline" className={`text-[10px] uppercase mt-1 ${
+                        f.performance_status === 'Good' ? 'bg-emerald-50 text-emerald-700' : 
+                        f.performance_status === 'Improving' ? 'bg-blue-50 text-blue-700' :
+                        'bg-amber-50 text-amber-700'
+                      }`}>
                         {f.performance_status}
                       </Badge>
                     </div>
@@ -80,7 +84,11 @@ const PerformanceDashboard: React.FC = () => {
                   >
                     <div>
                       <p className="text-sm font-semibold">{c.name}</p>
-                      <Badge variant="outline" className={`text-[10px] uppercase mt-1 ${c.performance_status === 'Good' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                      <Badge variant="outline" className={`text-[10px] uppercase mt-1 ${
+                        c.performance_status === 'Good' ? 'bg-emerald-50 text-emerald-700' : 
+                        c.performance_status === 'Improving' ? 'bg-blue-50 text-blue-700' :
+                        'bg-red-50 text-red-700'
+                      }`}>
                         {c.performance_status}
                       </Badge>
                     </div>
@@ -128,12 +136,16 @@ const PerformanceDashboard: React.FC = () => {
                         <p className="text-sm font-medium text-muted-foreground">Performance Status</p>
                         <h3 className="text-2xl font-bold">{detailedPerf.status}</h3>
                       </div>
-                      <div className={`p-2 rounded-full ${detailedPerf.status === 'Good' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                      <div className={`p-2 rounded-full ${
+                        detailedPerf.status === 'Good' ? 'bg-emerald-100 text-emerald-600' : 
+                        detailedPerf.status === 'Improving' ? 'bg-blue-100 text-blue-600' :
+                        'bg-amber-100 text-amber-600'
+                      }`}>
                         <TrendingUp className="w-5 h-5" />
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <Info className="w-3 h-3" /> System calculated based on last 30 days
+                      <Info className="w-3 h-3" /> System calculated based on recent activity
                     </p>
                   </CardContent>
                 </Card>

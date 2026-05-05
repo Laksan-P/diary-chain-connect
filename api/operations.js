@@ -572,51 +572,48 @@ export default async function handler(req, res) {
 
       // ────────── CC PERFORMANCE TRACKING TRIGGER ──────────
       try {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
+        const { data: currentCC } = await supabase.from('chilling_centers').select('performance_status').eq('id', dispatch.chilling_center_id).single();
+        const currentStatus = currentCC?.performance_status;
+
+        // Get last 10 dispatches to check performance trends
         const { data: recentDispatches } = await supabase
           .from('dispatches')
-          .select('status')
+          .select('status, rejection_reason')
           .eq('chilling_center_id', dispatch.chilling_center_id)
-          .gte('dispatch_date', thirtyDaysAgo.toISOString().split('T')[0]);
+          .order('dispatch_date', { ascending: false })
+          .limit(10);
 
-        if (recentDispatches && recentDispatches.length >= 5) {
-          const total = recentDispatches.length;
-          const rejected = recentDispatches.filter(d => d.status === 'Rejected').length;
-          const rate = (rejected / total) * 100;
+        if (recentDispatches && recentDispatches.length > 0) {
+          const rejectedList = recentDispatches.filter(d => d.status === 'Rejected');
+          const rejectedCount = rejectedList.length;
+          
+          // Recovery streak (last 5 approved)
+          const streak = recentDispatches.slice(0, 5);
+          const isOnRecoveryStreak = streak.length >= 5 && streak.every(d => d.status === 'Approved');
 
-          if (rate > 10) { // 10% threshold
-            const rec = `High rejection rate (${rate.toFixed(1)}%). Review farmer collection testing and cooling procedures.`;
+          if (rejectedCount >= 5 && !isOnRecoveryStreak) {
+            // Underperforming if 5+ rejections
+            const reasons = Array.from(new Set(rejectedList.map(d => d.rejection_reason).filter(Boolean))).slice(0, 2).join(', ');
+            const rec = `High rejection frequency detected (${rejectedCount} rejections in last 10 dispatches). ${reasons ? `Primary issues: ${reasons}.` : 'Please review testing procedures.'}`;
+            
             await supabase.from('chilling_centers').update({ performance_status: 'Underperforming', performance_recommendation: rec }).eq('id', dispatch.chilling_center_id);
             
-            // Notify CC owner
-            if (ccUserId) {
+            if (currentStatus !== 'Underperforming' && ccUserId) {
               await supabase.from('notifications').insert({
                 user_id: ccUserId,
                 title: 'performance_warning_title',
-                message: `performance_warning_msg|rate:${rate.toFixed(1)}%`,
+                message: `performance_warning_msg|rate:${rejectedCount} fails`,
                 type: 'system'
               });
             }
+          } else if (isOnRecoveryStreak) {
+            // Recovery only after 5 consecutive approvals
+            if (currentStatus !== 'Good') {
+              await supabase.from('chilling_centers').update({ 
+                performance_status: 'Good', 
+                performance_recommendation: null 
+              }).eq('id', dispatch.chilling_center_id);
 
-            // Notify Nestle
-            const { data: nestleUsers } = await supabase.from('users').select('id').eq('role', 'nestle');
-            if (nestleUsers) {
-              for (const n of nestleUsers) {
-                await supabase.from('notifications').insert({
-                  user_id: n.id,
-                  title: 'cc_performance_alert_title',
-                  message: `cc_performance_alert_msg|center_id:${dispatch.chilling_center_id},rate:${rate.toFixed(1)}%`,
-                  type: 'system'
-                });
-              }
-            }
-          } else {
-            // Auto-recovery: If rate is fine, reset to Good
-            const { data: currentCC } = await supabase.from('chilling_centers').select('performance_status').eq('id', dispatch.chilling_center_id).single();
-            if (currentCC?.performance_status === 'Underperforming') {
-              // Only notify if they were previously underperforming
               if (ccUserId) {
                 await supabase.from('notifications').insert({
                   user_id: ccUserId,
@@ -626,7 +623,9 @@ export default async function handler(req, res) {
                 });
               }
             }
-            await supabase.from('chilling_centers').update({ performance_status: 'Good', performance_recommendation: null }).eq('id', dispatch.chilling_center_id);
+          } else if (currentStatus === 'Underperforming' && recentDispatches[0].status === 'Approved') {
+            // If they are underperforming but starting to pass, show "Improving"
+            await supabase.from('chilling_centers').update({ performance_status: 'Improving' }).eq('id', dispatch.chilling_center_id);
           }
         }
       } catch (ccPErr) { console.error('CC Performance err:', ccPErr); }
