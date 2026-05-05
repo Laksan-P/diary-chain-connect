@@ -411,7 +411,17 @@ export default async function handler(req, res) {
   if (action === 'create-dispatch' && req.method === 'POST') {
     try {
       const body = getBody(req);
-      const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items } = body;
+      const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items, offline_id } = body;
+      
+      // Idempotency check for offline sync
+      if (offline_id) {
+        const { data: existing } = await supabase.from('dispatches').select('id').eq('offline_id', offline_id).maybeSingle();
+        if (existing) {
+          // Already created, return success
+          return res.status(200).json({ id: existing.id, success: true });
+        }
+      }
+
       if (!chillingCenterId || !transporterName || !vehicleNumber || !driverContact || !dispatchDate || !items?.length) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -422,6 +432,7 @@ export default async function handler(req, res) {
           chilling_center_id: chillingCenterId, transporter_name: transporterName,
           vehicle_number: vehicleNumber, driver_contact: driverContact,
           dispatch_date: dispatchDate,
+          offline_id: offline_id || null
         })
         .select('id')
         .single();
@@ -439,12 +450,19 @@ export default async function handler(req, res) {
           if (col) colId = col.id;
         }
 
-        if (colId) finalItems.push(colId);
+        if (!colId || colId === 0) {
+          // If we can't find the collection, we MUST fail this dispatch
+          // so it retries later when the collection has synced.
+          throw new Error(`Collection not found for item: ${offId || 'Unknown'}`);
+        }
 
-        await supabase.from('dispatch_items').insert({
+        finalItems.push(colId);
+
+        const { error: itemErr } = await supabase.from('dispatch_items').insert({
           dispatch_id: dispatchId,
           collection_id: colId
         });
+        if (itemErr) throw itemErr;
       }
 
       if (finalItems.length > 0) {
