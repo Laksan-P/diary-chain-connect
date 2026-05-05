@@ -74,7 +74,36 @@ export default async function handler(req, res) {
   if (action === 'create' && req.method === 'POST') {
     try {
       const body = getBody(req);
-      const { farmerId, chillingCenterId, date, time, temperature, quantity, milkType } = body;
+      const { farmerId, chillingCenterId, date, time, temperature, quantity, milkType, offline_id } = body;
+
+      // Idempotency check for offline sync
+      if (offline_id) {
+        const { data: existing } = await supabase.from('milk_collections').select('id').eq('offline_id', offline_id).maybeSingle();
+        if (existing) {
+          const { data: mc } = await supabase
+            .from('milk_collections')
+            .select(`
+              id, farmer_id, chilling_center_id, date, time, temperature, quantity, milk_type,
+              quality_result, failure_reason, dispatch_status, created_at,
+              farmers (name, farmer_id),
+              chilling_centers (name)
+            `)
+            .eq('id', existing.id)
+            .single();
+          return res.status(200).json({
+            id: mc.id, farmerId: mc.farmer_id,
+            farmerName: mc.farmers?.name, farmerCode: mc.farmers?.farmer_id,
+            chillingCenterId: mc.chilling_center_id,
+            chillingCenterName: mc.chilling_centers?.name,
+            date: mc.date, time: mc.time,
+            temperature: mc.temperature, quantity: mc.quantity,
+            milkType: mc.milk_type, qualityResult: mc.quality_result,
+            failureReason: mc.failure_reason, dispatchStatus: mc.dispatch_status,
+            createdAt: mc.created_at,
+          });
+        }
+      }
+
       if (!farmerId || !chillingCenterId || !date || !time || temperature == null || !quantity) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -84,6 +113,7 @@ export default async function handler(req, res) {
         .insert({
           farmer_id: farmerId, chilling_center_id: chillingCenterId,
           date, time, temperature, quantity, milk_type: milkType || 'Cow',
+          offline_id: offline_id || null
         })
         .select('id')
         .single();
@@ -117,6 +147,25 @@ export default async function handler(req, res) {
       });
     } catch (err) {
       console.error('Create collection error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
+  // ────────── DELETE /api/collections?action=delete&id=X ──────────
+  if (action === 'delete' && req.method === 'DELETE') {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: 'id is required' });
+
+    try {
+      const { error } = await supabase
+        .from('milk_collections')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('Delete collection error:', err);
       return res.status(500).json({ error: 'Server error' });
     }
   }

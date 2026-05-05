@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { History } from 'lucide-react';
+import { Trash2, History } from 'lucide-react';
 import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
-import { getCollections } from '@/services/api';
+import { getCollections, deleteCollection } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection } from '@/types';
 import { formatDate, formatQuantity } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
-import { getPendingActions, saveCache, getCache } from '@/services/offlineSync';
+import { getPendingActions, saveCache, getCache, removePendingAction } from '@/services/offlineSync';
 
 const CollectionHistory: React.FC = () => {
   const { user } = useAuth();
@@ -28,7 +30,7 @@ const CollectionHistory: React.FC = () => {
         // 1. Load from cache immediately for instant UI
         const cachedHistory = getCache('cache_collection_history') || [];
         serverCols = cachedHistory;
-        
+
         // 2. Only attempt network fetch if online
         if (navigator.onLine) {
           try {
@@ -44,7 +46,7 @@ const CollectionHistory: React.FC = () => {
         // Always show unsync'd offline records on top (they disappear after sync)
         const cachedFarmersStr = localStorage.getItem('cache_farmers');
         const cachedFarmers = cachedFarmersStr ? JSON.parse(cachedFarmersStr) : [];
-        
+
         const allPending = getPendingActions();
         const allQuality = allPending.filter(a => a.type === 'quality');
         const allDispatches = allPending.filter(d => d.type === 'dispatch');
@@ -110,6 +112,25 @@ const CollectionHistory: React.FC = () => {
     };
   }, [user]);
 
+  const handleDelete = async (row: any) => {
+    if (!confirm('Are you sure you want to delete this collection record?')) return;
+
+    try {
+      if (row.isOffline) {
+        removePendingAction(row.id);
+        toast({ title: 'Success', description: 'Offline record removed' });
+      } else {
+        await deleteCollection(row.id);
+        toast({ title: 'Success', description: 'Collection record deleted' });
+      }
+
+      // Update local state immediately for better UX
+      setCollections(prev => prev.filter(c => c.id !== row.id));
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to delete record', variant: 'destructive' });
+    }
+  };
+
   const columns = [
     { key: 'farmerCode', header: 'Farmer ID' },
     { key: 'farmerName', header: 'Name' },
@@ -119,14 +140,28 @@ const CollectionHistory: React.FC = () => {
     { key: 'temperature', header: 'Temp (°C)', render: (r: MilkCollection) => `${r.temperature}°C` },
     { key: 'qualityResult', header: 'Quality', render: (r: MilkCollection) => r.qualityResult ? <StatusBadge status={r.qualityResult} /> : '—' },
     { key: 'failureReason', header: 'Reason', render: (r: MilkCollection) => r.failureReason || '—' },
-    { 
-      key: 'dispatchStatus', 
-      header: 'Dispatch', 
+    {
+      key: 'dispatchStatus',
+      header: 'Dispatch',
       render: (r: MilkCollection) => {
         if (r.qualityResult === 'Fail') return <StatusBadge status="Rejected" />;
         return r.dispatchStatus ? <StatusBadge status={r.dispatchStatus} /> : <span className="text-muted-foreground">Pending</span>;
-      } 
+      }
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (r: any) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleDelete(r)}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      )
+    }
   ];
 
   return (

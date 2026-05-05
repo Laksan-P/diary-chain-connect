@@ -218,7 +218,23 @@ export default async function handler(req, res) {
 
     try {
       const body = getBody(req);
-      const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password } = body;
+      const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password, offline_id } = body;
+      
+      // Idempotency check for offline sync
+      if (offline_id) {
+        const { data: existingFarmer } = await supabase.from('farmers').select('id, user_id').eq('offline_id', offline_id).maybeSingle();
+        if (existingFarmer) {
+          const { data: userData } = await supabase.from('users').select('name').eq('id', existingFarmer.user_id).single();
+          return res.status(200).json({ 
+            id: existingFarmer.id, 
+            farmerId: existingFarmer.farmer_id, 
+            userId: existingFarmer.user_id, 
+            name: userData?.name || name,
+            address, phone, nic
+          });
+        }
+      }
+
       if (!email || !password || !name || !chillingCenterId) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
@@ -254,6 +270,7 @@ export default async function handler(req, res) {
           farmer_id: farmerCode, user_id: userId, name,
           address: address || '', phone: phone || '', nic: nic || '',
           chilling_center_id: chillingCenterId,
+          offline_id: offline_id || null
         })
         .select('id')
         .single();

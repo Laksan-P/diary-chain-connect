@@ -173,6 +173,13 @@ export const getCollections = async (centerId?: number, farmerId?: number): Prom
   return apiFetch<MilkCollection[]>(url);
 };
 
+/** DELETE /api/collections?action=delete&id=X */
+export const deleteCollection = async (id: number): Promise<{ success: boolean }> => {
+  return apiFetch<{ success: boolean }>(`/api/collections?action=delete&id=${id}`, {
+    method: 'DELETE',
+  });
+};
+
 /** POST /api/collections?action=create */
 export const createCollection = async (data: Partial<MilkCollection>): Promise<MilkCollection> => {
   return apiFetch<MilkCollection>('/api/collections?action=create', {

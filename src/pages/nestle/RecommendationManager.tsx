@@ -60,6 +60,24 @@ const RecommendationManager = () => {
   };
 
   const handleSave = async () => {
+    // Basic validation
+    if (!form.issue_type.trim()) {
+      toast({ title: 'Validation Error', description: 'Please specify an issue type (e.g. SNF, FAT, WATER)', variant: 'destructive' });
+      return;
+    }
+    if (!form.title_en.trim()) {
+      toast({ title: 'Validation Error', description: 'English title is required', variant: 'destructive' });
+      return;
+    }
+    if (!form.description_en.trim()) {
+      toast({ title: 'Validation Error', description: 'English description is required', variant: 'destructive' });
+      return;
+    }
+    if (form.guidance_en.length === 0) {
+      toast({ title: 'Validation Error', description: 'Please add at least one guidance step', variant: 'destructive' });
+      return;
+    }
+
     try {
       const payload = isEditing ? { ...form, id: isEditing } : form;
       await saveRecommendation(payload);
@@ -157,7 +175,7 @@ const RecommendationManager = () => {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Issue Type</Label>
+                <Label>Issue Type <span className="text-destructive">*</span></Label>
                 <Input value={form.issue_type} onChange={e => setForm({ ...form, issue_type: e.target.value })} placeholder="e.g. SNF, FAT, WATER" />
               </div>
               <div className="space-y-2">
@@ -181,15 +199,15 @@ const RecommendationManager = () => {
                   <Languages className="w-4 h-4" /> English
                 </div>
                 <div className="space-y-2">
-                  <Label>Title</Label>
+                  <Label>Title <span className="text-destructive">*</span></Label>
                   <Input value={form.title_en} onChange={e => setForm({ ...form, title_en: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Description</Label>
+                  <Label>Description <span className="text-destructive">*</span></Label>
                   <Textarea value={form.description_en} onChange={e => setForm({ ...form, description_en: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Guidance Items</Label>
+                  <Label>Guidance Items <span className="text-destructive">*</span></Label>
                   <div className="flex gap-2">
                     <Input value={guidanceInput.en} onChange={e => setGuidanceInput({ ...guidanceInput, en: e.target.value })} placeholder="Add a step..." />
                     <Button type="button" variant="secondary" onClick={() => addGuidanceItem('en')}>Add</Button>

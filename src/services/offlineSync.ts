@@ -30,6 +30,13 @@ export const savePendingAction = (type: PendingAction['type'], data: any) => {
   return newAction.id;
 };
 
+export const removePendingAction = (id: string) => {
+  const actions = getPendingActions();
+  const filtered = actions.filter(a => a.id !== id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  window.dispatchEvent(new CustomEvent('offline-action-saved'));
+};
+
 let isSyncing = false;
 
 export const syncActions = async () => {
@@ -158,3 +165,19 @@ window.addEventListener('online', async () => {
   console.log('Online restored, syncing...');
   await syncActions();
 });
+
+// Periodic sync (heartbeat) to ensure stuck records are eventually pushed
+setInterval(async () => {
+  if (navigator.onLine && !isSyncing) {
+    const actions = getPendingActions();
+    if (actions.length > 0) {
+      console.log(`Periodic sync: ${actions.length} actions pending...`);
+      await syncActions();
+    }
+  }
+}, 60000); // Every 60 seconds
+
+// Immediate sync on load if online
+if (navigator.onLine) {
+  syncActions().catch(err => console.error('Initial sync failed:', err));
+}
