@@ -130,13 +130,21 @@ export const syncActions = async () => {
         };
       });
 
-      console.log(`[OfflineSync] Syncing dispatch: ${action.data.vehicleNumber}, ${action.data.transporterName}`);
-      await createDispatch({
+      console.log(`[OfflineSync] Sync started for record ${action.id}`);
+      console.log(`[OfflineSync] Sending record ID ${action.id} to backend API...`);
+      const result = await createDispatch({
         ...action.data,
         items: resolvedItems,
         offline_id: action.id,
       });
-      console.log(`[OfflineSync] Dispatch synced successfully: ${action.id}`);
+
+      console.log(`[OfflineSync] API success for record ${action.id}. Server ID: ${result?.id}`);
+      
+      // Option A: Update local status before removal
+      action.data.status = 'Dispatched';
+      action.syncedServerId = result?.id as any;
+      console.log(`[OfflineSync] Updating local status for ${action.id} to "Dispatched"`);
+      
     } catch (error) {
       console.error(`[OfflineSync] Failed to sync dispatch ${action.id}:`, error);
       remainingActions.push(action);
@@ -150,6 +158,7 @@ export const syncActions = async () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...remainingActions, ...newActions]));
   
   console.log(`[OfflineSync] Sync cycle complete. Remaining: ${remainingActions.length}`);
+  console.log('[OfflineSync] UI refreshed via custom event.');
   isSyncing = false;
   window.dispatchEvent(new CustomEvent('offline-sync-complete'));
 };

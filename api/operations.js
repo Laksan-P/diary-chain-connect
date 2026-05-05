@@ -364,8 +364,24 @@ export default async function handler(req, res) {
         query = query.eq('chilling_center_id', req.query.centerId);
       }
 
-      const { data: dispatches, error } = await query.order('id', { ascending: false });
-      if (error) throw error;
+      let { data: dispatches, error } = await query.order('id', { ascending: false });
+
+      if (error && error.message?.includes('offline_id')) {
+        console.warn('Falling back: offline_id column missing');
+        const fallbackQuery = supabase
+          .from('dispatches')
+          .select(`
+            id, chilling_center_id, transporter_name, vehicle_number, driver_contact,
+            dispatch_date, status, rejection_reason, created_at,
+            chilling_centers (name)
+          `);
+        if (req.query.centerId) fallbackQuery.eq('chilling_center_id', req.query.centerId);
+        const { data: fallbackData, error: fallbackErr } = await fallbackQuery.order('id', { ascending: false });
+        if (fallbackErr) throw fallbackErr;
+        dispatches = fallbackData;
+      } else if (error) {
+        throw error;
+      }
 
       for (const d of dispatches) {
         const { data: items, error: iErr } = await supabase
