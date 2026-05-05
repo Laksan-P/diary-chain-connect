@@ -37,11 +37,36 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
+      // 1. Fetch original collection data for comparison
+      const { data: original, error: origErr } = await supabase
+        .from('milk_collections')
+        .select('fat, snf, water, quality_result')
+        .eq('id', collectionId)
+        .maybeSingle();
+
+      if (origErr) throw origErr;
+
       let resultValue = 'Pass';
       let reasonValue = null;
-      if (fat < 3.5) { resultValue = 'Fail'; reasonValue = 'Low FAT'; }
-      else if (snf < 8.5) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
-      else if (water > 0.5) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
+
+      // 2. Determine thresholds based on user role
+      const isNestle = user.role === 'nestle' || user.role === 'nestle_officer';
+      
+      if (isNestle && original) {
+        // Nestlé Rule: Must be >= CC's recorded quality
+        const threshFat = original.fat || 3.5;
+        const threshSnf = original.snf || 8.5;
+        const threshWater = original.water || 0.5;
+
+        if (fat < threshFat) { resultValue = 'Fail'; reasonValue = 'Low FAT'; }
+        else if (snf < threshSnf) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
+        else if (water > threshWater) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
+      } else {
+        // Standard CC Rule: Match base quality requirements
+        if (fat < 3.5) { resultValue = 'Fail'; reasonValue = 'Low FAT'; }
+        else if (snf < 8.5) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
+        else if (water > 0.5) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
+      }
 
       // Soft idempotency check (since offline_id column is missing)
       const { data: existing } = await supabase
@@ -52,7 +77,7 @@ export default async function handler(req, res) {
 
       if (existing) {
         console.log(`[Backend] Quality test already exists for collection ${collectionId}, skipping.`);
-        return res.status(200).json({ id: existing.id, success: true });
+        return res.status(200).json({ id: existing.id, success: true, result: resultValue, reason: reasonValue });
       }
 
       const { data: qtRows, error: qtErr } = await supabase
