@@ -584,17 +584,20 @@ export default async function handler(req, res) {
           .limit(10);
 
         if (recentDispatches && recentDispatches.length > 0) {
+          const total = recentDispatches.length;
           const rejectedList = recentDispatches.filter(d => d.status === 'Rejected');
           const rejectedCount = rejectedList.length;
+          const rejectionRate = (rejectedCount / total) * 100;
           
           // Recovery streak (last 5 approved)
           const streak = recentDispatches.slice(0, 5);
           const isOnRecoveryStreak = streak.length >= 5 && streak.every(d => d.status === 'Approved');
 
-          if (rejectedCount >= 5 && !isOnRecoveryStreak) {
-            // Underperforming if 5+ rejections
+          // NEW RULE: Threshold is 25% rejection (75% pass rate)
+          if (rejectionRate > 25 && !isOnRecoveryStreak) {
+            // Underperforming if > 25% rejections
             const reasons = Array.from(new Set(rejectedList.map(d => d.rejection_reason).filter(Boolean))).slice(0, 2).join(', ');
-            const rec = `High rejection frequency detected (${rejectedCount} rejections in last 10 dispatches). ${reasons ? `Primary issues: ${reasons}.` : 'Please review testing procedures.'}`;
+            const rec = `High rejection rate (${rejectionRate.toFixed(1)}%). ${reasons ? `Primary issues: ${reasons}.` : 'Please review testing procedures.'}`;
             
             await supabase.from('chilling_centers').update({ performance_status: 'Underperforming', performance_recommendation: rec }).eq('id', dispatch.chilling_center_id);
             
@@ -602,12 +605,12 @@ export default async function handler(req, res) {
               await supabase.from('notifications').insert({
                 user_id: ccUserId,
                 title: 'performance_warning_title',
-                message: `performance_warning_msg|rate:${rejectedCount} fails`,
+                message: `performance_warning_msg|rate:${rejectionRate.toFixed(1)}%`,
                 type: 'system'
               });
             }
-          } else if (isOnRecoveryStreak) {
-            // Recovery only after 5 consecutive approvals
+          } else if (isOnRecoveryStreak || rejectionRate <= 25) {
+            // Good if <= 25% rejection OR recovery streak
             if (currentStatus !== 'Good') {
               await supabase.from('chilling_centers').update({ 
                 performance_status: 'Good', 

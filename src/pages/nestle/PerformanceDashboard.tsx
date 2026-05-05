@@ -120,12 +120,12 @@ const PerformanceDashboard: React.FC = () => {
                         <p className="text-sm font-medium text-muted-foreground">Quality Pass Rate</p>
                         <h3 className="text-2xl font-bold">{detailedPerf.passRate.toFixed(1)}%</h3>
                       </div>
-                      <div className={`p-2 rounded-full ${detailedPerf.passRate > 80 ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
-                        {detailedPerf.passRate > 80 ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                      <div className={`p-2 rounded-full ${detailedPerf.passRate >= 75 ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                        {detailedPerf.passRate >= 75 ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                       </div>
                     </div>
                     <div className="mt-4 h-2 bg-muted rounded-full overflow-hidden">
-                      <div className={`h-full transition-all duration-1000 ${detailedPerf.passRate > 80 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${detailedPerf.passRate}%` }} />
+                      <div className={`h-full transition-all duration-1000 ${detailedPerf.passRate >= 75 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${detailedPerf.passRate}%` }} />
                     </div>
                   </CardContent>
                 </Card>
@@ -165,8 +165,8 @@ const PerformanceDashboard: React.FC = () => {
                 </Card>
               </div>
 
-              {/* Recommendation Alert */}
-              {detailedPerf.recommendation && (() => {
+              {/* Recommendation Alert - Hide if status is Good */}
+              {detailedPerf.recommendation && detailedPerf.status !== 'Good' && (() => {
                 let recData: any = null;
                 try {
                   if (detailedPerf.recommendation.startsWith('{')) {

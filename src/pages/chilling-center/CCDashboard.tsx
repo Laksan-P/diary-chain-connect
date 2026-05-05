@@ -97,7 +97,7 @@ const CCDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Registered Farmers" value={farmerCount} icon={Users} variant="default" trend={{ value: 12, label: 'this month' }} />
         <StatCard title="Total Collection" value={formatQuantity(totalQty)} icon={Milk} variant="success" trend={{ value: 8, label: 'vs last week' }} />
-        <StatCard title="Quality Pass Rate" value={`${passRate}%`} icon={Beaker} variant={passRate >= 90 ? 'success' : 'warning'} />
+        <StatCard title="Quality Pass Rate" value={`${passRate}%`} icon={Beaker} variant={passRate >= 75 ? 'success' : 'warning'} />
         <StatCard title="Dispatches" value={dispatchCount} icon={Truck} variant="default" />
       </div>
 
