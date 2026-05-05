@@ -916,7 +916,23 @@ export default async function handler(req, res) {
       if (['nestle', 'nestle_officer'].includes(user.role)) {
         const { data: farmers } = await supabase.from('farmers').select('id, name, performance_status');
         const { data: centers } = await supabase.from('chilling_centers').select('id, name, performance_status');
-        return res.status(200).json({ farmers, centers });
+        
+        // Fetch dispatches to calculate real-time pass rates for the list
+        const { data: allDispatches } = await supabase.from('dispatches').select('chilling_center_id, status');
+        
+        const centerStats = (centers || []).map(c => {
+          const cDispatches = allDispatches?.filter(d => d.chilling_center_id === c.id) || [];
+          const total = cDispatches.length;
+          const rejected = cDispatches.filter(d => d.status === 'Rejected').length;
+          const passRate = total > 0 ? ((total - rejected) / total) * 100 : 100;
+          
+          let displayStatus = c.performance_status || 'Good';
+          if (passRate >= 75) displayStatus = 'Good';
+          
+          return { ...c, performance_status: displayStatus };
+        });
+
+        return res.status(200).json({ farmers, centers: centerStats });
       }
       return res.status(400).json({ error: 'Invalid type' });
     } catch (err) {
