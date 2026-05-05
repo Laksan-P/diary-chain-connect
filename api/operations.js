@@ -861,7 +861,15 @@ export default async function handler(req, res) {
         const totalD = dispatches?.length || 0;
         const rejectedD = dispatches?.filter(d => d.status === 'Rejected').length || 0;
         const rejectionRate = totalD > 0 ? (rejectedD / totalD) * 100 : 0;
-        
+        const passRateRaw = 100 - rejectionRate;
+        const passRate = Number(passRateRaw.toFixed(1));
+
+        // Dynamically override status if they meet the 75% threshold
+        let displayStatus = center?.performance_status || 'Good';
+        if (passRate >= 75) {
+          displayStatus = 'Good';
+        }
+
         const trends = {};
         dispatches?.forEach(d => {
           if (!d.dispatch_date) return;
@@ -898,9 +906,9 @@ export default async function handler(req, res) {
         });
 
         return res.status(200).json({ 
-          status: center?.performance_status || 'Good', 
-          recommendation: center?.performance_recommendation, 
-          passRate: Number((100 - rejectionRate).toFixed(1)), 
+          status: displayStatus, 
+          recommendation: displayStatus === 'Good' ? null : center?.performance_recommendation, 
+          passRate, 
           rejectionRate: Number(rejectionRate.toFixed(1)), 
           trends: trendArray 
         });
