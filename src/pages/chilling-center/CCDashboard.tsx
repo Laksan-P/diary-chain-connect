@@ -40,8 +40,12 @@ const CCDashboard: React.FC = () => {
     }
   }, [user]);
 
+  if (centerDetails) {
+    console.log(`[Frontend CC Debug] PassRate: ${centerDetails.quality_pass_rate}, Status: ${centerDetails.performance_status}, ShowAlert: ${centerDetails.show_alert}`);
+  }
+
   const totalQty = collections.reduce((s, c) => s + parseNumber(c.quantity), 0);
-  const passRate = collections.length ? Math.round((collections.filter(c => c.qualityResult === 'Pass').length / collections.length) * 100) : 0;
+  const displayPassRate = centerDetails?.quality_pass_rate ?? 0;
 
   const recentColumns = [
     { key: 'farmerCode', header: 'Farmer ID' },
@@ -59,21 +63,15 @@ const CCDashboard: React.FC = () => {
           <h2 className="text-xl font-display font-bold text-foreground">Dashboard Overview</h2>
           <p className="text-sm text-muted-foreground">{user?.chillingCenterName || 'Chilling Center Dashboard'}</p>
         </div>
-        {centerDetails?.performance_status === 'Good' && (
+        {centerDetails?.show_alert === false && (
           <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium border border-emerald-100 animate-in fade-in zoom-in">
             <TrendingUp className="w-3.5 h-3.5" />
-            Performance: High
-          </div>
-        )}
-        {centerDetails?.performance_status === 'Improving' && (
-          <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-xs font-medium border border-blue-100 animate-in fade-in zoom-in">
-            <TrendingUp className="w-3.5 h-3.5" />
-            Performance: Improving
+            Performance: Good
           </div>
         )}
       </div>
 
-      {centerDetails?.performance_status === 'Underperforming' && (
+      {centerDetails?.show_alert === true && (
         <Alert variant="destructive" className="bg-amber-50 border-amber-200 text-amber-900 shadow-sm animate-in slide-in-from-top-2 duration-500">
           <AlertTriangle className="h-5 w-5 text-amber-600" />
           <AlertTitle className="text-amber-800 font-bold flex items-center gap-2 text-lg">
@@ -86,7 +84,7 @@ const CCDashboard: React.FC = () => {
               </p>
               <div className="flex items-center gap-2 mt-1 text-xs opacity-80">
                 <Info className="w-3.5 h-3.5" />
-                This status is automatically calculated based on your recent dispatch history (Flagged if 5+ rejections in last 10; Cleared after 5 approvals in a row).
+                This status is automatically calculated based on your dispatch history. Alert triggers when quality pass rate drops below 75%.
               </div>
             </div>
           </AlertDescription>
@@ -97,7 +95,7 @@ const CCDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Registered Farmers" value={farmerCount} icon={Users} variant="default" trend={{ value: 12, label: 'this month' }} />
         <StatCard title="Total Collection" value={formatQuantity(totalQty)} icon={Milk} variant="success" trend={{ value: 8, label: 'vs last week' }} />
-        <StatCard title="Quality Pass Rate" value={`${passRate}%`} icon={Beaker} variant={passRate >= 75 ? 'success' : 'warning'} />
+        <StatCard title="Quality Pass Rate" value={`${displayPassRate}%`} icon={Beaker} variant={displayPassRate >= 75 ? 'success' : 'warning'} />
         <StatCard title="Dispatches" value={dispatchCount} icon={Truck} variant="default" />
       </div>
 

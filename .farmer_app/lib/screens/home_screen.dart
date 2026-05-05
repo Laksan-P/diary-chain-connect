@@ -727,13 +727,16 @@ class _HomeScreenState extends State<HomeScreen> {
       displayStatus = Translations.get('perf_needs_improvement', locale);
     } else if (status == 'Improving') {
       displayStatus = Translations.get('perf_improving', locale);
-    } else if (status == 'Underperforming') {
-      displayStatus = Translations.get('perf_warning_title', locale) ?? 'Underperforming';
     }
 
     String displayTitle = Translations.get('performance_alert', locale);
     String displayRec = rec;
     List<dynamic> guidance = [];
+
+    // Translate the fallback message if present
+    if (displayRec.contains('Performance improvement required')) {
+      displayRec = Translations.get('perf_fallback_msg', locale);
+    }
 
     if (recData != null) {
       if (locale == 'ta') {

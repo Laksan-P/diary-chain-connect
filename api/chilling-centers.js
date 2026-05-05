@@ -34,30 +34,29 @@ export default async function handler(req, res) {
       if (ccErr) throw ccErr;
 
       // 2. Sync Performance Status (Consistent with Nestle's logic)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      const { data: recentCollections } = await supabase
-        .from('milk_collections')
-        .select('quality_result')
-        .eq('chilling_center_id', ccId)
-        .not('quality_result', 'is', null)
-        .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
+      const { data: dispatches } = await supabase
+        .from('dispatches')
+        .select('status')
+        .eq('chilling_center_id', ccId);
 
       let currentStatus = 'Good';
       let currentRec = null;
+      let passRate = 100;
 
-      if (recentCollections && recentCollections.length > 0) {
-        const total = recentCollections.length;
-        const passed = recentCollections.filter(c => c.quality_result === 'Pass').length;
-        const passRate = (passed / total) * 100;
+      if (dispatches && dispatches.length > 0) {
+        const total = dispatches.length;
+        const rejected = dispatches.filter(d => d.status === 'Rejected').length;
+        const rejectionRate = (rejected / total) * 100;
+        passRate = Number((100 - rejectionRate).toFixed(1));
 
-        // NEW RULE: Threshold is 75% pass rate
+        // STRICT RULE: Threshold is 75% pass rate
         if (passRate < 75) {
-          currentStatus = 'Underperforming';
-          currentRec = `Low quality pass rate (${passRate.toFixed(1)}%). Please review collection and cooling procedures.`;
+          currentStatus = 'Needs Improvement';
+          currentRec = `Low quality pass rate (${passRate}%). Please review collection and cooling procedures.`;
         }
       }
+
+      const showAlert = currentStatus === 'Needs Improvement';
 
       // 3. Update DB if status changed or recommendation changed
       if (currentStatus !== cc.performance_status || currentRec !== cc.performance_recommendation) {
@@ -65,23 +64,25 @@ export default async function handler(req, res) {
           .update({ performance_status: currentStatus, performance_recommendation: currentRec })
           .eq('id', ccId);
           
-        // If it became Underperforming, send an immediate notification
-        if (currentStatus === 'Underperforming' && cc.performance_status !== 'Underperforming') {
-          const passedCount = recentCollections.filter(c => c.quality_result === 'Pass').length;
-          const currPassRate = (passedCount / recentCollections.length) * 100;
+        // If it became Needs Improvement, send an immediate notification
+        if (currentStatus === 'Needs Improvement' && cc.performance_status !== 'Needs Improvement') {
           await supabase.from('notifications').insert({
             user_id: user.id,
             title: 'performance_warning_title',
-            message: `performance_warning_msg|rate:${currPassRate.toFixed(1)}%`,
+            message: `performance_warning_msg|rate:${passRate}%`,
             type: 'system'
           });
         }
       }
 
+      console.log(`[CC Performance Debug] ID: ${ccId}, PassRate: ${passRate}, Status: ${currentStatus}, ShowAlert: ${showAlert}`);
+
       return res.status(200).json({ 
         ...cc, 
+        quality_pass_rate: passRate,
         performance_status: currentStatus, 
-        performance_recommendation: currentRec 
+        performance_recommendation: currentRec,
+        show_alert: showAlert
       });
     } catch (err) {
       console.error('Get chilling center error:', err);

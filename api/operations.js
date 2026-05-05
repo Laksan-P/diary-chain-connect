@@ -573,33 +573,31 @@ export default async function handler(req, res) {
         const { data: currentCC } = await supabase.from('chilling_centers').select('performance_status').eq('id', dispatch.chilling_center_id).single();
         const currentStatus = currentCC?.performance_status;
 
-        // Use milk_collections to calculate pass rate consistently with Nestle logic
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        const { data: recentCollections } = await supabase
-          .from('milk_collections')
-          .select('quality_result')
-          .eq('chilling_center_id', dispatch.chilling_center_id)
-          .not('quality_result', 'is', null)
-          .gte('date', thirtyDaysAgo.toISOString().split('T')[0]);
+        // Use dispatches to calculate pass rate consistently with both dashboards
+        const { data: allDispatches } = await supabase
+          .from('dispatches')
+          .select('status')
+          .eq('chilling_center_id', dispatch.chilling_center_id);
 
-        if (recentCollections && recentCollections.length > 0) {
-          const total = recentCollections.length;
-          const passed = recentCollections.filter(c => c.quality_result === 'Pass').length;
-          const passRate = (passed / total) * 100;
+        if (allDispatches && allDispatches.length > 0) {
+          const total = allDispatches.length;
+          const rejected = allDispatches.filter(d => d.status === 'Rejected').length;
+          const rejectionRate = (rejected / total) * 100;
+          const passRate = Number((100 - rejectionRate).toFixed(1));
 
-          // NEW RULE: Threshold is 75% pass rate
+          console.log(`[Dispatch CC Perf] CenterID: ${dispatch.chilling_center_id}, PassRate: ${passRate}, CurrentDB: ${currentStatus}`);
+
+          // STRICT RULE: Threshold is 75% pass rate
           if (passRate < 75) {
-            const rec = `Low quality pass rate (${passRate.toFixed(1)}%). Please review collection and cooling procedures.`;
+            const rec = `Low quality pass rate (${passRate}%). Please review collection and cooling procedures.`;
 
-            await supabase.from('chilling_centers').update({ performance_status: 'Underperforming', performance_recommendation: rec }).eq('id', dispatch.chilling_center_id);
+            await supabase.from('chilling_centers').update({ performance_status: 'Needs Improvement', performance_recommendation: rec }).eq('id', dispatch.chilling_center_id);
 
-            if (currentStatus !== 'Underperforming' && ccUserId) {
+            if (currentStatus !== 'Needs Improvement' && ccUserId) {
               await supabase.from('notifications').insert({
                 user_id: ccUserId,
                 title: 'performance_warning_title',
-                message: `performance_warning_msg|rate:${passRate.toFixed(1)}%`,
+                message: `performance_warning_msg|rate:${passRate}%`,
                 type: 'system'
               });
             }
@@ -832,7 +830,7 @@ export default async function handler(req, res) {
         const passRate = Number(passRateRaw.toFixed(1));
 
         // STRICT RULE: Directly determine status based on 75% threshold
-        const displayStatus = passRate >= 75 ? 'Good' : 'Underperforming';
+        const displayStatus = passRate >= 75 ? 'Good' : 'Needs Improvement';
 
         const threeMonthsAgo = new Date(); threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
         const { data: collections } = await supabase.from('milk_collections').select('date, quantity, quality_result').eq('farmer_id', farmerId).gte('date', threeMonthsAgo.toISOString().split('T')[0]).order('date', { ascending: true });
@@ -853,8 +851,8 @@ export default async function handler(req, res) {
           trends: trendArray
         };
 
-        // If underperforming, attach full recommendation data from DB
-        if (resData.status === 'Underperforming') {
+        // If needs improvement, attach full recommendation data from DB
+        if (resData.status === 'Needs Improvement') {
           try {
             // Determine issue type from existing recommendation string or default to GENERAL
             const recStr = (resData.recommendation || '').toUpperCase();
@@ -900,7 +898,10 @@ export default async function handler(req, res) {
         const passRate = Number(passRateRaw.toFixed(1));
 
         // STRICT RULE: Directly determine status based on 75% threshold
-        const displayStatus = passRate >= 75 ? 'Good' : 'Underperforming';
+        const displayStatus = passRate >= 75 ? 'Good' : 'Needs Improvement';
+        const showAlert = displayStatus === 'Needs Improvement';
+
+        console.log(`[Nestle Performance Debug] CenterID: ${centerId}, PassRate: ${passRate}, Status: ${displayStatus}, ShowAlert: ${showAlert}`);
 
         const trends = {};
         dispatches?.forEach(d => {
@@ -939,9 +940,12 @@ export default async function handler(req, res) {
 
         return res.status(200).json({
           status: displayStatus,
+          performance_status: displayStatus,
           recommendation: displayStatus === 'Good' ? null : center?.performance_recommendation,
           passRate,
+          quality_pass_rate: passRate,
           rejectionRate: Number(rejectionRate.toFixed(1)),
+          show_alert: showAlert,
           trends: trendArray
         });
       }
@@ -960,7 +964,7 @@ export default async function handler(req, res) {
           const total = fTests.length;
           const passed = fTests.filter(t => t.result === 'Pass').length;
           const passRate = total > 0 ? (passed / total) * 100 : 100;
-          return { ...f, performance_status: passRate >= 75 ? 'Good' : 'Underperforming' };
+          return { ...f, performance_status: passRate >= 75 ? 'Good' : 'Needs Improvement' };
         });
 
         const centerStats = (centers || []).map(c => {
@@ -968,7 +972,7 @@ export default async function handler(req, res) {
           const total = cDispatches.length;
           const rejected = cDispatches.filter(d => d.status === 'Rejected').length;
           const passRate = total > 0 ? ((total - rejected) / total) * 100 : 100;
-          return { ...c, performance_status: passRate >= 75 ? 'Good' : 'Underperforming' };
+          return { ...c, performance_status: passRate >= 75 ? 'Good' : 'Needs Improvement' };
         });
 
         return res.status(200).json({ farmers: farmerStats, centers: centerStats });

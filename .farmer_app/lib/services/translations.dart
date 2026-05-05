@@ -194,6 +194,7 @@ class Translations {
       'recommended_actions': 'Recommended Actions',
       'perf_warning_title': 'Performance Alert: Action Required',
       'guidance_for_farmer': 'GUIDANCE FOR FARMER',
+      'perf_fallback_msg': 'Performance improvement required. Please contact your chilling center.',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -391,6 +392,7 @@ class Translations {
       'recommended_actions': 'නිර්දේශිත ක්‍රියාමාර්ග',
       'perf_warning_title': 'කාර්ය සාධන අනතුරු ඇඟවීම: පියවර ගැනීම අවශ්‍යයි',
       'guidance_for_farmer': 'ගොවීන් සඳහා මඟපෙන්වීම්',
+      'perf_fallback_msg': 'කාර්ය සාධනය වැඩි දියුණු කිරීම අවශ්‍ය වේ. කරුණාකර ඔබේ සිසිලන මධ්‍යස්ථානය අමතන්න.',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -589,6 +591,7 @@ class Translations {
       'recommended_actions': 'பரிந்துரைக்கப்பட்ட நடவடிக்கைகள்',
       'perf_warning_title': 'செயல்திறன் எச்சரிக்கை: நடவடிக்கை தேவை',
       'guidance_for_farmer': 'விவசாயிகளுக்கான வழிகாட்டுதல்',
+      'perf_fallback_msg': 'செயல்திறன் மேம்பாடு தேவை. உங்கள் குளிர்விக்கும் மையத்தைத் தொடர்பு கொள்ளவும்.',
     },
   };
 
