@@ -64,13 +64,12 @@ const RegisterFarmer: React.FC = () => {
     } catch {
       // Offline fallback
       const { savePendingAction, getCache, saveCache } = await import('@/services/offlineSync');
-      const tempId = Date.now(); // Temp ID for offline use
+      const tempId = `OFF-${Date.now()}`; 
       const offlineFarmerData = { ...farmerData, tempId };
       savePendingAction('farmer_registration', offlineFarmerData);
       
       // Add to local farmers cache so they appear in dropdown immediately
       const cachedFarmers = getCache('farmers') || [];
-      const tempId = `OFF-${Date.now()}`;
       cachedFarmers.push({
         id: tempId,
         farmerId: tempId,
