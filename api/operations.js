@@ -220,6 +220,11 @@ export default async function handler(req, res) {
                   if (t.water > 0.5) waterFails++;
                 });
 
+                const failedTypes = [];
+                if (waterFails > 0) failedTypes.push("WATER");
+                if (snfFails > 0) failedTypes.push("SNF");
+                if (fatFails > 0) failedTypes.push("FAT");
+
                 let recObj = {
                   message_title: "Overall Milk Quality Decline",
                   message_title_ta: "ஒட்டுமொத்த பால் தர சரிவு",
@@ -227,7 +232,7 @@ export default async function handler(req, res) {
                   short_message: "Multiple quality parameters are failing",
                   short_message_ta: "பல தர அளவுருக்கள் தோல்வியடைகின்றன",
                   short_message_si: "ගුණාත්මක පරාමිති කිහිපයක් අසමත් වේ",
-                  issue: "Multiple",
+                  issue: failedTypes.length > 0 ? failedTypes.join(",") : "GENERAL",
                   tips: [
                     "Improve overall feeding and nutrition practices",
                     "Maintain clean and hygienic milking environment",
@@ -251,99 +256,45 @@ export default async function handler(req, res) {
                   ]
                 };
 
-                if (waterFails >= Math.ceil(consecutiveFails / 2)) {
-                  recObj = {
-                    message_title: "Milk Dilution Detected",
-                    message_title_ta: "பாலின் நீர்த்துப்போதல் கண்டறியப்பட்டுள்ளது",
-                    message_title_si: "කිරි දියාරු වීමක් හඳුනාගෙන ඇත",
-                    short_message: "Water content in milk is above acceptable level",
-                    short_message_ta: "பாலில் உள்ள நீரின் அளவு ஏற்றுக்கொள்ளக்கூடிய அளவை விட அதிகமாக உள்ளது",
-                    short_message_si: "කිරිවල ජල ප්‍රතිශතය පිළිගත හැකි මට්ටමට වඩා වැඩිය",
-                    issue: "Water",
-                    tips: [
+                // Specific case overrides for single issue predominance
+                if (failedTypes.length === 1) {
+                  if (failedTypes[0] === "WATER") {
+                    recObj.message_title = "Milk Dilution Detected";
+                    recObj.message_title_ta = "பாலின் நீர்த்துப்போதல் கண்டறியப்பட்டுள்ளது";
+                    recObj.message_title_si = "කිරි දියාරු වීමක් හඳුනාගෙන ඇත";
+                    recObj.short_message = "Water content in milk is above acceptable level";
+                    recObj.tips = [
                       "Do not add water to milk under any condition",
                       "Use clean containers during milking and storage",
                       "Avoid contamination from rainwater or dirty environments",
                       "Maintain proper hygiene during milk collection and handling",
                       "Ensure milk is stored in covered and clean conditions"
-                    ],
-                    tips_ta: [
-                      "எந்த நிலையிலும் பாலில் தண்ணீர் சேர்க்க வேண்டாம்",
-                      "பால் கறக்கும்போதும் சேமிக்கும்போதும் சுத்தமான பாத்திரங்களைப் பயன்படுத்துங்கள்",
-                      "மழைநீர் அல்லது அசுத்தமான சூழலில் இருந்து மாசுபடுவதைத் தவிர்க்கவும்",
-                      "பால் சேகரிப்பு மற்றும் கையாளுதலின் போது சரியான சுகாதாரத்தை பராமரிக்கவும்",
-                      "பால் மூடப்பட்ட மற்றும் சுத்தமான நிலையில் சேமிக்கப்படுவதை உறுதி செய்யவும்"
-                    ],
-                    tips_si: [
-                      "කිසිදු තත්ත්වයක් යටතේ කිරිවලට ජලය එකතු නොකරන්න",
-                      "කිරි දෙවීමේදී සහ ගබඩා කිරීමේදී පිරිසිදු භාජන භාවිතා කරන්න",
-                      "වැසි ජලය හෝ අපිරිසිදු පරිසරයෙන් අපවිත්‍ර වීම වළක්වා ගන්න",
-                      "කිරි එකතු කිරීමේදී සහ හැසිරවීමේදී නිසි සෞඛ්‍යාරක්ෂාව පවත්වා ගන්න",
-                      "කිරි ආවරණය කර පිරිසිදු තත්ත්වයන් යටතේ ගබඩා කර ඇති බවට සහතික වන්න"
-                    ]
-                  };
-                } else if (snfFails >= Math.ceil(consecutiveFails / 2)) {
-                  recObj = {
-                    message_title: "Low SNF Detected",
-                    message_title_ta: "குறைந்த SNF கண்டறியப்பட்டுள்ளது",
-                    message_title_si: "අඩු SNF හඳුනාගෙන ඇත",
-                    short_message: "Milk nutrient level (SNF) is below standard",
-                    short_message_ta: "பால் ஊட்டச்சத்து அளவு (SNF) தரத்தை விட குறைவாக உள்ளது",
-                    short_message_si: "කිරි පෝෂණ මට්ටම (SNF) ප්‍රමිතියට වඩා අඩුය",
-                    issue: "SNF",
-                    tips: [
+                    ];
+                  } else if (failedTypes[0] === "SNF") {
+                    recObj.message_title = "Low SNF Detected";
+                    recObj.message_title_ta = "குறைந்த SNF கண்டறியப்பட்டுள்ளது";
+                    recObj.message_title_si = "අඩු SNF හඳුනාගෙන ඇත";
+                    recObj.short_message = "Milk nutrient level (SNF) is below standard";
+                    recObj.tips = [
                       "Provide protein-rich feed such as soybean meal and legume fodder",
                       "Add mineral mixture supplements to improve milk quality",
                       "Ensure clean drinking water is always available",
                       "Maintain a proper and consistent feeding schedule",
                       "Perform regular deworming and veterinary checkups"
-                    ],
-                    tips_ta: [
-                      "சோயாபீன் மீல் மற்றும் பருப்பு வகை தீவனம் போன்ற புரதம் நிறைந்த உணவை வழங்கவும்",
-                      "பாலின் தரத்தை மேம்படுத்த தாது கலவை சப்ளிமெண்ட்ஸ் சேர்க்கவும்",
-                      "சுத்தமான குடிநீர் எப்போதும் கிடைப்பதை உறுதி செய்யவும்",
-                      "சரியான மற்றும் நிலையான உணவு அட்டவணையை பராமரிக்கவும்",
-                      "வழக்கமான குடற்புழு நீக்கம் மற்றும் கால்நடை பரிசோதனைகளை மேற்கொள்ளுங்கள்"
-                    ],
-                    tips_si: [
-                      "සෝයා බෝංචි නිවුඩ්ඩ සහ රනිල කුලයට අයත් ආහාර වැනි ප්‍රෝටීන් බහුල ආහාර ලබා දෙන්න",
-                      "කිරිවල ගුණාත්මකභාවය වැඩි දියුණු කිරීම සඳහා ඛනිජ මිශ්‍රණ අතිරේක එකතු කරන්න",
-                      "පිරිසිදු පානීය ජලය සැමවිටම ලබා ගත හැකි බවට සහතික වන්න",
-                      "නිසි සහ ස්ථාවර ආහාර වේලක් පවත්වා ගන්න",
-                      "නිතිපතා පණුවන් ඉවත් කිරීම සහ පශු වෛද්‍ය පරීක්ෂණ සිදු කරන්න"
-                    ]
-                  };
-                } else if (fatFails >= Math.ceil(consecutiveFails / 2)) {
-                  recObj = {
-                    message_title: "Low Fat Content Detected",
-                    message_title_ta: "குறைந்த கொழுப்பு சத்து கண்டறியப்பட்டுள்ளது",
-                    message_title_si: "අඩු මේද ප්‍රතිශතයක් හඳුනාගෙන ඇත",
-                    short_message: "Milk fat percentage is below required level",
-                    short_message_ta: "பாலின் கொழுப்பு சதவீதம் தேவையான அளவை விட குறைவாக உள்ளது",
-                    short_message_si: "කිරි මේද ප්‍රතිශතය අවශ්‍ය මට්ටමට වඩා අඩුය",
-                    issue: "FAT",
-                    tips: [
+                    ];
+                  } else if (failedTypes[0] === "FAT") {
+                    recObj.message_title = "Low Fat Content Detected";
+                    recObj.message_title_ta = "குறைந்த கொழுப்பு சத்து கண்டறியப்பட்டுள்ளது";
+                    recObj.message_title_si = "අඩු මේද ප්‍රතිශතයක් හඳුනාගෙන ඇත";
+                    recObj.short_message = "Milk fat percentage is below required level";
+                    recObj.tips = [
                       "Feed cows with high-energy food such as coconut poonac, maize, and rice bran",
                       "Increase green grass intake (Napier grass, Guinea grass)",
                       "Add oil-rich supplements like coconut oil cake or soybean meal",
                       "Maintain consistent milking times daily",
                       "Ensure cows are healthy, stress-free, and properly hydrated"
-                    ],
-                    tips_ta: [
-                      "தேங்காய் புண்ணாக்கு, மக்காச்சோளம் மற்றும் தவிடு போன்ற அதிக ஆற்றல் கொண்ட உணவுகளை பசுக்களுக்கு உணவளிக்கவும்",
-                      "பச்சை புல் உட்கொள்ளலை அதிகரிக்கவும் (நேப்பியர் புல், கினியா புல்)",
-                      "தேங்காய் எண்ணெய் புண்ணாக்கு அல்லது சோயாபீன் மீல் போன்ற எண்ணெய் நிறைந்த சப்ளிமெண்ட்ஸைச் சேர்க்கவும்",
-                      "தினமும் சீரான பால் கறக்கும் நேரத்தை பராமரிக்கவும்",
-                      "பசுக்கள் ஆரோக்கியமாகவும், மன அழுத்தம் இல்லாமலும், சரியான நீரேற்றத்துடனும் இருப்பதை உறுதி செய்யவும்"
-                    ],
-                    tips_si: [
-                      "පොල් පුන්නක්කු, බඩඉරිඟු සහ සහල් නිවුඩ්ඩ වැනි අධි ශක්තිජනක ආහාර ගවයින්ට ලබා දෙන්න",
-                      "හරිත තෘණ ආහාරයට ගැනීම වැඩි කරන්න (නේපියර් තෘණ, ගිනියා තෘණ)",
-                      "පොල් තෙල් කේක් හෝ සෝයා බෝංචි නිවුඩ්ඩ වැනි තෙල් බහුල අතිරේක එකතු කරන්න",
-                      "දිනපතා කිරි දෙවීමේ වේලාවන් ස්ථාවරව පවත්වා ගන්න",
-                      "ගවයින් නිරෝගීව, ආතතියෙන් තොරව සහ නිසි ලෙස ජලය පානය කර ඇති බවට සහතික වන්න"
-                    ]
-                  };
+                    ];
+                  }
                 }
 
                 recObj.severity = newSeverity;
@@ -871,27 +822,40 @@ export default async function handler(req, res) {
         // If needs improvement, attach full recommendation data from DB
         if (resData.status === 'Needs Improvement') {
           try {
-            // Determine issue type from existing recommendation string or default to GENERAL
             const recStr = (resData.recommendation || '').toUpperCase();
-            const issueType = recStr.includes('SNF') ? 'SNF' :
-              recStr.includes('FAT') ? 'FAT' :
-                recStr.includes('WATER') ? 'WATER' : 'GENERAL';
+            let issueTypes = [];
+            if (recStr.includes('SNF')) issueTypes.push('SNF');
+            if (recStr.includes('FAT')) issueTypes.push('FAT');
+            if (recStr.includes('WATER')) issueTypes.push('WATER');
+            if (issueTypes.length === 0) issueTypes.push('GENERAL');
 
-            const { data: recDetails } = await supabase
+            const { data: allRecs } = await supabase
               .from('performance_recommendations')
               .select('*')
-              .eq('issue_type', issueType)
-              .limit(1)
-              .maybeSingle();
+              .in('issue_type', issueTypes);
 
-            if (recDetails) {
-              resData.recommendationDetails = recDetails;
-              // If the farmer didn't have a specific recommendation string, use the title from DB
-              if (!resData.recommendation) {
-                resData.recommendation = recDetails.title_en;
+            if (allRecs && allRecs.length > 0) {
+              if (allRecs.length === 1) {
+                resData.recommendationDetails = allRecs[0];
+                if (!resData.recommendation) resData.recommendation = allRecs[0].title_en;
+              } else {
+                // Merge multiple recommendations
+                const merged = {
+                  issue_type: 'MULTIPLE',
+                  title_en: 'Multiple Quality Issues Detected',
+                  title_ta: 'பல தர சிக்கல்கள் கண்டறியப்பட்டுள்ளன',
+                  title_si: 'ගුණාත්මක ගැටලු කිහිපයක් හඳුනාගෙන ඇත',
+                  description_en: allRecs.map(r => r.description_en).join(' '),
+                  description_ta: allRecs.map(r => r.description_ta).join(' '),
+                  description_si: allRecs.map(r => r.description_si).join(' '),
+                  guidance_en: [...new Set(allRecs.flatMap(r => r.guidance_en || []))],
+                  guidance_ta: [...new Set(allRecs.flatMap(r => r.guidance_ta || []))],
+                  guidance_si: [...new Set(allRecs.flatMap(r => r.guidance_si || []))]
+                };
+                resData.recommendationDetails = merged;
+                resData.recommendation = merged.title_en;
               }
             } else if (!resData.recommendation) {
-              // Final fallback if even DB fetch fails/is empty
               resData.recommendation = 'Performance improvement required. Please contact your chilling center.';
             }
           } catch (e) {

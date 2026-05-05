@@ -130,11 +130,27 @@ class Translations {
       'collections_included': 'Collections Included',
       'total_amount': 'Total Amount',
       'reason_label': 'Reason',
-      'jan': 'Jan', 'feb': 'Feb', 'mar': 'Mar', 'apr': 'Apr', 'may': 'May', 'jun': 'Jun',
-      'jul': 'Jul', 'aug': 'Aug', 'sep': 'Sep', 'oct': 'Oct', 'nov': 'Nov', 'dec': 'Dec',
-      'monday': 'Monday', 'tuesday': 'Tuesday', 'wednesday': 'Wednesday', 'thursday': 'Thursday',
-      'friday': 'Friday', 'saturday': 'Saturday', 'sunday': 'Sunday',
-      'weekday': 'Weekday', 'weekend': 'Weekend',
+      'jan': 'Jan',
+      'feb': 'Feb',
+      'mar': 'Mar',
+      'apr': 'Apr',
+      'may': 'May',
+      'jun': 'Jun',
+      'jul': 'Jul',
+      'aug': 'Aug',
+      'sep': 'Sep',
+      'oct': 'Oct',
+      'nov': 'Nov',
+      'dec': 'Dec',
+      'monday': 'Monday',
+      'tuesday': 'Tuesday',
+      'wednesday': 'Wednesday',
+      'thursday': 'Thursday',
+      'friday': 'Friday',
+      'saturday': 'Saturday',
+      'sunday': 'Sunday',
+      'weekday': 'Weekday',
+      'weekend': 'Weekend',
       'how_we_calculate': 'Payment Calculation Guide',
       'formula': 'Formula',
       'surplus_bonus': 'Quality Surplus Bonus',
@@ -148,7 +164,8 @@ class Translations {
       'bonus_label': '+ Fat & SNF Bonus',
       'surplus_label': 'Extra Fat & Solids (SNF)',
       'formula_literal': 'BASE + FAT BONUS + SNF BONUS',
-      'offline_mode_msg': 'Offline Mode – Data will sync when connection is restored',
+      'offline_mode_msg':
+          'Offline Mode – Data will sync when connection is restored',
       'pending_sync': 'Pending Sync',
       'monthly_earnings': 'Monthly Earnings',
       'monthly_liters': 'Monthly Liters',
@@ -159,7 +176,8 @@ class Translations {
       'faq_support': 'FAQ & Support',
       'faq_support_desc': 'Get help and contact support',
       'other_issue': 'Other Issue?',
-      'contact_support_desc': 'Can\'t find what you\'re looking for? Contact support.',
+      'contact_support_desc':
+          'Can\'t find what you\'re looking for? Contact support.',
       'call_cc': 'Call Chilling Center',
       'call_nestle': 'Call Nestlé',
       'support_chat': 'Support Chat',
@@ -175,26 +193,35 @@ class Translations {
       'custom_issue_feedback': 'New feedback message on your custom issue.',
       'performance_alert': 'Performance Alert',
       'farmer_performance_alert_title': 'Performance Improvement Needed',
-      'farmer_performance_alert_msg': 'Farmer {farmer} has been flagged for: {issue}',
+      'farmer_performance_alert_msg':
+          'Farmer {farmer} has been flagged for: {issue}',
       'cc_performance_alert_title': 'Center Quality Warning',
-      'cc_performance_alert_msg': 'Center #{center_id} has high rejection rate: {rate}',
+      'cc_performance_alert_msg':
+          'Center #{center_id} has high rejection rate: {rate}',
       'performance_warning_title': 'Quality Alert: Action Required',
-      'performance_warning_msg': 'Your center has a high rejection rate ({rate}). Please review procedures.',
+      'performance_warning_msg':
+          'Your center has a high rejection rate ({rate}). Please review procedures.',
       'performance_restored_title': 'Performance Restored',
-      'performance_restored_msg': 'Your quality standards have returned to optimal levels. Great job!',
+      'performance_restored_msg':
+          'Your quality standards have returned to optimal levels. Great job!',
       'performance_improving_title': 'Performance Improving',
-      'performance_improving_msg': 'Positive trend detected! Continue maintaining these quality standards.',
+      'performance_improving_msg':
+          'Positive trend detected! Continue maintaining these quality standards.',
       'perf_needs_improvement': 'Needs Improvement',
       'perf_improving': 'Improving',
       'perf_good': 'Good',
-      'rec_water': 'Possible milk dilution detected. Please ensure milk is not diluted with water.',
-      'rec_snf': 'Low SNF detected. This often relates to animal nutrition. Review feed quality.',
+      'rec_water':
+          'Possible milk dilution detected. Please ensure milk is not diluted with water.',
+      'rec_snf':
+          'Low SNF detected. This often relates to animal nutrition. Review feed quality.',
       'rec_fat': 'Low FAT detected. Review breed nutrition or feeding times.',
-      'rec_general': 'General quality issue. Please review hygiene and storage.',
+      'rec_general':
+          'General quality issue. Please review hygiene and storage.',
       'recommended_actions': 'Recommended Actions',
       'perf_warning_title': 'Performance Alert: Action Required',
       'guidance_for_farmer': 'GUIDANCE FOR FARMER',
-      'perf_fallback_msg': 'Performance improvement required. Please contact your chilling center.',
+      'perf_fallback_msg':
+          'Performance improvement required. Please contact your chilling center.',
     },
     'si': {
       'welcome': 'ආයුබෝවන්',
@@ -328,17 +355,34 @@ class Translations {
       'collections_included': 'ඇතුළත් එකතු කිරීම්',
       'total_amount': 'මුළු මුදල',
       'reason_label': 'හේතුව',
-      'jan': 'ජන', 'feb': 'පෙබ', 'mar': 'මාර්', 'apr': 'අප්‍රේ', 'may': 'මැයි', 'jun': 'ජූනි',
-      'jul': 'ජූලි', 'aug': 'අගෝ', 'sep': 'සැප්', 'oct': 'ඔක්', 'nov': 'නොවැ', 'dec': 'දෙසැ',
-      'monday': 'සඳුදා', 'tuesday': 'අඟහරුවාදා', 'wednesday': 'බදාදා', 'thursday': 'බ්‍රහස්පතින්දා',
-      'friday': 'සිකුරාදා', 'saturday': 'සෙනසුරාදා', 'sunday': 'ඉරිදා',
-      'weekday': 'සතියේ දිනය', 'weekend': 'සති අන්තය',
+      'jan': 'ජන',
+      'feb': 'පෙබ',
+      'mar': 'මාර්',
+      'apr': 'අප්‍රේ',
+      'may': 'මැයි',
+      'jun': 'ජූනි',
+      'jul': 'ජූලි',
+      'aug': 'අගෝ',
+      'sep': 'සැප්',
+      'oct': 'ඔක්',
+      'nov': 'නොවැ',
+      'dec': 'දෙසැ',
+      'monday': 'සඳුදා',
+      'tuesday': 'අඟහරුවාදා',
+      'wednesday': 'බදාදා',
+      'thursday': 'බ්‍රහස්පතින්දා',
+      'friday': 'සිකුරාදා',
+      'saturday': 'සෙනසුරාදා',
+      'sunday': 'ඉරිදා',
+      'weekday': 'සතියේ දිනය',
+      'weekend': 'සති අන්තය',
       'how_we_calculate': 'ගෙවීම් ගණනය කරන ආකාරය',
       'formula': 'ගණනය කරන ක්‍රමය',
       'surplus_bonus': 'තත්ත්ව ප්‍රසාද දීමනාව',
       'base_rate_info': 'මූලික මිල',
       'quality_bonus_info': 'ගුණාත්මක ප්‍රසාද දීමනාව (Fat සහ SNF)',
-      'more_quality_more_pay': 'කිරිවල ගුණාත්මකභාවය වැඩි වන විට ඔබට වැඩි මුදලක් ලැබේ!',
+      'more_quality_more_pay':
+          'කිරිවල ගුණාත්මකභාවය වැඩි වන විට ඔබට වැඩි මුදලක් ලැබේ!',
       'standard_quality_threshold': 'සම්මතය: 3.5% මේදය, 8.5% SNF',
       'example_payout': 'ගෙවීම් උදාහරණයක්',
       'per_liter': 'ලීටරයකට',
@@ -346,7 +390,8 @@ class Translations {
       'bonus_label': '+ Fat සහ SNF ප්‍රසාද',
       'surplus_label': 'අමතර මේදය සහ ඝන ද්‍රව්‍ය (SNF)',
       'formula_literal': 'මූලික + FAT ප්‍රසාද + SNF ප්‍රසාද',
-      'offline_mode_msg': 'නොබැඳි මාදිලිය - සම්බන්ධතාවය ලැබුණු පසු දත්ත සමමුහුර්ත වනු ඇත',
+      'offline_mode_msg':
+          'නොබැඳි මාදිලිය - සම්බන්ධතාවය ලැබුණු පසු දත්ත සමමුහුර්ත වනු ඇත',
       'pending_sync': 'සමමුහුර්ත වීමට ඇත',
       'monthly_earnings': 'මාසික ආදායම',
       'monthly_liters': 'මාසික ලීටර්',
@@ -370,29 +415,41 @@ class Translations {
       'waiting_for_cc': 'සිසිලන මධ්‍යස්ථානයෙන් පිළිතුරක් අපේක්ෂාවෙන්',
       'type_your_issue': 'ඔබේ ගැටලුව විස්තර කරන්න...',
       'other_issues': 'වෙනත් ගැටළු / අභිරුචි ප්‍රශ්න',
-      'custom_issue_feedback': 'ඔබේ අභිරුචි ගැටලුව පිළිබඳ නව ප්‍රතිපෝෂණ පණිවිඩයක්.',
+      'custom_issue_feedback':
+          'ඔබේ අභිරුචි ගැටලුව පිළිබඳ නව ප්‍රතිපෝෂණ පණිවිඩයක්.',
       'performance_alert': 'කාර්ය සාධන දැනුම්දීම',
-      'farmer_performance_alert_title': 'කාර්ය සාධනය වැඩි දියුණු කිරීම අවශ්‍යයි',
-      'farmer_performance_alert_msg': '{farmer} ගොවි මහතාගේ පරීක්ෂාවන් අසාර්ථකයි: {issue}',
+      'farmer_performance_alert_title':
+          'කාර්ය සාධනය වැඩි දියුණු කිරීම අවශ්‍යයි',
+      'farmer_performance_alert_msg':
+          '{farmer} ගොවි මහතාගේ පරීක්ෂාවන් අසාර්ථකයි: {issue}',
       'cc_performance_alert_title': 'මධ්‍යස්ථාන තත්ත්ව අවවාදය',
-      'cc_performance_alert_msg': 'අංක #{center_id} මධ්‍යස්ථානයේ ප්‍රතික්ෂේපිත ප්‍රමාණය වැඩියි: {rate}',
+      'cc_performance_alert_msg':
+          'අංක #{center_id} මධ්‍යස්ථානයේ ප්‍රතික්ෂේපිත ප්‍රමාණය වැඩියි: {rate}',
       'performance_warning_title': 'තත්ත්ව අවවාදයයි: ක්‍රියාමාර්ගයක් අවශ්‍යයි',
-      'performance_warning_msg': 'ඔබේ මධ්‍යස්ථානයේ ප්‍රතික්ෂේපිත ප්‍රමාණය වැඩියි ({rate}). කරුණාකර ක්‍රියා පටිපාටි පරීක්ෂා කරන්න.',
+      'performance_warning_msg':
+          'ඔබේ මධ්‍යස්ථානයේ ප්‍රතික්ෂේපිත ප්‍රමාණය වැඩියි ({rate}). කරුණාකර ක්‍රියා පටිපාටි පරීක්ෂා කරන්න.',
       'performance_restored_title': 'කාර්ය සාධනය යථා තත්ත්වයට පත් විය',
-      'performance_restored_msg': 'ඔබේ ගුණාත්මක ප්‍රමිතීන් නැවතත් යහපත් මට්ටමට පැමිණ ඇත. විශිෂ්ටයි!',
+      'performance_restored_msg':
+          'ඔබේ ගුණාත්මක ප්‍රමිතීන් නැවතත් යහපත් මට්ටමට පැමිණ ඇත. විශිෂ්ටයි!',
       'performance_improving_title': 'කාර්ය සාධනය වැඩි දියුණු වෙමින් පවතී',
-      'performance_improving_msg': 'ධනාත්මක ප්‍රවණතාවක් හඳුනාගෙන ඇත! මෙම ගුණාත්මක ප්‍රමිතීන් දිගටම පවත්වා ගන්න.',
+      'performance_improving_msg':
+          'ධනාත්මක ප්‍රවණතාවක් හඳුනාගෙන ඇත! මෙම ගුණාත්මක ප්‍රමිතීන් දිගටම පවත්වා ගන්න.',
       'perf_needs_improvement': 'වැඩි දියුණු කළ යුතුයි',
       'perf_improving': 'වැඩි දියුණු වෙමින් පවතී',
       'perf_good': 'යහපත්',
-      'rec_water': 'කිරිවලට ජලය මිශ්‍ර වී ඇති බව පෙනේ. කරුණාකර කිරිවලට ජලය මිශ්‍ර නොකිරීමට වගබලා ගන්න.',
-      'rec_snf': 'අඩු SNF ප්‍රමාණයක් වාර්තා වේ. මෙය බොහෝ විට සත්ව පෝෂණය මත රඳා පවතී. සත්ව ආහාරවල ගුණාත්මකභාවය පරීක්ෂා කරන්න.',
-      'rec_fat': 'අඩු මේද ප්‍රතිශතයක් (FAT) වාර්තා වේ. සත්ව පෝෂණය හෝ ආහාර ලබාදෙන වේලාවන් පරීක්ෂා කරන්න.',
-      'rec_general': 'සාමාන්‍ය තත්ත්ව ගැටලුවකි. කරුණාකර සනීපාරක්ෂාව සහ ගබඩා කිරීම පරීක්ෂා කරන්න.',
+      'rec_water':
+          'කිරිවලට ජලය මිශ්‍ර වී ඇති බව පෙනේ. කරුණාකර කිරිවලට ජලය මිශ්‍ර නොකිරීමට වගබලා ගන්න.',
+      'rec_snf':
+          'අඩු SNF ප්‍රමාණයක් වාර්තා වේ. මෙය බොහෝ විට සත්ව පෝෂණය මත රඳා පවතී. සත්ව ආහාරවල ගුණාත්මකභාවය පරීක්ෂා කරන්න.',
+      'rec_fat':
+          'අඩු මේද ප්‍රතිශතයක් (FAT) වාර්තා වේ. සත්ව පෝෂණය හෝ ආහාර ලබාදෙන වේලාවන් පරීක්ෂා කරන්න.',
+      'rec_general':
+          'සාමාන්‍ය තත්ත්ව ගැටලුවකි. කරුණාකර සනීපාරක්ෂාව සහ ගබඩා කිරීම පරීක්ෂා කරන්න.',
       'recommended_actions': 'නිර්දේශිත ක්‍රියාමාර්ග',
       'perf_warning_title': 'කාර්ය සාධන අනතුරු ඇඟවීම: පියවර ගැනීම අවශ්‍යයි',
       'guidance_for_farmer': 'ගොවීන් සඳහා මඟපෙන්වීම්',
-      'perf_fallback_msg': 'කාර්ය සාධනය වැඩි දියුණු කිරීම අවශ්‍ය වේ. කරුණාකර ඔබේ සිසිලන මධ්‍යස්ථානය අමතන්න.',
+      'perf_fallback_msg':
+          'කාර්ය සාධනය වැඩි දියුණු කිරීම අවශ්‍ය වේ. කරුණාකර ඔබේ සිසිලන මධ්‍යස්ථානය අමතන්න.',
     },
     'ta': {
       'welcome': 'வரவேற்கிறோம்',
@@ -527,17 +584,34 @@ class Translations {
       'collections_included': 'சேர்க்கப்பட்ட சேகரிப்புகள்',
       'total_amount': 'மொத்த தொகை',
       'reason_label': 'காரணம்',
-      'jan': 'ஜன', 'feb': 'பிப்', 'mar': 'மார்', 'apr': 'ஏப்', 'may': 'மே', 'jun': 'ஜூன்',
-      'jul': 'ஜூலை', 'aug': 'ஆக', 'sep': 'செப்', 'oct': 'அக்', 'nov': 'நவ', 'dec': 'டிச',
-      'monday': 'திங்கள்', 'tuesday': 'செவ்வாய்', 'wednesday': 'புதன்', 'thursday': 'வியாழன்',
-      'friday': 'வெள்ளி', 'saturday': 'சனி', 'sunday': 'ஞாயிறு',
-      'weekday': 'வார நாள்', 'weekend': 'வார இறுதி',
+      'jan': 'ஜன',
+      'feb': 'பிப்',
+      'mar': 'மார்',
+      'apr': 'ஏப்',
+      'may': 'மே',
+      'jun': 'ஜூன்',
+      'jul': 'ஜூலை',
+      'aug': 'ஆக',
+      'sep': 'செப்',
+      'oct': 'அக்',
+      'nov': 'நவ',
+      'dec': 'டிச',
+      'monday': 'திங்கள்',
+      'tuesday': 'செவ்வாய்',
+      'wednesday': 'புதன்',
+      'thursday': 'வியாழன்',
+      'friday': 'வெள்ளி',
+      'saturday': 'சனி',
+      'sunday': 'ஞாயிறு',
+      'weekday': 'வார நாள்',
+      'weekend': 'வார இறுதி',
       'how_we_calculate': 'கொடுப்பனவு எவ்வாறு கணக்கிடப்படுகிறது',
       'formula': 'கணக்கீட்டு முறை',
       'surplus_bonus': 'தர போனஸ்',
       'base_rate_info': 'அடிப்படை விலை',
       'quality_bonus_info': 'உயர்தர போனஸ் (கொழுப்பு மற்றும் SNF)',
-      'more_quality_more_pay': 'பாலின் தரம் சிறப்பாக இருந்தால் உங்களுக்கு அதிக பணம் கிடைக்கும்!',
+      'more_quality_more_pay':
+          'பாலின் தரம் சிறப்பாக இருந்தால் உங்களுக்கு அதிக பணம் கிடைக்கும்!',
       'standard_quality_threshold': 'நிலை: 3.5% கொழுப்பு, 8.5% SNF',
       'example_payout': 'கொடுப்பனவு உதாரணம்',
       'per_liter': 'ஒரு லிட்டருக்கு',
@@ -545,7 +619,8 @@ class Translations {
       'bonus_label': '+ கொழுப்பு மற்றும் SNF போனஸ்',
       'surplus_label': 'கூடுதல் கொழுப்பு மற்றும் SNF',
       'formula_literal': 'அடிப்படை + FAT போனஸ் + SNF போனஸ்',
-      'offline_mode_msg': 'ஆஃப்லைன் பயன்முறை - இணைப்பு திரும்பியதும் தரவு ஒத்திசைக்கப்படும்',
+      'offline_mode_msg':
+          'ஆஃப்லைன் பயன்முறை - இணைப்பு திரும்பியதும் தரவு ஒத்திசைக்கப்படும்',
       'pending_sync': 'ஒத்திசைவு நிலுவையில் உள்ளது',
       'monthly_earnings': 'மாத வருமானம்',
       'monthly_liters': 'மாதாந்திர லிட்டர்',
@@ -556,7 +631,8 @@ class Translations {
       'faq_support': 'கேள்விகள் & ஆதரவு',
       'faq_support_desc': 'உதவி மற்றும் ஆதரவு',
       'other_issue': 'வேறு பிரச்சனை?',
-      'contact_support_desc': 'உங்களுக்குத் தேவையானதைக் கண்டுபிடிக்க முடியவில்லையா? ஆதரவைத் தொடர்பு கொள்ளவும்.',
+      'contact_support_desc':
+          'உங்களுக்குத் தேவையானதைக் கண்டுபிடிக்க முடியவில்லையா? ஆதரவைத் தொடர்பு கொள்ளவும்.',
       'call_cc': 'கலக்கும் நிலையத்தை அழைக்கவும்',
       'call_nestle': 'நெஸ்லேயை அழைக்கவும்',
       'support_chat': 'ஆதரவு அரட்டை',
@@ -569,29 +645,40 @@ class Translations {
       'waiting_for_cc': 'குளிர்விக்கும் மையத்தின் பதிலுக்காக காத்திருக்கிறது',
       'type_your_issue': 'உங்கள் சிக்கலை விவரிக்கவும்...',
       'other_issues': 'වෙනත් ගැටළු / தனிப்பயன் கேள்விகள்',
-      'custom_issue_feedback': 'உங்கள் தனிப்பயன் சிக்கலில் புதிய கருத்துச் செய்தி.',
+      'custom_issue_feedback':
+          'உங்கள் தனிப்பயன் சிக்கலில் புதிய கருத்துச் செய்தி.',
       'performance_alert': 'செயல்திறன் எச்சரிக்கை',
       'farmer_performance_alert_title': 'செயல்திறன் மேம்பாடு தேவை',
-      'farmer_performance_alert_msg': 'விவசாயி {farmer} இன் பால் தரம் குறைந்துள்ளது: {issue}',
+      'farmer_performance_alert_msg':
+          'விவசாயி {farmer} இன் பால் தரம் குறைந்துள்ளது: {issue}',
       'cc_performance_alert_title': 'மைய தர எச்சரிக்கை',
-      'cc_performance_alert_msg': 'மையம் #{center_id} இன் நிராகரிப்பு விகிதம் அதிகம்: {rate}',
+      'cc_performance_alert_msg':
+          'மையம் #{center_id} இன் நிராகரிப்பு விகிதம் அதிகம்: {rate}',
       'performance_warning_title': 'தர எச்சரிக்கை: நடவடிக்கை தேவை',
-      'performance_warning_msg': 'உங்கள் மையத்தின் நிராகரிப்பு விகிதம் அதிகமாக உள்ளது ({rate}). நடைமுறைகளைச் சரிபார்க்கவும்.',
+      'performance_warning_msg':
+          'உங்கள் மையத்தின் நிராகரிப்பு விகிதம் அதிகமாக உள்ளது ({rate}). நடைமுறைகளைச் சரிபார்க்கவும்.',
       'performance_restored_title': 'செயல்திறன் மீட்டெடுக்கப்பட்டது',
-      'performance_restored_msg': 'உங்கள் தர நிலைகள் உகந்த நிலைக்குத் திரும்பியுள்ளன. நன்று!',
+      'performance_restored_msg':
+          'உங்கள் தர நிலைகள் உகந்த நிலைக்குத் திரும்பியுள்ளன. நன்று!',
       'performance_improving_title': 'செயல்திறன் மேம்பட்டு வருகிறது',
-      'performance_improving_msg': 'நேர்மறையான போக்கு கண்டறியப்பட்டுள்ளது! இதே தரத்தை தொடர்ந்து பேணுங்கள்.',
+      'performance_improving_msg':
+          'நேர்மறையான போக்கு கண்டறியப்பட்டுள்ளது! இதே தரத்தை தொடர்ந்து பேணுங்கள்.',
       'perf_needs_improvement': 'மேம்படுத்தப்பட வேண்டும்',
       'perf_improving': 'மேம்பட்டு வருகிறது',
       'perf_good': 'நல்லது',
-      'rec_water': 'பால் நீர்க்கப்பட்டுள்ளதாகக் கண்டறியப்பட்டுள்ளது. பாலில் தண்ணீர் கலக்காமல் இருப்பதை உறுதி செய்யவும்.',
-      'rec_snf': 'குறைந்த SNF கண்டறியப்பட்டுள்ளது. இது விலங்குகளின் ஊட்டச்சத்துடன் தொடர்புடையது. தீவனத்தின் தரத்தை சரிபார்க்கவும்.',
-      'rec_fat': 'குறைந்த கொழுப்பு கண்டறியப்பட்டுள்ளது. இன ஊட்டச்சத்து அல்லது உணவளிக்கும் நேரங்களை சரிபார்க்கவும்.',
-      'rec_general': 'பொதுவான தரப் பிரச்சினை. சுகாதாரம் மற்றும் சேமிப்பை சரிபார்க்கவும்.',
+      'rec_water':
+          'பால் நீர்க்கப்பட்டுள்ளதாகக் கண்டறியப்பட்டுள்ளது. பாலில் தண்ணீர் கலக்காமல் இருப்பதை உறுதி செய்யவும்.',
+      'rec_snf':
+          'குறைந்த SNF கண்டறியப்பட்டுள்ளது. இது விலங்குகளின் ஊட்டச்சத்துடன் தொடர்புடையது. தீவனத்தின் தரத்தை சரிபார்க்கவும்.',
+      'rec_fat':
+          'குறைந்த கொழுப்பு கண்டறியப்பட்டுள்ளது. இன ஊட்டச்சத்து அல்லது உணவளிக்கும் நேரங்களை சரிபார்க்கவும்.',
+      'rec_general':
+          'பொதுவான தரப் பிரச்சினை. சுகாதாரம் மற்றும் சேமிப்பை சரிபார்க்கவும்.',
       'recommended_actions': 'பரிந்துரைக்கப்பட்ட நடவடிக்கைகள்',
       'perf_warning_title': 'செயல்திறன் எச்சரிக்கை: நடவடிக்கை தேவை',
       'guidance_for_farmer': 'விவசாயிகளுக்கான வழிகாட்டுதல்',
-      'perf_fallback_msg': 'செயல்திறன் மேம்பாடு தேவை. உங்கள் குளிர்விக்கும் மையத்தைத் தொடர்பு கொள்ளவும்.',
+      'perf_fallback_msg':
+          'செயல்திறன் மேம்பாடு தேவை. உங்கள் குளிர்விக்கும் மையத்தைத் தொடர்பு கொள்ளவும்.',
     },
   };
 
@@ -607,14 +694,35 @@ class Translations {
 
   static String formatDate(DateTime date, String locale) {
     // English is the fallback logic, but for si/ta we map manually
-    final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    final monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-    
+    final dayNames = [
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+    ];
+    final monthNames = [
+      'jan',
+      'feb',
+      'mar',
+      'apr',
+      'may',
+      'jun',
+      'jul',
+      'aug',
+      'sep',
+      'oct',
+      'nov',
+      'dec',
+    ];
+
     final weekday = get(dayNames[date.weekday - 1], locale);
     final month = get(monthNames[date.month - 1], locale);
     final day = date.day.toString().padLeft(2, '0');
     final year = date.year.toString();
-    
+
     return "$weekday, $month $day, $year";
   }
 }
