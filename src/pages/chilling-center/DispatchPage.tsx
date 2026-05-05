@@ -79,7 +79,7 @@ const DispatchPage: React.FC = () => {
       // 1. Load from cache immediately for instant UI
       let c = getCache('dispatch_all_collections') || getCache('dispatch_pending_collections') || [];
       let d = getCache('dispatch_history') || [];
-      
+
       // 2. Only attempt network fetch if online
       if (navigator.onLine) {
         try {
@@ -109,9 +109,9 @@ const DispatchPage: React.FC = () => {
       }).filter(Boolean) as MilkCollection[];
 
       const filteredCols = updatedC.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
-      
+
       const maxId = d.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
-      
+
       const offlinePendingDispatches = allDispatches.map((a, index) => {
         if (!a.data) return null;
         return {
@@ -126,7 +126,7 @@ const DispatchPage: React.FC = () => {
 
       // Always merge offline collections that passed quality testing
       const cachedFarmers = getCache('farmers') || [];
-      
+
       // IDs already dispatched offline
       const alreadyDispatchedIds = allDispatches
         .flatMap(d => d.data?.items?.map((i: any) => i.offlineCollectionId).filter(Boolean) || []);
@@ -160,104 +160,104 @@ const DispatchPage: React.FC = () => {
     }
   };
 
-    useEffect(() => {
-      if (centerId) loadData();
+  useEffect(() => {
+    if (centerId) loadData();
 
-      const handleUpdate = () => { 
-        // Small delay to ensure server processing is finished
-        setTimeout(() => {
-          if (centerId) loadData(); 
-        }, 1000);
-      };
-      window.addEventListener('offline-action-saved', handleUpdate);
-      window.addEventListener('offline-sync-complete', handleUpdate);
-      window.addEventListener('online', handleUpdate);
+    const handleUpdate = () => {
+      // Small delay to ensure server processing is finished
+      setTimeout(() => {
+        if (centerId) loadData();
+      }, 1000);
+    };
+    window.addEventListener('offline-action-saved', handleUpdate);
+    window.addEventListener('offline-sync-complete', handleUpdate);
+    window.addEventListener('online', handleUpdate);
 
-      return () => {
-        window.removeEventListener('offline-action-saved', handleUpdate);
-        window.removeEventListener('offline-sync-complete', handleUpdate);
-        window.removeEventListener('online', handleUpdate);
-      };
-    }, [centerId]);
+    return () => {
+      window.removeEventListener('offline-action-saved', handleUpdate);
+      window.removeEventListener('offline-sync-complete', handleUpdate);
+      window.removeEventListener('online', handleUpdate);
+    };
+  }, [centerId]);
 
 
-    const toggleSelect = (id: number) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  const toggleSelect = (id: number) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (selected.length === 0) { toast({ title: 'Error', description: 'Select at least one collection', variant: 'destructive' }); return; }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selected.length === 0) { toast({ title: 'Error', description: 'Select at least one collection', variant: 'destructive' }); return; }
 
-      const dispatchData = {
-        chillingCenterId: centerId,
-        ...form,
-        dispatchDate: toISOWithOffset(form.dispatchDate),
-        totalQuantity: selectedTotal,
-        items: selected.map(id => {
-          const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
-          return {
-            id: 0,
-            dispatchId: 0,
-            collectionId: isOfflineId ? 0 : Number(id),
-            offlineCollectionId: isOfflineId ? String(id) : undefined
-          };
-        }),
-      };
-
-      if (!isOnline() || dispatchData.items.some(i => i.offlineCollectionId)) {
-        savePendingAction('dispatch', dispatchData);
-        toast({
-          title: 'Saved Offline',
-          description: 'Dispatch record saved locally. Will sync once online.'
-        });
-        setSelected([]);
-        setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
-        return;
-      }
-
-      setLoading(true);
-      try {
-        await createDispatch(dispatchData);
-        toast({ title: 'Dispatch Created', description: `${selected.length} collections dispatched` });
-        setSelected([]);
-        setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
-        loadData();
-      } catch {
-        // API failed — save offline as fallback
-        savePendingAction('dispatch', dispatchData);
-        toast({
-          title: 'Saved Offline',
-          description: 'Network unavailable. Dispatch saved locally and will sync when online.'
-        });
-        setSelected([]);
-        setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
-        loadData();
-      } finally {
-        setLoading(false);
-      }
+    const dispatchData = {
+      chillingCenterId: centerId,
+      ...form,
+      dispatchDate: toISOWithOffset(form.dispatchDate),
+      totalQuantity: selectedTotal,
+      items: selected.map(id => {
+        const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
+        return {
+          id: 0,
+          dispatchId: 0,
+          collectionId: isOfflineId ? 0 : Number(id),
+          offlineCollectionId: isOfflineId ? String(id) : undefined
+        };
+      }),
     };
 
-    const dispatchColumns = [
-      { key: 'id', header: 'ID', render: (r: Dispatch) => `#${r.id}` },
-      { key: 'transporterName', header: 'Transporter' },
-      { key: 'vehicleNumber', header: 'Vehicle' },
-      { key: 'dispatchDate', header: 'Date & Time', render: (r: Dispatch) => new Date(r.dispatchDate).toLocaleString() },
-      { key: 'totalQuantity', header: 'Qty (L)', render: (r: Dispatch) => `${r.totalQuantity} L` },
-      {
-        key: 'status',
-        header: 'Status',
-        render: (r: Dispatch) => {
-          const hasPass = r.items?.some(i => i.qualityResult === 'Pass');
-          const hasFail = r.items?.some(i => i.qualityResult === 'Fail');
-          const isManualReject = r.status === 'Rejected' && 
-                               r.rejectionReason && 
-                               !r.rejectionReason.startsWith('Quality Check Failed');
-          
-          return (
-            <StatusBadge status={isManualReject ? 'Rejected' : (hasPass && hasFail ? 'Mixed' : r.status)} />
-          );
-        }
-      },
-    ];
+    if (!isOnline() || dispatchData.items.some(i => i.offlineCollectionId)) {
+      savePendingAction('dispatch', dispatchData);
+      toast({
+        title: 'Saved Offline',
+        description: 'Dispatch record saved locally. Will sync once online.'
+      });
+      setSelected([]);
+      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await createDispatch(dispatchData);
+      toast({ title: 'Dispatch Created', description: `${selected.length} collections dispatched` });
+      setSelected([]);
+      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
+      loadData();
+    } catch {
+      // API failed — save offline as fallback
+      savePendingAction('dispatch', dispatchData);
+      toast({
+        title: 'Saved Offline',
+        description: 'Network unavailable. Dispatch saved locally and will sync when online.'
+      });
+      setSelected([]);
+      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
+      loadData();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const dispatchColumns = [
+    { key: 'id', header: 'ID', render: (r: Dispatch) => `#${r.id}` },
+    { key: 'transporterName', header: 'Transporter' },
+    { key: 'vehicleNumber', header: 'Vehicle' },
+    { key: 'dispatchDate', header: 'Date & Time', render: (r: Dispatch) => new Date(r.dispatchDate).toLocaleString() },
+    { key: 'totalQuantity', header: 'Qty (L)', render: (r: Dispatch) => `${r.totalQuantity} L` },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (r: Dispatch) => {
+        const hasPass = r.items?.some(i => i.qualityResult === 'Pass');
+        const hasFail = r.items?.some(i => i.qualityResult === 'Fail');
+        const isManualReject = r.status === 'Rejected' &&
+          r.rejectionReason &&
+          !r.rejectionReason.startsWith('Quality Check Failed');
+
+        return (
+          <StatusBadge status={isManualReject ? 'Rejected' : (hasPass && hasFail ? 'Mixed' : r.status)} />
+        );
+      }
+    },
+  ];
 
   try {
     return (
@@ -421,4 +421,4 @@ const DispatchPage: React.FC = () => {
   }
 };
 
-  export default DispatchPage;
+export default DispatchPage;

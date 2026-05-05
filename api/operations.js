@@ -165,7 +165,7 @@ export default async function handler(req, res) {
           // Get last 3 tests for THIS FARMER across all collections
           const { data: farmerData } = await supabase.from('farmers').select('performance_status, performance_recommendation').eq('id', col.farmer_id).single();
           const currentStatus = farmerData?.performance_status;
-          
+
           const { data: farmerCols } = await supabase.from('milk_collections').select('id').eq('farmer_id', col.farmer_id);
           const colIds = farmerCols?.map(c => c.id) || [];
 
@@ -185,14 +185,14 @@ export default async function handler(req, res) {
 
             if (consecutiveFails > 0) {
               const newSeverity = consecutiveFails >= 3 ? 'HIGH' : 'LOW';
-              
+
               // Only proceed if status is not already "Needs Improvement" OR severity has increased to HIGH
               let alreadyHigh = false;
               if (currentStatus === 'Needs Improvement' && farmerData?.performance_recommendation) {
                 try {
                   const oldRec = JSON.parse(farmerData.performance_recommendation);
                   if (oldRec.severity === 'HIGH') alreadyHigh = true;
-                } catch(e) {}
+                } catch (e) { }
               }
 
               if (currentStatus !== 'Needs Improvement' || (newSeverity === 'HIGH' && !alreadyHigh)) {
@@ -588,7 +588,7 @@ export default async function handler(req, res) {
           const rejectedList = recentDispatches.filter(d => d.status === 'Rejected');
           const rejectedCount = rejectedList.length;
           const rejectionRate = (rejectedCount / total) * 100;
-          
+
           // Recovery streak (last 5 approved)
           const streak = recentDispatches.slice(0, 5);
           const isOnRecoveryStreak = streak.length >= 5 && streak.every(d => d.status === 'Approved');
@@ -598,9 +598,9 @@ export default async function handler(req, res) {
             // Underperforming if > 25% rejections
             const reasons = Array.from(new Set(rejectedList.map(d => d.rejection_reason).filter(Boolean))).slice(0, 2).join(', ');
             const rec = `High rejection rate (${rejectionRate.toFixed(1)}%). ${reasons ? `Primary issues: ${reasons}.` : 'Please review testing procedures.'}`;
-            
+
             await supabase.from('chilling_centers').update({ performance_status: 'Underperforming', performance_recommendation: rec }).eq('id', dispatch.chilling_center_id);
-            
+
             if (currentStatus !== 'Underperforming' && ccUserId) {
               await supabase.from('notifications').insert({
                 user_id: ccUserId,
@@ -612,9 +612,9 @@ export default async function handler(req, res) {
           } else if (isOnRecoveryStreak || rejectionRate <= 25) {
             // Good if <= 25% rejection OR recovery streak
             if (currentStatus !== 'Good') {
-              await supabase.from('chilling_centers').update({ 
-                performance_status: 'Good', 
-                performance_recommendation: null 
+              await supabase.from('chilling_centers').update({
+                performance_status: 'Good',
+                performance_recommendation: null
               }).eq('id', dispatch.chilling_center_id);
 
               if (ccUserId) {
@@ -661,19 +661,19 @@ export default async function handler(req, res) {
             const userId = col.farmers?.user_id || (Array.isArray(col.farmers) ? col.farmers[0]?.user_id : null);
             if (userId) {
               const itemStatus = col.dispatch_status;
-              
+
               // If it's a quality-led rejection (!isGlobalRejection), we ONLY notify the culprit (done in quality-test).
               // Bystanders (still 'Dispatched') should NOT be notified in quality-led rejections.
-              const shouldNotify = (status === 'Approved' && itemStatus === 'Dispatched') || 
-                                   (isGlobalRejection && itemStatus === 'Dispatched');
+              const shouldNotify = (status === 'Approved' && itemStatus === 'Dispatched') ||
+                (isGlobalRejection && itemStatus === 'Dispatched');
 
               if (shouldNotify) {
                 const titleKey = (status === 'Approved') ? 'dispatch_approved_title' : 'dispatch_rejected_title';
                 const msgKey = (status === 'Approved') ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
-                
+
                 // For bystanders, we use the global reason if it's a global rejection, otherwise generic
                 const displayReason = isGlobalRejection ? reason : 'Batch quality standards not met';
-                
+
                 const params = (status === 'Approved')
                   ? `date:${col.date}`
                   : `date:${col.date},reason:${displayReason}`;
@@ -807,10 +807,10 @@ export default async function handler(req, res) {
       const { collectionId } = req.query;
       if (!collectionId) return res.status(400).json({ error: 'collectionId required' });
       const { data: qts, error } = await supabase
-         .from('quality_tests')
-         .select('*')
-         .eq('collection_id', collectionId)
-         .order('tested_at', { ascending: false });
+        .from('quality_tests')
+        .select('*')
+        .eq('collection_id', collectionId)
+        .order('tested_at', { ascending: false });
       if (error) throw error;
       return res.status(200).json(qts);
     } catch (err) {
@@ -831,10 +831,10 @@ export default async function handler(req, res) {
         const farmerId = targetId || user.farmerId;
         if (!farmerId) return res.status(400).json({ error: 'Farmer ID required' });
         const { data: farmer } = await supabase.from('farmers').select('name, performance_status, performance_recommendation').eq('id', farmerId).single();
-        
+
         const { data: fCols } = await supabase.from('milk_collections').select('id').eq('farmer_id', farmerId);
         const fColIds = fCols?.map(c => c.id) || [];
-        
+
         const { data: tests } = await supabase.from('quality_tests').select('result, tested_at').in('collection_id', fColIds);
         const total = tests?.length || 0;
         const passed = tests?.filter(t => t.result === 'Pass').length || 0;
@@ -854,13 +854,13 @@ export default async function handler(req, res) {
           if (c.quality_result === 'Pass') trends[month].passCount++;
         });
         const trendArray = Object.values(trends).map(t => ({ ...t, passRate: t.total > 0 ? (t.passCount / t.total) * 100 : 100 }));
-        
-        const resData = { 
-          status: displayStatus, 
-          recommendation: displayStatus === 'Good' ? null : farmer?.performance_recommendation, 
-          passRate, 
-          frequency: total > 0 ? 'Regular' : 'New', 
-          trends: trendArray 
+
+        const resData = {
+          status: displayStatus,
+          recommendation: displayStatus === 'Good' ? null : farmer?.performance_recommendation,
+          passRate,
+          frequency: total > 0 ? 'Regular' : 'New',
+          trends: trendArray
         };
 
         // If underperforming, attach full recommendation data from DB
@@ -868,17 +868,17 @@ export default async function handler(req, res) {
           try {
             // Determine issue type from existing recommendation string or default to GENERAL
             const recStr = (resData.recommendation || '').toUpperCase();
-            const issueType = recStr.includes('SNF') ? 'SNF' : 
-                             recStr.includes('FAT') ? 'FAT' : 
-                             recStr.includes('WATER') ? 'WATER' : 'GENERAL';
-            
+            const issueType = recStr.includes('SNF') ? 'SNF' :
+              recStr.includes('FAT') ? 'FAT' :
+                recStr.includes('WATER') ? 'WATER' : 'GENERAL';
+
             const { data: recDetails } = await supabase
               .from('performance_recommendations')
               .select('*')
               .eq('issue_type', issueType)
               .limit(1)
               .maybeSingle();
-              
+
             if (recDetails) {
               resData.recommendationDetails = recDetails;
               // If the farmer didn't have a specific recommendation string, use the title from DB
@@ -899,10 +899,10 @@ export default async function handler(req, res) {
       if (type === 'center') {
         const centerId = Number(targetId || user.chillingCenterId);
         if (!centerId) return res.status(400).json({ error: 'Center ID required' });
-        
+
         const { data: center } = await supabase.from('chilling_centers').select('name, performance_status, performance_recommendation').eq('id', centerId).single();
         const { data: dispatches } = await supabase.from('dispatches').select('status, dispatch_date, quantity:dispatch_items(milk_collections(quantity))').eq('chilling_center_id', centerId);
-        
+
         const totalD = dispatches?.length || 0;
         const rejectedD = dispatches?.filter(d => d.status === 'Rejected').length || 0;
         const rejectionRate = totalD > 0 ? (rejectedD / totalD) * 100 : 0;
@@ -919,12 +919,12 @@ export default async function handler(req, res) {
           if (!trends[month]) {
             trends[month] = { month, volume: 0, passCount: 0, total: 0 };
           }
-          
+
           trends[month].total++;
           if (d.status === 'Approved' || d.status === 'Pending' || !d.status) {
             trends[month].passCount++;
           }
-          
+
           // Safer volume calculation
           let vol = 0;
           if (Array.isArray(d.quantity)) {
@@ -947,18 +947,18 @@ export default async function handler(req, res) {
           };
         });
 
-        return res.status(200).json({ 
-          status: displayStatus, 
-          recommendation: displayStatus === 'Good' ? null : center?.performance_recommendation, 
-          passRate, 
-          rejectionRate: Number(rejectionRate.toFixed(1)), 
-          trends: trendArray 
+        return res.status(200).json({
+          status: displayStatus,
+          recommendation: displayStatus === 'Good' ? null : center?.performance_recommendation,
+          passRate,
+          rejectionRate: Number(rejectionRate.toFixed(1)),
+          trends: trendArray
         });
       }
       if (['nestle', 'nestle_officer'].includes(user.role)) {
         const { data: farmers } = await supabase.from('farmers').select('id, name, performance_status');
         const { data: centers } = await supabase.from('chilling_centers').select('id, name, performance_status');
-        
+
         // Fetch all quality tests to calculate real-time stats
         const { data: allDispatches } = await supabase.from('dispatches').select('chilling_center_id, status');
         const { data: allTests } = await supabase.from('quality_tests').select('collection_id, result');
@@ -972,7 +972,7 @@ export default async function handler(req, res) {
           const passRate = total > 0 ? (passed / total) * 100 : 100;
           return { ...f, performance_status: passRate >= 75 ? 'Good' : 'Underperforming' };
         });
-        
+
         const centerStats = (centers || []).map(c => {
           const cDispatches = allDispatches?.filter(d => d.chilling_center_id === c.id) || [];
           const total = cDispatches.length;
@@ -999,7 +999,7 @@ export default async function handler(req, res) {
             .from('performance_recommendations')
             .select('*')
             .order('created_at', { ascending: false });
-          
+
           if (error) {
             // If table doesn't exist yet, return empty list instead of 500
             if (error.code === '42P01') return res.status(200).json([]);
@@ -1017,7 +1017,7 @@ export default async function handler(req, res) {
         if (req.method === 'POST') {
           const body = getBody(req);
           const { id, ...payload } = body;
-          
+
           if (id) {
             const { data, error } = await supabase
               .from('performance_recommendations')
