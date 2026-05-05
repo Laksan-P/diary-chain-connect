@@ -687,7 +687,17 @@ export default async function handler(req, res) {
           const vol = d.quantity?.reduce((sum, item) => sum + (parseFloat(item.milk_collections?.quantity) || 0), 0) || 0;
           trends[month].volume += vol;
         });
-        return res.status(200).json({ status: center?.performance_status || 'Good', recommendation: center?.performance_recommendation, passRate: 100 - rejectionRate, rejectionRate, trends: Object.values(trends) });
+        const trendArray = Object.values(trends).map(t => ({
+          ...t,
+          passRate: t.total > 0 ? ((t.total - t.rejected) / t.total) * 100 : 100
+        }));
+        return res.status(200).json({ 
+          status: center?.performance_status || 'Good', 
+          recommendation: center?.performance_recommendation, 
+          passRate: 100 - rejectionRate, 
+          rejectionRate, 
+          trends: trendArray 
+        });
       }
       if (['nestle', 'nestle_officer'].includes(user.role)) {
         const { data: farmers } = await supabase.from('farmers').select('id, name, performance_status');
