@@ -29,8 +29,12 @@ export default async function handler(req, res) {
       let { collectionId, snf, fat, water, offlineCollectionId } = body;
 
       if ((!collectionId || collectionId === 0) && offlineCollectionId) {
-        const { data: col } = await supabase.from('milk_collections').select('id').eq('offline_id', offlineCollectionId).maybeSingle();
-        if (col) collectionId = col.id;
+        try {
+          const { data: col } = await supabase.from('milk_collections').select('id').eq('offline_id', offlineCollectionId).maybeSingle();
+          if (col) collectionId = col.id;
+        } catch (lookupErr) {
+          console.warn('Quality test: offline_id lookup skipped (column may not exist)');
+        }
       }
 
       if (!collectionId || snf == null || fat == null || water == null) {
@@ -481,8 +485,12 @@ export default async function handler(req, res) {
         const offId = item.offlineCollectionId;
 
         if ((!colId || colId === 0) && offId) {
-          const { data: col } = await supabase.from('milk_collections').select('id').eq('offline_id', offId).maybeSingle();
-          if (col) colId = col.id;
+          try {
+            const { data: col } = await supabase.from('milk_collections').select('id').eq('offline_id', offId).maybeSingle();
+            if (col) colId = col.id;
+          } catch (lookupErr) {
+            console.warn('Dispatch item: offline_id lookup skipped (column may not exist)');
+          }
         }
 
         if (!colId || colId === 0) {
