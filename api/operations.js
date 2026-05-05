@@ -356,43 +356,28 @@ export default async function handler(req, res) {
   // ────────── GET /api/operations?action=dispatches ──────────
   if (action === 'dispatches' && req.method === 'GET') {
     try {
-      // Try with offline_id first, fall back without it if column doesn't exist
-      let selectFields = `
-        id, chilling_center_id, transporter_name, vehicle_number, driver_contact,
-        dispatch_date, status, rejection_reason, created_at, offline_id,
-        chilling_centers (name)
-      `;
+      let query = supabase
+        .from('dispatches')
+        .select(`
+          id, chilling_center_id, transporter_name, vehicle_number, driver_contact,
+          dispatch_date, status, rejection_reason, created_at,
+          chilling_centers (name)
+        `);
 
-      let query = supabase.from('dispatches').select(selectFields);
       if (req.query.centerId) {
         query = query.eq('chilling_center_id', req.query.centerId);
       }
 
-      let { data: dispatches, error } = await query.order('id', { ascending: false });
-
-      // If offline_id column doesn't exist, retry without it
-      if (error) {
-        console.warn('Dispatches GET fallback (offline_id may not exist):', error.message);
-        selectFields = `
-          id, chilling_center_id, transporter_name, vehicle_number, driver_contact,
-          dispatch_date, status, rejection_reason, created_at,
-          chilling_centers (name)
-        `;
-        let fallbackQuery = supabase.from('dispatches').select(selectFields);
-        if (req.query.centerId) {
-          fallbackQuery = fallbackQuery.eq('chilling_center_id', req.query.centerId);
-        }
-        const fallback = await fallbackQuery.order('id', { ascending: false });
-        if (fallback.error) throw fallback.error;
-        dispatches = fallback.data;
-      }
+      const { data: dispatches, error } = await query.order('id', { ascending: false });
+      if (error) throw error;
 
       for (const d of dispatches) {
+        // Use left join (no !inner) so dispatches show even if collection is pending
         const { data: items, error: iErr } = await supabase
           .from('dispatch_items')
           .select(`
             id, dispatch_id, collection_id,
-            milk_collections!inner (
+            milk_collections (
               quantity, quality_result, dispatch_status, failure_reason,
               farmers (name)
             )
@@ -409,13 +394,13 @@ export default async function handler(req, res) {
         d.rejectionReason = d.rejection_reason;
         d.createdAt = d.created_at;
 
-        d.items = items.map((item) => ({
+        d.items = (items || []).map((item) => ({
           id: item.id, dispatchId: item.dispatch_id, collectionId: item.collection_id,
-          quantity: item.milk_collections?.quantity,
+          quantity: item.milk_collections?.quantity || 0,
           qualityResult: item.milk_collections?.quality_result,
           dispatchStatus: item.milk_collections?.dispatch_status,
           failureReason: item.milk_collections?.failure_reason,
-          farmerName: item.milk_collections?.farmers?.name,
+          farmerName: item.milk_collections?.farmers?.name || 'Unknown',
         }));
         d.totalQuantity = d.items.reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
       }
