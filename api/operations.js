@@ -672,25 +672,42 @@ export default async function handler(req, res) {
         return res.status(200).json({ status: farmer?.performance_status || 'Good', recommendation: farmer?.performance_recommendation, passRate, frequency: total > 0 ? 'Regular' : 'New', trends: trendArray });
       }
       if (type === 'center') {
-        const centerId = targetId || user.chillingCenterId;
+        const centerId = Number(targetId || user.chillingCenterId);
         if (!centerId) return res.status(400).json({ error: 'Center ID required' });
+        
         const { data: center } = await supabase.from('chilling_centers').select('name, performance_status, performance_recommendation').eq('id', centerId).single();
         const { data: dispatches } = await supabase.from('dispatches').select('status, dispatch_date, quantity:dispatch_items(milk_collections(quantity))').eq('chilling_center_id', centerId);
+        
         const totalD = dispatches?.length || 0;
         const rejectedD = dispatches?.filter(d => d.status === 'Rejected').length || 0;
         const rejectionRate = totalD > 0 ? (rejectedD / totalD) * 100 : 0;
+        
         const trends = {};
         dispatches?.forEach(d => {
+          if (!d.dispatch_date) return;
           const month = d.dispatch_date.substring(0, 7);
           if (!trends[month]) trends[month] = { month, volume: 0, rejected: 0, total: 0 };
-          trends[month].total++; if (d.status === 'Rejected') trends[month].rejected++;
-          const vol = d.quantity?.reduce((sum, item) => sum + (parseFloat(item.milk_collections?.quantity) || 0), 0) || 0;
+          
+          trends[month].total++;
+          if (d.status === 'Rejected') {
+            trends[month].rejected++;
+          }
+          
+          const vol = d.quantity?.reduce((sum, item) => {
+            const mc = item.milk_collections;
+            const q = (mc && !Array.isArray(mc)) ? mc.quantity : (Array.isArray(mc) ? mc[0]?.quantity : 0);
+            return sum + (parseFloat(q) || 0);
+          }, 0) || 0;
           trends[month].volume += vol;
         });
-        const trendArray = Object.values(trends).map(t => ({
-          ...t,
-          passRate: t.total > 0 ? ((t.total - t.rejected) / t.total) * 100 : 100
-        }));
+
+        const trendArray = Object.values(trends)
+          .map((t) => ({
+            ...t,
+            passRate: t.total > 0 ? ((t.total - t.rejected) / t.total) * 100 : 100
+          }))
+          .sort((a, b) => a.month.localeCompare(b.month));
+
         return res.status(200).json({ 
           status: center?.performance_status || 'Good', 
           recommendation: center?.performance_recommendation, 
