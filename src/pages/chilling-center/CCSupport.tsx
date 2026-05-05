@@ -189,7 +189,7 @@ export default function CCSupport() {
             <CardContent>
               <div className="space-y-4">
                 {ticketsLoading ? (
-                  <div className="p-8 text-center text-muted-foreground">Loading tickets...</div>
+                  <div className="p-8 text-center text-muted-foreground">Loading issues...</div>
                 ) : (
                   tickets.filter((t: any) => t.role === 'farmer').length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground italic border-2 border-dashed rounded-lg">
