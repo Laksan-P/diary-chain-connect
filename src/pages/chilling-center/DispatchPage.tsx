@@ -385,7 +385,7 @@ const DispatchPage: React.FC = () => {
           </div>
           <DataTable
             columns={dispatchColumns}
-            data={(dispatches || []).filter(d => d && String(d.chillingCenterId) === String(centerId))}
+            data={dispatches || []}
             onRowClick={(row) => setViewingDispatch(row)}
           />
         </div>
