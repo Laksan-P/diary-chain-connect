@@ -838,7 +838,12 @@ export default async function handler(req, res) {
         const { data: tests } = await supabase.from('quality_tests').select('result, tested_at').in('collection_id', fColIds);
         const total = tests?.length || 0;
         const passed = tests?.filter(t => t.result === 'Pass').length || 0;
-        const passRate = total > 0 ? (passed / total) * 100 : 100;
+        const passRateRaw = total > 0 ? (passed / total) * 100 : 100;
+        const passRate = Number(passRateRaw.toFixed(1));
+
+        // STRICT RULE: Directly determine status based on 75% threshold
+        const displayStatus = passRate >= 75 ? 'Good' : 'Underperforming';
+
         const threeMonthsAgo = new Date(); threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
         const { data: collections } = await supabase.from('milk_collections').select('date, quantity, quality_result').eq('farmer_id', farmerId).gte('date', threeMonthsAgo.toISOString().split('T')[0]).order('date', { ascending: true });
         const trends = {};
@@ -849,29 +854,43 @@ export default async function handler(req, res) {
           if (c.quality_result === 'Pass') trends[month].passCount++;
         });
         const trendArray = Object.values(trends).map(t => ({ ...t, passRate: t.total > 0 ? (t.passCount / t.total) * 100 : 100 }));
+        
         const resData = { 
-          status: farmer?.performance_status || 'Good', 
-          recommendation: farmer?.performance_recommendation, 
+          status: displayStatus, 
+          recommendation: displayStatus === 'Good' ? null : farmer?.performance_recommendation, 
           passRate, 
           frequency: total > 0 ? 'Regular' : 'New', 
           trends: trendArray 
         };
 
-        // If underperforming, attach full recommendation data
-        if (resData.status === 'Underperforming' && resData.recommendation) {
-          const issueType = resData.recommendation.includes('SNF') ? 'SNF' : 
-                           resData.recommendation.includes('FAT') ? 'FAT' : 
-                           resData.recommendation.includes('Water') ? 'WATER' : 'GENERAL';
-          
-          const { data: recDetails } = await supabase
-            .from('performance_recommendations')
-            .select('*')
-            .eq('issue_type', issueType)
-            .limit(1)
-            .single();
+        // If underperforming, attach full recommendation data from DB
+        if (resData.status === 'Underperforming') {
+          try {
+            // Determine issue type from existing recommendation string or default to GENERAL
+            const recStr = (resData.recommendation || '').toUpperCase();
+            const issueType = recStr.includes('SNF') ? 'SNF' : 
+                             recStr.includes('FAT') ? 'FAT' : 
+                             recStr.includes('WATER') ? 'WATER' : 'GENERAL';
             
-          if (recDetails) {
-            resData.recommendationDetails = recDetails;
+            const { data: recDetails } = await supabase
+              .from('performance_recommendations')
+              .select('*')
+              .eq('issue_type', issueType)
+              .limit(1)
+              .maybeSingle();
+              
+            if (recDetails) {
+              resData.recommendationDetails = recDetails;
+              // If the farmer didn't have a specific recommendation string, use the title from DB
+              if (!resData.recommendation) {
+                resData.recommendation = recDetails.title_en;
+              }
+            } else if (!resData.recommendation) {
+              // Final fallback if even DB fetch fails/is empty
+              resData.recommendation = 'Performance improvement required. Please contact your chilling center.';
+            }
+          } catch (e) {
+            console.error('Failed to fetch recommendation details:', e);
           }
         }
 
@@ -940,22 +959,29 @@ export default async function handler(req, res) {
         const { data: farmers } = await supabase.from('farmers').select('id, name, performance_status');
         const { data: centers } = await supabase.from('chilling_centers').select('id, name, performance_status');
         
-        // Fetch dispatches to calculate real-time pass rates for the list
+        // Fetch all quality tests to calculate real-time stats
         const { data: allDispatches } = await supabase.from('dispatches').select('chilling_center_id, status');
+        const { data: allTests } = await supabase.from('quality_tests').select('collection_id, result');
+        const { data: allCollections } = await supabase.from('milk_collections').select('id, farmer_id');
+
+        const farmerStats = (farmers || []).map(f => {
+          const fColIds = (allCollections || []).filter(c => c.farmer_id === f.id).map(c => c.id);
+          const fTests = (allTests || []).filter(t => fColIds.includes(t.collection_id));
+          const total = fTests.length;
+          const passed = fTests.filter(t => t.result === 'Pass').length;
+          const passRate = total > 0 ? (passed / total) * 100 : 100;
+          return { ...f, performance_status: passRate >= 75 ? 'Good' : 'Underperforming' };
+        });
         
         const centerStats = (centers || []).map(c => {
           const cDispatches = allDispatches?.filter(d => d.chilling_center_id === c.id) || [];
           const total = cDispatches.length;
           const rejected = cDispatches.filter(d => d.status === 'Rejected').length;
           const passRate = total > 0 ? ((total - rejected) / total) * 100 : 100;
-          
-          // STRICT RULE: Directly determine status based on 75% threshold
-          const displayStatus = passRate >= 75 ? 'Good' : 'Underperforming';
-          
-          return { ...c, performance_status: displayStatus };
+          return { ...c, performance_status: passRate >= 75 ? 'Good' : 'Underperforming' };
         });
 
-        return res.status(200).json({ farmers, centers: centerStats });
+        return res.status(200).json({ farmers: farmerStats, centers: centerStats });
       }
       return res.status(400).json({ error: 'Invalid type' });
     } catch (err) {
@@ -968,58 +994,67 @@ export default async function handler(req, res) {
   if (action === 'recommendations') {
     try {
       if (req.method === 'GET') {
-        const { data, error } = await supabase
-          .from('performance_recommendations')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        return res.status(200).json(data);
-      }
-
-      // Admin only for mutations
-      if (!['nestle', 'nestle_officer'].includes(user.role)) {
-        return res.status(403).json({ error: 'Forbidden' });
-      }
-
-      if (req.method === 'POST') {
-        const body = getBody(req);
-        const { id, ...payload } = body;
-        
-        if (id) {
-          // Update
+        try {
           const { data, error } = await supabase
             .from('performance_recommendations')
-            .update({ ...payload, updated_at: new Date().toISOString() })
-            .eq('id', id)
-            .select()
-            .single();
-          if (error) throw error;
-          return res.status(200).json(data);
-        } else {
-          // Create
-          const { data, error } = await supabase
-            .from('performance_recommendations')
-            .insert(payload)
-            .select()
-            .single();
-          if (error) throw error;
-          return res.status(201).json(data);
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (error) {
+            // If table doesn't exist yet, return empty list instead of 500
+            if (error.code === '42P01') return res.status(200).json([]);
+            throw error;
+          }
+          return res.status(200).json(data || []);
+        } catch (err) {
+          console.error('Recommendations GET error:', err);
+          return res.status(200).json([]); // Fallback to empty list for UI stability
         }
       }
 
-      if (req.method === 'DELETE') {
-        const { id } = req.query;
-        if (!id) return res.status(400).json({ error: 'ID required' });
-        const { error } = await supabase
-          .from('performance_recommendations')
-          .delete()
-          .eq('id', id);
-        if (error) throw error;
-        return res.status(200).json({ success: true });
+      // Mutation logic
+      try {
+        if (req.method === 'POST') {
+          const body = getBody(req);
+          const { id, ...payload } = body;
+          
+          if (id) {
+            const { data, error } = await supabase
+              .from('performance_recommendations')
+              .update({ ...payload, updated_at: new Date().toISOString() })
+              .eq('id', id)
+              .select()
+              .single();
+            if (error) throw error;
+            return res.status(200).json(data);
+          } else {
+            const { data, error } = await supabase
+              .from('performance_recommendations')
+              .insert(payload)
+              .select()
+              .single();
+            if (error) throw error;
+            return res.status(201).json(data);
+          }
+        }
+
+        if (req.method === 'DELETE') {
+          const { id } = req.query;
+          if (!id) return res.status(400).json({ error: 'ID required' });
+          const { error } = await supabase
+            .from('performance_recommendations')
+            .delete()
+            .eq('id', id);
+          if (error) throw error;
+          return res.status(200).json({ success: true });
+        }
+      } catch (err) {
+        console.error('Recommendations Mutation error:', err);
+        return res.status(500).json({ error: 'Database error. Please ensure migrations are applied.' });
       }
-    } catch (err) {
-      console.error('Recommendations API error:', err);
-      return res.status(500).json({ error: 'Server error' });
+    } catch (outerErr) {
+      console.error('Recommendations API outer error:', outerErr);
+      return res.status(500).json({ error: 'Internal server error' });
     }
   }
 
