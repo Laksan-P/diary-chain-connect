@@ -51,7 +51,8 @@ export default async function handler(req, res) {
         const rejected = recentDispatches.filter(d => d.status === 'Rejected').length;
         const rate = (rejected / total) * 100;
 
-        if (rate > 10) {
+        // NEW RULE: Threshold is 25% rejection (75% pass rate)
+        if (rate > 25) {
           currentStatus = 'Underperforming';
           currentRec = `High rejection rate (${rate.toFixed(1)}%). Please review collection and cooling procedures.`;
         }
