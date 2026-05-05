@@ -154,15 +154,62 @@ const PerformanceDashboard: React.FC = () => {
               </div>
 
               {/* Recommendation Alert */}
-              {detailedPerf.recommendation && (
-                <Alert className={`${detailedPerf.status === 'Good' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>Automated Recommendation</AlertTitle>
-                  <AlertDescription className="text-sm font-medium">
-                    {detailedPerf.recommendation}
-                  </AlertDescription>
-                </Alert>
-              )}
+              {detailedPerf.recommendation && (() => {
+                let recData: any = null;
+                try {
+                  if (detailedPerf.recommendation.startsWith('{')) {
+                    recData = JSON.parse(detailedPerf.recommendation);
+                  }
+                } catch (e) {}
+
+                if (recData) {
+                  return (
+                    <Alert className={`${detailedPerf.status === 'Good' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'} border-l-4 border-l-amber-500`}>
+                      <Info className="h-5 w-5 text-amber-600" />
+                      <div className="ml-2">
+                        <AlertTitle className="text-lg font-bold text-amber-900">{recData.message_title}</AlertTitle>
+                        <AlertDescription className="mt-2 space-y-4">
+                          <p className="text-base font-medium text-amber-800">{recData.short_message}</p>
+                          
+                          <div className="bg-white/60 backdrop-blur-sm p-5 rounded-xl border border-amber-200 shadow-sm">
+                            <p className="text-xs font-bold uppercase tracking-widest text-amber-700 mb-3 flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4" />
+                              Guidance for Farmer
+                            </p>
+                            <ul className="grid grid-cols-1 gap-2">
+                              {recData.tips?.map((tip: string, i: number) => (
+                                <li key={i} className="text-sm flex items-start gap-3 text-amber-900/80">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                                  {tip}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          
+                          <div className="flex items-center gap-4 pt-2">
+                            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
+                              Severity: {recData.severity || 'HIGH'}
+                            </Badge>
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100">
+                              Issue: {recData.issue || 'Quality'}
+                            </Badge>
+                          </div>
+                        </AlertDescription>
+                      </div>
+                    </Alert>
+                  );
+                }
+
+                return (
+                  <Alert className={`${detailedPerf.status === 'Good' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Automated Recommendation</AlertTitle>
+                    <AlertDescription className="text-sm font-medium">
+                      {detailedPerf.recommendation}
+                    </AlertDescription>
+                  </Alert>
+                );
+              })()}
 
               {/* Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
