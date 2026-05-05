@@ -14,7 +14,8 @@ import {
   AlertTriangle, 
   Info,
   BookOpen,
-  Languages
+  Languages,
+  ChevronLeft
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getRecommendations, saveRecommendation, deleteRecommendation } from '@/services/api';
@@ -125,6 +126,16 @@ const RecommendationManager = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {(isAdding || isEditing) && (
+        <Button 
+          variant="ghost" 
+          onClick={() => { setIsAdding(false); setIsEditing(null); }}
+          className="mb-2 -ml-2 text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="w-4 h-4 mr-1" /> Back to Recommendations
+        </Button>
+      )}
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground">Recommendation Manager</h1>
