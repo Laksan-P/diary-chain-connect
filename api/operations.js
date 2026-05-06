@@ -52,7 +52,7 @@ export default async function handler(req, res) {
 
       // 2. Determine thresholds based on user role
       const isNestle = user.role === 'nestle' || user.role === 'nestle_officer';
-      
+
       if (isNestle && original) {
         // Nestlé Rule: Must be >= CC's recorded quality (or industry standards)
         const threshFat = original.fat || 3.5;
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
         .from('milk_collections')
         .update(updates)
         .eq('id', collectionId);
-      
+
       if (updateErr) throw updateErr;
 
       // 4. Log the Quality Test record (with idempotency for the SAME role/result)
@@ -105,17 +105,17 @@ export default async function handler(req, res) {
       } else {
         const { data: qtRows, error: qtErr } = await supabase
           .from('quality_tests')
-          .insert({ 
-            collection_id: collectionId, 
-            fat: nFat, 
-            snf: nSnf, 
-            water: nWater, 
-            result: resultValue, 
-            reason: reasonValue 
+          .insert({
+            collection_id: collectionId,
+            fat: nFat,
+            snf: nSnf,
+            water: nWater,
+            result: resultValue,
+            reason: reasonValue
           })
           .select('id')
           .single();
-        
+
         // If it fails because of a unique constraint, it's fine, we already updated the main table
         if (!qtErr) newId = qtRows.id;
         else newId = existing?.id || 0;
@@ -992,10 +992,19 @@ export default async function handler(req, res) {
                 resData.recommendation = merged.title_en;
               }
             } else if (!resData.recommendation) {
-              resData.recommendation = 'Performance improvement required. Please contact your chilling center.';
+              const isNestle = ['nestle', 'nestle_officer'].includes(user.role);
+              resData.recommendation = 'Performance improvement required.' + (isNestle ? '' : ' Please contact your chilling center.');
             }
           } catch (e) {
             console.error('Failed to fetch recommendation details:', e);
+          }
+        }
+
+        // Global safeguard: Remove contact instruction for Nestle dashboard specifically
+        if (['nestle', 'nestle_officer'].includes(user.role) && resData.recommendation) {
+          resData.recommendation = resData.recommendation.replace('Please contact your chilling center.', '').trim();
+          if (resData.recommendationDetails?.short_message) {
+            resData.recommendationDetails.short_message = resData.recommendationDetails.short_message.replace('Please contact your chilling center.', '').trim();
           }
         }
 
@@ -1055,10 +1064,15 @@ export default async function handler(req, res) {
           };
         });
 
+        let recommendation = displayStatus === 'Good' ? null : center?.performance_recommendation;
+        if (['nestle', 'nestle_officer'].includes(user.role) && recommendation) {
+          recommendation = recommendation.replace('Please contact your chilling center.', '').trim();
+        }
+
         return res.status(200).json({
           status: displayStatus,
           performance_status: displayStatus,
-          recommendation: displayStatus === 'Good' ? null : center?.performance_recommendation,
+          recommendation: recommendation,
           passRate,
           quality_pass_rate: passRate,
           rejectionRate: Number(rejectionRate.toFixed(1)),
