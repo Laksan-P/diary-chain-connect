@@ -154,13 +154,13 @@ const PerformanceDashboard: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">Supply Frequency</p>
-                        <h3 className="text-2xl font-bold">{detailedPerf.frequency || 'High'}</h3>
+                        <h3 className="text-2xl font-bold">{detailedPerf.frequency}</h3>
                       </div>
                       <div className="p-2 rounded-full bg-blue-100 text-blue-600">
                         <Users className="w-5 h-5" />
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">Active supply patterns detected</p>
+                    <p className="text-xs text-muted-foreground mt-2">{detailedPerf.frequencySubtext}</p>
                   </CardContent>
                 </Card>
               </div>

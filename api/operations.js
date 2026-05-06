@@ -947,11 +947,17 @@ export default async function handler(req, res) {
         });
         const trendArray = Object.values(trends).map(t => ({ ...t, passRate: t.total > 0 ? (t.passCount / t.total) * 100 : 100 }));
 
+        const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        const recentTests = tests?.filter(t => t.tested_at && new Date(t.tested_at) >= oneMonthAgo).length || 0;
+        const frequency = recentTests > 0 ? 'Regular' : (total > 0 ? 'Inactive' : 'New');
+        const frequencySubtext = frequency === 'New' ? 'No supply history' : (frequency === 'Inactive' ? 'No supply in last 30 days' : 'Active supply patterns detected');
+
         const resData = {
           status: displayStatus,
           recommendation: displayStatus === 'Good' ? null : farmer?.performance_recommendation,
           passRate,
-          frequency: total > 0 ? 'Regular' : 'New',
+          frequency,
+          frequencySubtext,
           trends: trendArray
         };
 
@@ -1069,11 +1075,18 @@ export default async function handler(req, res) {
           recommendation = recommendation.replace('Please contact your chilling center.', '').trim();
         }
 
+        const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        const recentDispatches = dispatches?.filter(d => d.dispatch_date && new Date(d.dispatch_date) >= oneMonthAgo).length || 0;
+        const frequency = recentDispatches > 0 ? 'High' : (totalD > 0 ? 'Inactive' : 'New');
+        const frequencySubtext = frequency === 'New' ? 'No dispatch history' : (frequency === 'Inactive' ? 'No dispatches in last 30 days' : 'Frequent supply patterns detected');
+
         return res.status(200).json({
           status: displayStatus,
           performance_status: displayStatus,
           recommendation: recommendation,
           passRate,
+          frequency,
+          frequencySubtext,
           quality_pass_rate: passRate,
           rejectionRate: Number(rejectionRate.toFixed(1)),
           show_alert: showAlert,
