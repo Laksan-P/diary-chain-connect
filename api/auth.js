@@ -222,7 +222,7 @@ export default async function handler(req, res) {
       
       console.log(`[AUTH:register-farmer-by-center] Processing registration for ${name} (OfflineID: ${offline_id || 'N/A'})`);
 
-      if (!email || !password || !name || !chillingCenterId) {
+      if (!name || !chillingCenterId) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
@@ -232,18 +232,29 @@ export default async function handler(req, res) {
         return res.status(409).json({ error: 'Email already registered' });
       }
 
-      const hash = await bcrypt.hash(password, 10);
-      const { data: userResult, error: uErr } = await supabase
-        .from('users')
-        .insert({ email, password_hash: hash, name, role: 'farmer' })
-        .select('id')
-        .single();
-      
-      if (uErr) {
-        console.error('[AUTH:register-farmer-by-center] User insert error:', uErr);
-        throw uErr;
+      let userId = null;
+
+      if (email && password) {
+        const hash = await bcrypt.hash(password, 10);
+
+        const { data: userResult, error: uErr } = await supabase
+          .from('users')
+          .insert({
+            email,
+            password_hash: hash,
+            name,
+            role: 'farmer'
+          })
+          .select('id')
+          .single();
+
+        if (uErr) {
+          console.error('[AUTH:register-farmer-by-center] User insert error:', uErr);
+          throw uErr;
+        }
+
+        userId = userResult.id;
       }
-      const userId = userResult.id;
 
       const { count: farmerCount } = await supabase.from('farmers').select('*', { count: 'exact', head: true });
       const farmerCode = `FRM-${String((farmerCount || 0) + 1).padStart(3, '0')}`;
