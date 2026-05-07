@@ -11,6 +11,7 @@ import '../providers/preferences_provider.dart';
 import '../services/translations.dart';
 import '../services/toast_service.dart';
 import '../services/offline_service.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
