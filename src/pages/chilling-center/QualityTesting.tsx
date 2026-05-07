@@ -62,9 +62,9 @@ const QualityTestingPage: React.FC = () => {
           return [...offlinePending, ...uniquePendingQuality];
         };
 
-        // Show cached version first
-        const initialCols = getCache('pending_quality_collections') || [];
-        setCollections(getLocalCollections(initialCols));
+    // Show cached version first
+    const initialCols = getCache('pending_quality_collections') || [];
+    setCollections(getLocalCollections(initialCols));
 
         // 2. Then try to fetch fresh data if online
         if (isOnline()) {

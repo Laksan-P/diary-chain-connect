@@ -219,21 +219,17 @@ export default async function handler(req, res) {
     try {
       const body = getBody(req);
       const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password, offline_id } = body;
+      
+      console.log(`[AUTH:register-farmer-by-center] Processing registration for ${name} (OfflineID: ${offline_id || 'N/A'})`);
+
       if (!email || !password || !name || !chillingCenterId) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
       const { data: existingEmail } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
-      if (existingEmail) return res.status(409).json({ error: 'Email already registered' });
-
-      if (nic && nic.trim() !== '') {
-        const { data: existingNic } = await supabase.from('farmers').select('id').eq('nic', nic).maybeSingle();
-        if (existingNic) return res.status(409).json({ error: 'NIC already registered' });
-      }
-
-      if (phone && phone.trim() !== '') {
-        const { data: existingPhone } = await supabase.from('farmers').select('id').eq('phone', phone).maybeSingle();
-        if (existingPhone) return res.status(409).json({ error: 'Phone number already registered' });
+      if (existingEmail) {
+        console.warn(`[AUTH:register-farmer-by-center] Email ${email} already exists.`);
+        return res.status(409).json({ error: 'Email already registered' });
       }
 
       const hash = await bcrypt.hash(password, 10);
@@ -242,11 +238,15 @@ export default async function handler(req, res) {
         .insert({ email, password_hash: hash, name, role: 'farmer' })
         .select('id')
         .single();
-      if (uErr) throw uErr;
+      
+      if (uErr) {
+        console.error('[AUTH:register-farmer-by-center] User insert error:', uErr);
+        throw uErr;
+      }
       const userId = userResult.id;
 
       const { count: farmerCount } = await supabase.from('farmers').select('*', { count: 'exact', head: true });
-      const farmerCode = `FRM-${String(farmerCount + 1).padStart(3, '0')}`;
+      const farmerCode = `FRM-${String((farmerCount || 0) + 1).padStart(3, '0')}`;
 
       const { data: farmerResult, error: fErr } = await supabase
         .from('farmers')
@@ -258,7 +258,10 @@ export default async function handler(req, res) {
         .select('id')
         .single();
 
-      if (fErr) throw fErr;
+      if (fErr) {
+        console.error('[AUTH:register-farmer-by-center] Farmer insert error:', fErr);
+        throw fErr;
+      }
       const farmerRowId = farmerResult.id;
 
       if (bankName || accountNumber || branch) {
@@ -268,19 +271,21 @@ export default async function handler(req, res) {
         });
       }
 
-      await supabase.from('notifications').insert({
-        user_id: userId,
-        title: 'registration_successful_title',
-        message: `registration_welcome_msg|name:${name},code:${farmerCode}`,
-        type: 'general'
-      });
+      console.log(`[AUTH:register-farmer-by-center] Success! Created farmer ${farmerCode} (DB ID: ${farmerRowId})`);
 
       return res.status(201).json({
-        id: farmerRowId, farmerId: farmerCode, userId, name, address, phone, nic,
+        id: farmerRowId, 
+        farmerId: farmerCode, 
+        userId, 
+        name, 
+        address, 
+        phone, 
+        nic,
+        success: true
       });
     } catch (err) {
-      console.error('[AUTH:register-farmer-by-center] Error:', err);
-      return res.status(500).json({ error: 'Server error' });
+      console.error('[AUTH:register-farmer-by-center] Unexpected error:', err);
+      return res.status(500).json({ error: 'Server error: ' + err.message });
     }
   }
 

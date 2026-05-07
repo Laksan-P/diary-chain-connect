@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Milk } from 'lucide-react';
+import { AlertTriangle, Milk } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,8 +35,21 @@ const MilkCollectionPage: React.FC = () => {
   useEffect(() => { 
     const loadFarmers = async () => {
       // 1. Always check cache first for instant loading
-      const cached = getCache('farmers');
-      if (cached) setFarmers(cached);
+      const cached = getCache('farmers') || [];
+      const pendingRegistrations = getPendingActions().filter(a => a.type === 'farmer_registration');
+      const offlineFarmers = pendingRegistrations.map(a => ({
+        id: a.data.tempId,
+        farmerId: a.data.tempId,
+        name: a.data.name,
+        nic: a.data.nic,
+        phone: a.data.phone,
+        address: a.data.address || '',
+        chillingCenterId: a.data.chillingCenterId,
+        userId: 0,
+        createdAt: new Date().toISOString(),
+      } as Farmer));
+
+      setFarmers([...cached, ...offlineFarmers]);
 
       // 2. If online, fetch fresh data and update cache
       if (isOnline()) {
@@ -91,7 +104,7 @@ const MilkCollectionPage: React.FC = () => {
     }
     
     const collectionData = {
-      farmerId: parseInt(form.farmerId),
+      farmerId: (form.farmerId.toString().startsWith('OFF-')) ? (form.farmerId as any) : parseInt(form.farmerId),
       chillingCenterId: user.chillingCenterId,
       date: form.date,
       time: form.time,
@@ -131,15 +144,27 @@ const MilkCollectionPage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-          <Milk className="w-5 h-5 text-accent" />
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <Milk className="w-6 h-6 text-primary" />
         </div>
         <div>
-          <h2 className="text-xl font-display font-bold text-foreground">Record Milk Collection</h2>
-          <p className="text-sm text-muted-foreground">Enter milk delivery details</p>
+          <h2 className="text-2xl font-display font-bold text-foreground">Record Milk Collection</h2>
+          <p className="text-muted-foreground">Enter milk delivery details</p>
         </div>
       </div>
+
+      {getPendingActions().length > 0 && (
+        <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-amber-700">Synchronization Pending</p>
+            <p className="text-xs text-amber-600/80">{getPendingActions().length} actions will be synced when online</p>
+          </div>
+        </div>
+      )}
 
       <motion.form onSubmit={handleSubmit} className="glass-card p-6 space-y-5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="grid grid-cols-2 gap-4">

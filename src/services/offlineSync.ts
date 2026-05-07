@@ -104,15 +104,23 @@ export const syncActions = async () => {
 
   for (const action of farmers) {
     try {
-      console.log(`[OfflineSync] Syncing farmer: ${action.data.name}`);
+      console.log(`[OfflineSync] Syncing farmer: ${action.data.name}...`);
       const result = await registerFarmerByCenter({ ...action.data, offline_id: action.id });
-      if (result?.userId) {
-        idMappings.farmers[action.id] = result.userId;
-        updatePendingIdReferences(action.id, result.userId, 'farmer');
-        removePendingAction(action.id); // Remove immediately on success
+      
+      if (result?.id) {
+        console.log(`[OfflineSync] Farmer ${action.data.name} synced successfully. New ID: ${result.id}`);
+        idMappings.farmers[action.id] = result.id;
+        updatePendingIdReferences(action.id, result.id, 'farmer');
+        removePendingAction(action.id);
+      } else {
+        console.warn(`[OfflineSync] Farmer ${action.data.name} sync returned no ID.`, result);
       }
-    } catch (error) {
-      console.error(`[OfflineSync] Farmer sync failed:`, error);
+    } catch (error: any) {
+      console.error(`[OfflineSync] Farmer sync failed for ${action.data.name}:`, error.message || error);
+      if (error.message?.includes('409') || error.message?.includes('already registered')) {
+        console.warn(`[OfflineSync] Conflict detected for ${action.data.name}. Removing duplicate action.`);
+        removePendingAction(action.id);
+      }
     }
   }
 
