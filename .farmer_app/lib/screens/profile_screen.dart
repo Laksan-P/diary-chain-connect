@@ -26,7 +26,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _api = ApiService();
   final _formKey = GlobalKey<FormState>();
-  
+
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _addressController;
@@ -94,30 +94,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
         throw Exception('Offline');
       }
 
-      final res = await _api.get('/farmers?action=get&id=${auth.user!['farmerId']}');
+      final res = await _api.get(
+        '/farmers?action=get&id=${auth.user!['farmerId']}',
+      );
       if (mounted) {
         setState(() {
           _nameController.text = res['name']?.toString() ?? '';
           _nicController.text = res['nic']?.toString() ?? '';
           _addressController.text = res['address']?.toString() ?? '';
           _phoneController.text = res['phone']?.toString() ?? '';
-        });
 
-        // Fetch bank details separately
-        try {
-          final bankRes = await _api.get('/farmers?action=bank-details&id=${auth.user!['farmerId']}');
-          if (mounted && bankRes != null) {
-            final bankData = bankRes is List ? bankRes.first : bankRes;
-            setState(() {
-              _bankNameController.text = (bankData['bankName'] ?? bankData['bank_name'] ?? '').toString();
-              _selectedBank = _bankRules.containsKey(_bankNameController.text) ? _bankNameController.text : (_bankNameController.text.isNotEmpty ? 'Other' : null);
-              _accountNumberController.text = (bankData['accountNumber'] ?? bankData['account_number'] ?? '').toString();
-              _branchController.text = (bankData['branch'] ?? '').toString();
-            });
-          }
-        } catch (bankErr) {
-          debugPrint("BANK FETCH ERROR: $bankErr");
-        }
+          // Use bank details already included in the response
+          _bankNameController.text = (res['bankName'] ?? res['bank_name'] ?? '')
+              .toString();
+
+          final bankText = _bankNameController.text.trim();
+          _selectedBank = _bankRules.keys.firstWhere(
+            (k) => k.toLowerCase() == bankText.toLowerCase(),
+            orElse: () => bankText.isNotEmpty ? 'Other' : '',
+          );
+          if (_selectedBank!.isEmpty) _selectedBank = null;
+
+          _accountNumberController.text =
+              (res['accountNumber'] ?? res['account_number'] ?? '').toString();
+          _branchController.text = (res['branch'] ?? '').toString();
+        });
       }
     } catch (e) {
       debugPrint("Farmer details fetch failed: $e");
@@ -129,8 +130,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _addressController.text = auth.user!['address']?.toString() ?? '';
           _phoneController.text = auth.user!['phone']?.toString() ?? '';
           _bankNameController.text = (auth.user!['bankName'] ?? '').toString();
-          _selectedBank = _bankRules.containsKey(_bankNameController.text) ? _bankNameController.text : (_bankNameController.text.isNotEmpty ? 'Other' : null);
-          _accountNumberController.text = (auth.user!['accountNumber'] ?? '').toString();
+          _selectedBank = _bankRules.containsKey(_bankNameController.text)
+              ? _bankNameController.text
+              : (_bankNameController.text.isNotEmpty ? 'Other' : null);
+          _accountNumberController.text = (auth.user!['accountNumber'] ?? '')
+              .toString();
           _branchController.text = (auth.user!['branch'] ?? '').toString();
         });
       }
@@ -146,8 +150,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _phoneController = TextEditingController(text: user['phone'] ?? '');
     _nicController = TextEditingController(text: user['nic'] ?? '');
     _bankNameController = TextEditingController(text: user['bankName'] ?? '');
-    _selectedBank = _bankRules.containsKey(_bankNameController.text) ? _bankNameController.text : (_bankNameController.text.isNotEmpty ? 'Other' : null);
-    _accountNumberController = TextEditingController(text: user['accountNumber'] ?? '');
+
+    final bankText = _bankNameController.text.trim();
+    _selectedBank = _bankRules.keys.firstWhere(
+      (k) => k.toLowerCase() == bankText.toLowerCase(),
+      orElse: () => bankText.isNotEmpty ? 'Other' : '',
+    );
+    if (_selectedBank!.isEmpty) _selectedBank = null;
+
+    _accountNumberController = TextEditingController(
+      text: user['accountNumber'] ?? '',
+    );
     _branchController = TextEditingController(text: user['branch'] ?? '');
   }
 
@@ -167,7 +180,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _updateProfile({bool silent = false}) async {
     if (!silent) HapticFeedback.mediumImpact();
     if (!_formKey.currentState!.validate()) {
-      if (!silent) ToastService.show(context, 'Please correct the validation errors', isError: true);
+      if (!silent)
+        ToastService.show(
+          context,
+          'Please correct the validation errors',
+          isError: true,
+        );
       return;
     }
 
@@ -189,7 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'PATCH',
         updateData,
       );
-      
+
       // Optimistic update of local user state
       auth.updateLocalUser({
         'name': _nameController.text.trim(),
@@ -202,7 +220,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
 
       if (mounted) {
-        ToastService.show(context, 'Changes saved locally! Will sync when online.');
+        ToastService.show(
+          context,
+          'Changes saved locally! Will sync when online.',
+        );
         setState(() => _isEditing = false);
       }
       return;
@@ -246,7 +267,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 300,
                 height: 300,
                 decoration: BoxDecoration(
-                  color: isDark 
+                  color: isDark
                       ? Colors.white.withValues(alpha: 0.05)
                       : AppTheme.primary.withValues(alpha: 0.03),
                   shape: BoxShape.circle,
@@ -271,13 +292,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (_isEditing) ...[
                       _sectionTitle(Translations.get('edit_profile', locale)),
                       const SizedBox(height: 24),
-                      _field(_nameController, Translations.get('full_name', locale), LucideIcons.user, locale),
+                      _field(
+                        _nameController,
+                        Translations.get('full_name', locale),
+                        LucideIcons.user,
+                        locale,
+                      ),
                       const SizedBox(height: 16),
-                      _field(_nicController, Translations.get('nic', locale), LucideIcons.creditCard, locale),
+                      _field(
+                        _nicController,
+                        Translations.get('nic', locale),
+                        LucideIcons.creditCard,
+                        locale,
+                      ),
                       const SizedBox(height: 16),
-                      _field(_addressController, Translations.get('address', locale), LucideIcons.mapPin, locale),
+                      _field(
+                        _addressController,
+                        Translations.get('address', locale),
+                        LucideIcons.mapPin,
+                        locale,
+                      ),
                       const SizedBox(height: 16),
-                      _field(_phoneController, Translations.get('phone', locale), LucideIcons.phone, locale),
+                      _field(
+                        _phoneController,
+                        Translations.get('phone', locale),
+                        LucideIcons.phone,
+                        locale,
+                      ),
                       const SizedBox(height: 32),
                       _sectionTitle(Translations.get('bank_details', locale)),
                       const SizedBox(height: 24),
@@ -285,27 +326,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         padding: const EdgeInsets.only(bottom: 16),
                         child: DropdownButtonFormField<String>(
                           value: _selectedBank,
-                          decoration: AppTheme.inputDecoration(Translations.get('bank_name', locale), LucideIcons.landmark, context: context),
-                          items: [..._bankRules.keys, 'Other'].map((bank) => DropdownMenuItem(value: bank, child: Text(bank))).toList(),
+                          decoration: AppTheme.inputDecoration(
+                            Translations.get('bank_name', locale),
+                            LucideIcons.landmark,
+                            context: context,
+                          ),
+                          items: [..._bankRules.keys, 'Other']
+                              .map(
+                                (bank) => DropdownMenuItem(
+                                  value: bank,
+                                  child: Text(bank),
+                                ),
+                              )
+                              .toList(),
                           onChanged: (v) {
                             setState(() {
                               _selectedBank = v;
-                              _bankNameController.text = v ?? '';
+                              if (v != 'Other') {
+                                _bankNameController.text = v ?? '';
+                              } else if (_getMatchedBankName(
+                                    _bankNameController.text,
+                                  ) !=
+                                  'Other') {
+                                // If switching from a known bank to 'Other', clear the text to allow custom entry
+                                _bankNameController.text = '';
+                              }
                               _accountNumberController.clear();
                             });
                           },
-                          validator: (v) => v == null ? Translations.get('required_field', locale) : null,
+                          validator: (v) => v == null
+                              ? Translations.get('required_field', locale)
+                              : null,
                         ),
                       ),
-                      _field(_accountNumberController, Translations.get('account_number', locale), LucideIcons.hash, locale),
+                      if (_selectedBank == 'Other') ...[
+                        _field(
+                          _bankNameController,
+                          'Specific Bank Name',
+                          LucideIcons.pencil,
+                          locale,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      _field(
+                        _accountNumberController,
+                        Translations.get('account_number', locale),
+                        LucideIcons.hash,
+                        locale,
+                      ),
                       const SizedBox(height: 16),
-                      _optionalField(_branchController, Translations.get('branch', locale), LucideIcons.gitBranch),
+                      _optionalField(
+                        _branchController,
+                        Translations.get('branch', locale),
+                        LucideIcons.gitBranch,
+                      ),
                       const SizedBox(height: 32),
                       ElevatedButton(
                         onPressed: _isLoading ? null : _updateProfile,
                         style: AppTheme.primaryButton(context),
                         child: _isLoading
-                            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : Text(Translations.get('update_profile', locale)),
                       ),
                       const SizedBox(height: 12),
@@ -315,7 +402,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _initControllers();
                           setState(() => _isEditing = false);
                         },
-                        child: Text(Translations.get('cancel', locale), style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          Translations.get('cancel', locale),
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ] else ...[
                       _sectionTitle(Translations.get('settings', locale)),
@@ -326,20 +419,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         LucideIcons.userCog,
                         onTap: () {
                           HapticFeedback.mediumImpact();
-                          _fetchFarmerDetails(); 
+                          _fetchFarmerDetails();
                           setState(() => _isEditing = true);
                         },
                       ),
+
                       _settingsTile(
                         Translations.get('language', locale),
-                        locale == 'en' ? 'English' : locale == 'si' ? 'සිංහල' : 'தமிழ்',
+                        locale == 'en'
+                            ? 'English'
+                            : locale == 'si'
+                            ? 'සිංහල'
+                            : 'தமிழ்',
                         LucideIcons.languages,
                         onTap: () => _showLanguagePicker(context, prefs),
                       ),
                       _settingsTile(
                         Translations.get('theme_mode', locale),
-                        prefs.themeMode == ThemeMode.system ? Translations.get('system', locale) : prefs.themeMode == ThemeMode.dark ? Translations.get('dark', locale) : Translations.get('light', locale),
-                        prefs.themeMode == ThemeMode.dark ? LucideIcons.moon : LucideIcons.sun,
+                        prefs.themeMode == ThemeMode.system
+                            ? Translations.get('system', locale)
+                            : prefs.themeMode == ThemeMode.dark
+                            ? Translations.get('dark', locale)
+                            : Translations.get('light', locale),
+                        prefs.themeMode == ThemeMode.dark
+                            ? LucideIcons.moon
+                            : LucideIcons.sun,
                         onTap: () => _showThemePicker(context, prefs),
                       ),
                       _settingsTile(
@@ -352,7 +456,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => FaqScreen(onBack: () => Navigator.pop(context)),
+                              builder: (context) => FaqScreen(
+                                onBack: () => Navigator.pop(context),
+                              ),
                             ),
                           );
                           // Re-check after returning
@@ -365,9 +471,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.red,
                           padding: const EdgeInsets.symmetric(vertical: 20),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
                         ),
-                        child: Text(Translations.get('logout', locale), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5)),
+                        child: Text(
+                          Translations.get('logout', locale),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                     ],
                   ],
@@ -388,7 +503,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildCircleBackButton(isDark),
           Expanded(
             child: Text(
-              _isEditing ? Translations.get('edit_profile', locale) : Translations.get('profile', locale),
+              _isEditing
+                  ? Translations.get('edit_profile', locale)
+                  : Translations.get('profile', locale),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDark ? Colors.white : Colors.black87,
@@ -436,23 +553,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1), width: 1.5),
+            border: Border.all(
+              color: AppTheme.primary.withValues(alpha: 0.1),
+              width: 1.5,
+            ),
           ),
           child: CircleAvatar(
             radius: 54,
-            backgroundColor: (isDark ? AppTheme.primaryLight : AppTheme.primary).withValues(alpha: 0.05),
-            child: Icon(LucideIcons.user, size: 48, color: isDark ? AppTheme.primaryLight : AppTheme.primary),
+            backgroundColor: (isDark ? AppTheme.primaryLight : AppTheme.primary)
+                .withValues(alpha: 0.05),
+            child: Icon(
+              LucideIcons.user,
+              size: 48,
+              color: isDark ? AppTheme.primaryLight : AppTheme.primary,
+            ),
           ),
         ),
         const SizedBox(height: 24),
         Text(
           user['name'] ?? 'Farmer Name',
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
           user['farmerCode'] ?? 'ID: ...',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey.shade400),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade400,
+          ),
         ),
       ],
     );
@@ -466,17 +599,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: Colors.redAccent,
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(
-            color: Colors.redAccent,
-            blurRadius: 8,
-            spreadRadius: 1,
-          )
+          BoxShadow(color: Colors.redAccent, blurRadius: 8, spreadRadius: 1),
         ],
       ),
     );
   }
 
-  Widget _settingsTile(String title, String subtitle, IconData icon, {VoidCallback? onTap, Widget? trailing}) {
+  Widget _settingsTile(
+    String title,
+    String subtitle,
+    IconData icon, {
+    VoidCallback? onTap,
+    Widget? trailing,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -484,7 +619,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: isDark ? AppTheme.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(28),
         boxShadow: AppTheme.premiumShadow,
-        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade50),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade50,
+        ),
       ),
       child: BouncingButton(
         onTap: () {
@@ -492,39 +629,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onTap?.call();
         },
         child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: (isDark ? AppTheme.primaryLight : AppTheme.primary).withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: isDark ? AppTheme.primaryLight : AppTheme.primary, size: 22),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (isDark ? AppTheme.primaryLight : AppTheme.primary)
+                      .withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          if (trailing != null) ...[
-                            const SizedBox(width: 8),
-                            trailing,
-                          ],
+                child: Icon(
+                  icon,
+                  color: isDark ? AppTheme.primaryLight : AppTheme.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (trailing != null) ...[
+                          const SizedBox(width: 8),
+                          trailing,
                         ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(height: 2),
-                      Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                Icon(LucideIcons.chevronRight, size: 16, color: Colors.grey.shade300),
-              ],
-            ),
+              ),
+              Icon(
+                LucideIcons.chevronRight,
+                size: 16,
+                color: Colors.grey.shade300,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -544,7 +703,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Select Language', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Select Language',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 24),
             _langOption('en', 'English', prefs),
             _langOption('si', 'සිංහල', prefs),
@@ -565,8 +727,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Navigator.pop(context);
       },
       child: ListTile(
-        title: Text(label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-        trailing: isSelected ? const Icon(LucideIcons.check, color: AppTheme.primary) : null,
+        title: Text(
+          label,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        trailing: isSelected
+            ? const Icon(LucideIcons.check, color: AppTheme.primary)
+            : null,
       ),
     );
   }
@@ -585,11 +754,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Theme Mode', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Theme Mode',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 24),
             _themeOption(ThemeMode.light, 'Light Mode', LucideIcons.sun, prefs),
             _themeOption(ThemeMode.dark, 'Dark Mode', LucideIcons.moon, prefs),
-            _themeOption(ThemeMode.system, 'System Default', LucideIcons.monitor, prefs),
+            _themeOption(
+              ThemeMode.system,
+              'System Default',
+              LucideIcons.monitor,
+              prefs,
+            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -597,7 +774,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _themeOption(ThemeMode mode, String label, IconData icon, AppPreferences prefs) {
+  Widget _themeOption(
+    ThemeMode mode,
+    String label,
+    IconData icon,
+    AppPreferences prefs,
+  ) {
     bool isSelected = prefs.themeMode == mode;
     return BouncingButton(
       onTap: () {
@@ -607,13 +789,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
       child: ListTile(
         leading: Icon(icon),
-        title: Text(label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-        trailing: isSelected ? const Icon(LucideIcons.check, color: AppTheme.primary) : null,
+        title: Text(
+          label,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        trailing: isSelected
+            ? const Icon(LucideIcons.check, color: AppTheme.primary)
+            : null,
       ),
     );
   }
 
-  Widget _field(TextEditingController controller, String label, IconData icon, String locale) {
+  Widget _field(
+    TextEditingController controller,
+    String label,
+    IconData icon,
+    String locale,
+  ) {
     int? maxLength;
     List<TextInputFormatter>? formatters;
     TextInputType? keyboardType;
@@ -635,12 +829,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return TextFormField(
       controller: controller,
-      decoration: AppTheme.inputDecoration(label, icon, context: context).copyWith(counterText: ''),
+      decoration: AppTheme.inputDecoration(
+        label,
+        icon,
+        context: context,
+      ).copyWith(counterText: ''),
       maxLength: maxLength,
       inputFormatters: formatters,
       keyboardType: keyboardType,
       validator: (v) {
-        if (v == null || v.isEmpty) return Translations.get('required_field', locale);
+        if (v == null || v.isEmpty)
+          return Translations.get('required_field', locale);
         if (icon == LucideIcons.phone) {
           if (v.length != 10) {
             return Translations.get('phone_10_digits', locale);
@@ -649,19 +848,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
             return Translations.get('invalid_phone', locale);
           }
         }
-        if (icon == LucideIcons.creditCard && !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) {
+        if (icon == LucideIcons.creditCard &&
+            !RegExp(r'^([0-9]{9}[vVxX]|[0-9]{12})$').hasMatch(v)) {
           return Translations.get('invalid_nic', locale);
         }
-        if (icon == LucideIcons.hash && _selectedBank != null && _selectedBank != 'Other') {
+        if (icon == LucideIcons.hash &&
+            _selectedBank != null &&
+            _selectedBank != 'Other') {
           final requiredLength = _bankRules[_selectedBank];
-          if (v.length != requiredLength) return 'Must be $requiredLength digits';
+          if (v.length != requiredLength)
+            return 'Must be $requiredLength digits';
         }
         return null;
       },
     );
   }
 
-  Widget _optionalField(TextEditingController controller, String label, IconData icon) {
+  Widget _optionalField(
+    TextEditingController controller,
+    String label,
+    IconData icon,
+  ) {
     return TextFormField(
       controller: controller,
       decoration: AppTheme.inputDecoration(label, icon, context: context),
@@ -671,7 +878,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _sectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1),
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w900,
+        color: Colors.grey,
+        letterSpacing: 1,
+      ),
+    );
+  }
+
+  String _getMatchedBankName(String name) {
+    final bankText = name.trim();
+    return _bankRules.keys.firstWhere(
+      (k) => k.toLowerCase() == bankText.toLowerCase(),
+      orElse: () => bankText.isNotEmpty ? 'Other' : '',
     );
   }
 }

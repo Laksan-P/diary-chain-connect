@@ -53,7 +53,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ToastService.show(context, e.toString(), isError: true);
+        String errorMessage = e.toString().replaceFirst('Exception: ', '');
+
+        ToastService.show(context, errorMessage, isError: true);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

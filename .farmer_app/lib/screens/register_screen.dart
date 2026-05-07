@@ -326,7 +326,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onChanged: (v) {
                           setState(() {
                             _selectedBank = v;
-                            _controllers['bankName']!.text = v ?? '';
+                            if (v != 'Other') {
+                              _controllers['bankName']!.text = v ?? '';
+                            } else if (_getMatchedBankName(
+                                  _controllers['bankName']!.text,
+                                ) !=
+                                'Other') {
+                              _controllers['bankName']!.text = '';
+                            }
                             _controllers['accountNumber']!.clear();
                           });
                         },
@@ -335,6 +342,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             : null,
                       ),
                     ),
+                    if (_selectedBank == 'Other') ...[
+                      _field(
+                        'bankName',
+                        'Specific Bank Name',
+                        LucideIcons.pencil,
+                        locale,
+                        hint: 'Enter your bank name',
+                      ),
+                    ],
                     _field(
                       'accountNumber',
                       Translations.get('account_number', locale),
@@ -504,6 +520,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return null;
         },
       ),
+    );
+  }
+
+  String _getMatchedBankName(String name) {
+    final bankText = name.trim();
+    return _bankRules.keys.firstWhere(
+      (k) => k.toLowerCase() == bankText.toLowerCase(),
+      orElse: () => bankText.isNotEmpty ? 'Other' : '',
     );
   }
 }

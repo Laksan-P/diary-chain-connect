@@ -143,10 +143,15 @@ const RegisterFarmer: React.FC = () => {
             <div className="space-y-2">
               <Label>Bank Name</Label>
               <Select 
-                value={form.bankName} 
+                value={form.bankName && (SRI_LANKAN_BANKS.some(b => b.name === form.bankName) || form.bankName === 'Other') ? form.bankName : (form.bankName ? 'Other' : '')} 
                 onValueChange={v => {
-                  update('bankName', v);
-                  // Clear account number if bank changes to avoid invalid data
+                  if (v === 'Other') {
+                    // If switching from a known bank to Other, we might want to clear it or keep it
+                    // But for registration, it's safer to clear it so they type the new one
+                    update('bankName', 'Other');
+                  } else {
+                    update('bankName', v);
+                  }
                   update('accountNumber', '');
                 }}
               >
@@ -159,6 +164,17 @@ const RegisterFarmer: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            {(!SRI_LANKAN_BANKS.some(b => b.name === form.bankName) && form.bankName !== '') && (
+              <div className="space-y-2">
+                <Label>Specific Bank Name</Label>
+                <Input 
+                  value={form.bankName === 'Other' ? '' : form.bankName} 
+                  onChange={e => update('bankName', e.target.value)} 
+                  placeholder="Enter bank name" 
+                  required 
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Account Number</Label>
               <Input 

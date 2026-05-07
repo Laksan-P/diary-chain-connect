@@ -316,8 +316,8 @@ export default async function handler(req, res) {
         const passwordHash = await bcrypt.hash(password, 10);
         const { data: cc, error: ccErr } = await supabase
           .from('chilling_centers')
-          .insert({ 
-            name, 
+          .insert({
+            name,
             location: location || 'Default Location',
             phone_number: phone || '',
             user_id: userId,
