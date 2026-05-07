@@ -120,10 +120,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       data['chillingCenterId'] = _selectedCenter!.toString();
 
       if (!OfflineService().isOnline) {
+        final tempId = 'OFF-${DateTime.now().millisecondsSinceEpoch}';
+
+        data['tempId'] = tempId;
+        data['farmerId'] = tempId;
+
         await OfflineService().addPendingAction(
           '/auth?action=register-farmer',
           'POST',
-          data,
+          {
+            'type': 'farmer_registration',
+            'data': data,
+          },
         );
         
         // Save credentials for immediate offline login

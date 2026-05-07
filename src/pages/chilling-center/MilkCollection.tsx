@@ -16,61 +16,61 @@ const MilkCollectionPage: React.FC = () => {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  
+
   // Get local date in YYYY-MM-DD format
   const getLocalDate = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
-  const [form, setForm] = useState({ 
-    farmerId: '', 
-    date: getLocalDate(), 
-    time: new Date().toTimeString().slice(0, 5), 
-    temperature: '', 
-    quantity: '', 
-    milkType: 'Cow' 
+  const [form, setForm] = useState({
+    farmerId: '',
+    date: getLocalDate(),
+    time: new Date().toTimeString().slice(0, 5),
+    temperature: '',
+    quantity: '',
+    milkType: 'Cow'
   });
 
-  useEffect(() => { 
+  useEffect(() => {
     const loadFarmers = async () => {
       // 1. Always check cache first for instant loading
       const cached = getCache('farmers') || [];
       const pendingRegistrations = getPendingActions().filter(a => a.type === 'farmer_registration');
       const offlineFarmers = pendingRegistrations.map(a => ({
-        id: a.data.tempId,
-        farmerId: a.data.tempId,
-        name: a.data.name,
-        nic: a.data.nic,
-        phone: a.data.phone,
-        address: a.data.address || '',
-        chillingCenterId: a.data.chillingCenterId,
-        userId: 0,
-        createdAt: new Date().toISOString(),
-      } as Farmer));
+      id: a.data.tempId || a.data.farmerId || `OFF-${a.id}`,
+      farmerId: a.data.farmerId || a.data.tempId || `OFF-${a.id}`,
+      name: a.data.name,
+      nic: a.data.nic,
+      phone: a.data.phone,
+      address: a.data.address || '',
+      chillingCenterId: a.data.chillingCenterId,
+      userId: 0,
+      createdAt: new Date().toISOString(),
+    } as Farmer));
 
       setFarmers([...cached, ...offlineFarmers]);
 
       // 2. If online, fetch fresh data and update cache
       if (isOnline()) {
         try {
-          const serverData = user?.chillingCenterId 
+          const serverData = user?.chillingCenterId
             ? await getFarmers(user.chillingCenterId)
             : await getFarmers();
-          
+
           // Merge with any pending offline registrations to ensure they don't disappear
           const pendingRegistrations = getPendingActions().filter(a => a.type === 'farmer_registration');
           const offlineFarmers = pendingRegistrations.map(a => ({
-            id: a.data.tempId,
-            farmerId: a.data.tempId,
-            name: a.data.name,
-            nic: a.data.nic,
-            phone: a.data.phone,
-            address: a.data.address || '',
-            chillingCenterId: a.data.chillingCenterId,
-            userId: 0,
-            createdAt: new Date().toISOString(),
-          } as Farmer));
+          id: a.data.tempId || a.data.farmerId || `OFF-${a.id}`,
+          farmerId: a.data.farmerId || a.data.tempId || `OFF-${a.id}`,
+          name: a.data.name,
+          nic: a.data.nic,
+          phone: a.data.phone,
+          address: a.data.address || '',
+          chillingCenterId: a.data.chillingCenterId,
+          userId: 0,
+          createdAt: new Date().toISOString(),
+        } as Farmer));
 
           const mergedFarmers = [...serverData, ...offlineFarmers];
           setFarmers(mergedFarmers);
@@ -102,7 +102,7 @@ const MilkCollectionPage: React.FC = () => {
       toast({ title: 'Error', description: 'No chilling center associated with your account', variant: 'destructive' });
       return;
     }
-    
+
     const collectionData = {
       farmerId: (form.farmerId.toString().startsWith('OFF-')) ? (form.farmerId as any) : parseInt(form.farmerId),
       chillingCenterId: user.chillingCenterId,
@@ -116,9 +116,9 @@ const MilkCollectionPage: React.FC = () => {
 
     if (!isOnline()) {
       savePendingAction('collection', collectionData);
-      toast({ 
-        title: 'Saved Offline', 
-        description: 'Connection is down. Record will sync once online.' 
+      toast({
+        title: 'Saved Offline',
+        description: 'Connection is down. Record will sync once online.'
       });
       setForm({ farmerId: '', date: form.date, time: new Date().toTimeString().slice(0, 5), temperature: '', quantity: '', milkType: 'Cow' });
       return;
@@ -132,9 +132,9 @@ const MilkCollectionPage: React.FC = () => {
     } catch {
       // API failed — save offline as fallback
       savePendingAction('collection', collectionData);
-      toast({ 
-        title: 'Saved Offline', 
-        description: 'Network unavailable. Record saved locally and will sync when online.' 
+      toast({
+        title: 'Saved Offline',
+        description: 'Network unavailable. Record saved locally and will sync when online.'
       });
       setForm({ farmerId: '', date: form.date, time: new Date().toTimeString().slice(0, 5), temperature: '', quantity: '', milkType: 'Cow' });
     } finally {
@@ -159,21 +159,10 @@ const MilkCollectionPage: React.FC = () => {
           <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
             <AlertTriangle className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="flex-1">
+          <div>
             <p className="text-sm font-semibold text-amber-700">Synchronization Pending</p>
             <p className="text-xs text-amber-600/80">{getPendingActions().length} actions will be synced when online</p>
           </div>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="bg-amber-500/10 border-amber-500/30 text-amber-700 hover:bg-amber-500/20"
-            onClick={async () => {
-              const { syncActions } = await import('@/services/offlineSync');
-              syncActions();
-            }}
-          >
-            Sync Now
-          </Button>
         </div>
       )}
 

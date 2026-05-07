@@ -45,13 +45,6 @@ window.addEventListener('offline-action-saved', () => {
   }
 });
 
-// Also trigger on script load if already online
-if (typeof window !== 'undefined' && navigator.onLine) {
-  setTimeout(() => {
-    syncActions().catch(err => console.error('[OfflineSync] Startup sync failed:', err));
-  }, 1000);
-}
-
 let isSyncing = false;
 
 export const syncActions = async () => {
@@ -113,7 +106,7 @@ export const syncActions = async () => {
     try {
       console.log(`[OfflineSync] Syncing farmer: ${action.data.name}...`);
       const result = await registerFarmerByCenter({ ...action.data, offline_id: action.id });
-      
+
       if (result?.id) {
         console.log(`[OfflineSync] Farmer ${action.data.name} synced successfully. New ID: ${result.id}`);
         idMappings.farmers[action.id] = result.id;
@@ -184,7 +177,7 @@ export const syncActions = async () => {
   }
 
   console.log(`[OfflineSync] Sync cycle complete.`);
-  
+
   // Final Cache Cleanup to prevent duplication in UI
   const farmersCache = getCache('farmers') || [];
   const updatedFarmersCache = farmersCache.filter((f: any) => !String(f.id).startsWith('OFF-') && !String(f.farmerId).startsWith('OFF-'));

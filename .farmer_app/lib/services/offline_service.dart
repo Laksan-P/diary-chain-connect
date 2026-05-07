@@ -92,12 +92,13 @@ class OfflineService {
     final box = Hive.box(pendingActionsBoxName);
     final id = _uuid.v4();
     await box.put(id, {
-      'id': id,
-      'path': path,
-      'method': method,
-      'body': body,
-      'timestamp': DateTime.now().toIso8601String(),
-    });
+    'id': id,
+    'type': body['type'] ?? 'generic',
+    'path': path,
+    'method': method,
+    'data': body['data'] ?? body,
+    'timestamp': DateTime.now().toIso8601String(),
+  });
   }
 
   List<dynamic> getPendingActions() {
@@ -116,13 +117,15 @@ class OfflineService {
       try {
         final path = action['path'] as String;
         final method = action['method'] as String;
-        final body = Map<String, dynamic>.from(action['body'] as Map);
+        final body = Map<String, dynamic>.from(action['data'] as Map);
         
         // Add unique ID to prevent duplicates if not already present
         body['offline_id'] = action['id'];
 
+        final actualData = body['data'] ?? body;
+
         if (method == 'POST') {
-          await _api.post(path, body);
+          await _api.post(path, actualData);
         } else if (method == 'PATCH') {
           await _api.patch(path, body);
         } else if (method == 'PUT') {
