@@ -47,6 +47,35 @@ const CCDashboard: React.FC = () => {
     } else {
       setLoading(false);
     }
+
+    const handleUpdate = () => {
+      const centerId = user?.chillingCenterId;
+      if (centerId) {
+        Promise.allSettled([
+          getCollections(centerId), 
+          getFarmers(centerId), 
+          getDispatches(centerId),
+          getChillingCenter(centerId)
+        ]).then(([colsResult, farmersResult, dispatchesResult, detailsResult]) => {
+          if (colsResult.status === 'fulfilled') setCollections(colsResult.value);
+          if (farmersResult.status === 'fulfilled') {
+            const serverFarmers = farmersResult.value;
+            const pendingRegistrations = getPendingActions().filter((a: any) => a.type === 'farmer_registration');
+            setFarmerCount(serverFarmers.length + pendingRegistrations.length);
+          }
+          if (dispatchesResult.status === 'fulfilled') setDispatchCount(dispatchesResult.value.length);
+          if (detailsResult.status === 'fulfilled') setCenterDetails(detailsResult.value);
+        });
+      }
+    };
+
+    window.addEventListener('offline-sync-complete', handleUpdate);
+    window.addEventListener('online', handleUpdate);
+
+    return () => {
+      window.removeEventListener('offline-sync-complete', handleUpdate);
+      window.removeEventListener('online', handleUpdate);
+    };
   }, [user]);
 
   if (centerDetails) {
