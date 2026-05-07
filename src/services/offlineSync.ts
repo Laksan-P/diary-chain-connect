@@ -45,6 +45,13 @@ window.addEventListener('offline-action-saved', () => {
   }
 });
 
+// Also trigger on script load if already online
+if (typeof window !== 'undefined' && navigator.onLine) {
+  setTimeout(() => {
+    syncActions().catch(err => console.error('[OfflineSync] Startup sync failed:', err));
+  }, 1000);
+}
+
 let isSyncing = false;
 
 export const syncActions = async () => {

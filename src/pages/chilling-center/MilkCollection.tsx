@@ -159,10 +159,21 @@ const MilkCollectionPage: React.FC = () => {
           <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
             <AlertTriangle className="w-4 h-4 text-amber-500" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-amber-700">Synchronization Pending</p>
             <p className="text-xs text-amber-600/80">{getPendingActions().length} actions will be synced when online</p>
           </div>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="bg-amber-500/10 border-amber-500/30 text-amber-700 hover:bg-amber-500/20"
+            onClick={async () => {
+              const { syncActions } = await import('@/services/offlineSync');
+              syncActions();
+            }}
+          >
+            Sync Now
+          </Button>
         </div>
       )}
 
