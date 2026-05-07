@@ -219,7 +219,7 @@ export default async function handler(req, res) {
     try {
       const body = getBody(req);
       const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password, offline_id } = body;
-      
+
       console.log(`[AUTH:register-farmer-by-center] Processing registration for ${name} (OfflineID: ${offline_id || 'N/A'})`);
 
       if (!name || !chillingCenterId) {
@@ -285,12 +285,12 @@ export default async function handler(req, res) {
       console.log(`[AUTH:register-farmer-by-center] Success! Created farmer ${farmerCode} (DB ID: ${farmerRowId})`);
 
       return res.status(201).json({
-        id: farmerRowId, 
-        farmerId: farmerCode, 
-        userId, 
-        name, 
-        address, 
-        phone, 
+        id: farmerRowId,
+        farmerId: farmerCode,
+        userId,
+        name,
+        address,
+        phone,
         nic,
         success: true
       });
