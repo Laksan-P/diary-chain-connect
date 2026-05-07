@@ -125,6 +125,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'POST',
           data,
         );
+        
+        // Save credentials for immediate offline login
+        final box = await Hive.openBox('auth_cache');
+        await box.put('login_email', data['email']);
+        await box.put('login_password', data['password']);
+        await box.put('user', {
+          'id': 'OFFLINE_TEMP',
+          'name': data['name'],
+          'email': data['email'],
+          'role': 'farmer',
+          'chillingCenterId': _selectedCenter,
+        });
+
         if (mounted) {
           ToastService.show(
             context,

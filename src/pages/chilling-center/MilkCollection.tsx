@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getFarmers, createCollection } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Farmer } from '@/types';
-import { savePendingAction, isOnline, saveCache, getCache } from '@/services/offlineSync';
+import { savePendingAction, isOnline, saveCache, getCache, getPendingActions } from '@/services/offlineSync';
 
 const MilkCollectionPage: React.FC = () => {
   const { user } = useAuth();
@@ -41,12 +41,27 @@ const MilkCollectionPage: React.FC = () => {
       // 2. If online, fetch fresh data and update cache
       if (isOnline()) {
         try {
-          const data = user?.chillingCenterId 
+          const serverData = user?.chillingCenterId 
             ? await getFarmers(user.chillingCenterId)
             : await getFarmers();
           
-          setFarmers(data);
-          saveCache('farmers', data);
+          // Merge with any pending offline registrations to ensure they don't disappear
+          const pendingRegistrations = getPendingActions().filter(a => a.type === 'farmer_registration');
+          const offlineFarmers = pendingRegistrations.map(a => ({
+            id: a.data.tempId,
+            farmerId: a.data.tempId,
+            name: a.data.name,
+            nic: a.data.nic,
+            phone: a.data.phone,
+            address: a.data.address || '',
+            chillingCenterId: a.data.chillingCenterId,
+            userId: 0,
+            createdAt: new Date().toISOString(),
+          } as Farmer));
+
+          const mergedFarmers = [...serverData, ...offlineFarmers];
+          setFarmers(mergedFarmers);
+          saveCache('farmers', mergedFarmers);
         } catch (err) {
           console.error("Failed to fetch fresh farmers:", err);
         }

@@ -8,6 +8,7 @@ import type { MilkCollection, ChillingCenter } from '@/types';
 import { formatDate, formatQuantity, parseNumber } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { getPendingActions } from '@/services/offlineSync';
 
 const CCDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -28,7 +29,11 @@ const CCDashboard: React.FC = () => {
         getChillingCenter(centerId)
       ]).then(([colsResult, farmersResult, dispatchesResult, detailsResult]) => {
         if (colsResult.status === 'fulfilled') setCollections(colsResult.value);
-        if (farmersResult.status === 'fulfilled') setFarmerCount(farmersResult.value.length);
+        if (farmersResult.status === 'fulfilled') {
+          const serverFarmers = farmersResult.value;
+          const pendingRegistrations = getPendingActions().filter((a: any) => a.type === 'farmer_registration');
+          setFarmerCount(serverFarmers.length + pendingRegistrations.length);
+        }
         if (dispatchesResult.status === 'fulfilled') setDispatchCount(dispatchesResult.value.length);
         if (detailsResult.status === 'fulfilled') setCenterDetails(detailsResult.value);
         
