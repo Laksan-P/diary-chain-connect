@@ -134,6 +134,16 @@ const DispatchPage: React.FC = () => {
       const offlinePendingDispatches = allDispatches
         .map((a, index) => {
           if (!a.data) return null;
+          
+          // Check if this exact dispatch (same items) already exists in server history 'd'
+          const itemIds = a.data.items?.map((i: any) => i.collectionId).filter(Boolean) || [];
+          const isAlreadyOnServer = d.some(sd => 
+            sd.vehicleNumber === a.data.vehicleNumber && 
+            sd.items?.some(si => itemIds.includes(si.collectionId))
+          );
+          
+          if (isAlreadyOnServer) return null;
+
           return {
             ...a.data,
             id: maxId + index + 1,
