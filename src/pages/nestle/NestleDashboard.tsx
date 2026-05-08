@@ -10,12 +10,12 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const NestleDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({ 
-    farmers: 0, 
-    totalQty: 0, 
-    dispatches: 0, 
-    pendingDispatches: 0, 
-    nestleOfficers: 0, 
+  const [stats, setStats] = useState({
+    farmers: 0,
+    totalQty: 0,
+    dispatches: 0,
+    pendingDispatches: 0,
+    nestleOfficers: 0,
     chillingCenters: 0,
     totalPayouts: 0,
     pendingPayouts: 0
@@ -30,8 +30,8 @@ const NestleDashboard: React.FC = () => {
     }).catch(console.error);
 
     getDispatches().then(d => {
-      setStats(s => ({ 
-        ...s, 
+      setStats(s => ({
+        ...s,
         dispatches: d.length,
         pendingDispatches: d.filter(x => x.status === 'Dispatched').length
       }));
@@ -39,8 +39,8 @@ const NestleDashboard: React.FC = () => {
     }).catch(console.error);
 
     getPayments().then(p => {
-      setStats(s => ({ 
-        ...s, 
+      setStats(s => ({
+        ...s,
         totalPayouts: p.reduce((sum, x) => sum + parseNumber(x.amount), 0),
         pendingPayouts: p.filter(x => x.status === 'Pending').reduce((sum, x) => sum + parseNumber(x.amount), 0)
       }));
@@ -56,13 +56,13 @@ const NestleDashboard: React.FC = () => {
         <div>
           <h2 className="text-2xl font-display font-bold text-foreground">Welcome back, {user?.name}!</h2>
           <p className="text-muted-foreground text-sm flex items-center gap-2">
-            Nestlé Dairy Supply Chain Overview 
+            Nestlé Dairy Supply Chain Overview
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase">Live</span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {stats.pendingDispatches > 0 && (
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="flex items-center gap-3 bg-warning/10 border border-warning/20 p-3 rounded-xl"
@@ -77,7 +77,7 @@ const NestleDashboard: React.FC = () => {
             </motion.div>
           )}
           {stats.pendingPayouts > 0 && (
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1 }}
@@ -126,12 +126,12 @@ const NestleDashboard: React.FC = () => {
                     <td className="px-4 py-3 text-xs">{d.chillingCenterName}</td>
                     <td className="px-4 py-3 text-xs">{d.transporterName}</td>
                     <td className="px-4 py-3">
-                      <StatusBadge 
+                      <StatusBadge
                         status={
                           d.status === 'Rejected' && d.items?.some((i: any) => i.qualityResult === 'Pass')
                             ? 'Mixed'
                             : d.status
-                        } 
+                        }
                       />
                     </td>
                   </tr>
