@@ -159,22 +159,41 @@ export const syncActions = async () => {
   }
 
   for (const action of dispatches) {
-    try {
-      const resolvedItems = action.data.items?.map((item: any) => {
-        const realId = item.offlineCollectionId
-          ? (idMappings.collections[item.offlineCollectionId] || item.collectionId)
-          : item.collectionId;
-        return { ...item, collectionId: Number(realId) || 0 };
-      });
+  try {
+    // Skip if already synced
+    const latestActions = getPendingActions();
+    const stillExists = latestActions.find(a => a.id === action.id);
 
-      const result = await createDispatch({ ...action.data, items: resolvedItems, offline_id: action.id });
-      if (result && result.id) {
-        removePendingAction(action.id); // Remove immediately on success
-      }
-    } catch (error) {
-      console.error(`[OfflineSync] Dispatch sync failed:`, error);
+    if (!stillExists) {
+      console.log(`[OfflineSync] Dispatch ${action.id} already synced. Skipping.`);
+      continue;
     }
+
+    const resolvedItems = action.data.items?.map((item: any) => {
+      const realId = item.offlineCollectionId
+        ? (idMappings.collections[item.offlineCollectionId] || item.collectionId)
+        : item.collectionId;
+
+      return {
+        ...item,
+        collectionId: Number(realId) || 0
+      };
+    });
+
+    const result = await createDispatch({
+      ...action.data,
+      items: resolvedItems,
+      offline_id: action.id
+    });
+
+    if (result && result.id) {
+      console.log(`[OfflineSync] Dispatch synced successfully: ${result.id}`);
+      removePendingAction(action.id);
+    }
+  } catch (error) {
+    console.error(`[OfflineSync] Dispatch sync failed:`, error);
   }
+} 
 
   console.log(`[OfflineSync] Sync cycle complete.`);
 
