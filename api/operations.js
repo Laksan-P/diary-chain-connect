@@ -491,6 +491,24 @@ export default async function handler(req, res) {
       // 1. Better Idempotency Check
       const colIds = items.map(i => i.collectionId || i.collection_id).filter(id => id && id !== 0);
 
+      // HARD duplicate prevention
+      const { data: existingDispatchItems } = await supabase
+        .from('dispatch_items')
+        .select('dispatch_id, collection_id')
+        .in('collection_id', colIds);
+
+      if (existingDispatchItems && existingDispatchItems.length > 0) {
+        const existingDispatchId = existingDispatchItems[0].dispatch_id;
+
+        console.log(`[Backend] Duplicate dispatch prevented for collections: ${colIds.join(',')}`);
+
+        return res.status(200).json({
+          id: existingDispatchId,
+          success: true,
+          duplicatePrevented: true
+        });
+      }
+
       // Check if any of these collections are already dispatched
       const { data: alreadyDispatched } = await supabase
         .from('milk_collections')

@@ -190,11 +190,20 @@ const DispatchPage: React.FC = () => {
       const cachedFarmers = getCache('farmers') || [];
 
       // IDs already dispatched offline
-      const alreadyDispatchedIds = allDispatches
-        .flatMap(d => d.data?.items?.map((i: any) => i.offlineCollectionId).filter(Boolean) || []);
+      const alreadyDispatchedIds = allDispatches.flatMap(d =>
+        d.data?.items?.flatMap((i: any) => [
+          i.offlineCollectionId,
+          i.collectionId
+        ]).filter(Boolean) || []
+      );
 
       const offlineCollections = getPendingByType('collection')
-        .filter(a => a && !alreadyDispatchedIds.includes(a.id)) // skip already dispatched
+        .filter(a =>
+          a &&
+          !alreadyDispatchedIds.some(id =>
+            String(id) === String(a.id)
+          )
+        ) // skip already dispatched
         .map(a => {
           if (!a.data) return null;
           const qualityTest = allQuality.find(q => q.data && String(q.data.offlineCollectionId) === String(a.id));
