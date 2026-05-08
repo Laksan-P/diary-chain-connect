@@ -741,7 +741,42 @@ export default async function handler(req, res) {
 
       if (dFetchErr) throw dFetchErr;
 
-      await supabase.from('dispatches').update({ status, rejection_reason: reason || null }).eq('id', id);
+      let finalDispatchStatus = status;
+
+    // If rejecting, check whether dispatch contains passed collections too
+    if (status === 'Rejected') {
+
+      const { data: dispatchItems } = await supabase
+        .from('dispatch_items')
+        .select(`
+          collection_id,
+          milk_collections(dispatch_status)
+        `)
+        .eq('dispatch_id', id);
+
+      if (dispatchItems && dispatchItems.length > 0) {
+
+        const statuses = dispatchItems.map(
+          item => item.milk_collections?.dispatch_status
+        );
+
+        const hasApproved = statuses.includes('Approved');
+        const hasRejected = statuses.includes('Rejected');
+
+        // If both exist -> Mixed
+        if (hasApproved && hasRejected) {
+          finalDispatchStatus = 'Mixed';
+        }
+      }
+    }
+
+    await supabase
+      .from('dispatches')
+      .update({
+        status: finalDispatchStatus,
+        rejection_reason: reason || null
+      })
+      .eq('id', id);
 
       // notify CC User (Include Tanker/Vehicle info)
       const ccUserId = dispatch.chilling_centers?.user_id;
