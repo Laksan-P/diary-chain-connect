@@ -387,7 +387,7 @@ export default async function handler(req, res) {
                   });
                 }
               }
-            } else if (lastTests[0].result === 'Pass' && totalFails === 0) {
+            } else if (lastTests[0].result === 'Pass') {
               // Auto-recovery: ONLY if they pass AND have 0 fails in the recent window
               if (currentStatus === 'Needs Improvement') {
                 await supabase.from('farmers').update({ performance_status: 'Improving', performance_recommendation: null }).eq('id', col.farmer_id);
