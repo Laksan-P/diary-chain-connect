@@ -232,7 +232,19 @@ const DispatchPage: React.FC = () => {
           };
         })
         .filter(Boolean) as MilkCollection[];
-      setCollections([...offlineCollections, ...filteredCols]);
+      const mergedCollections = [
+      ...offlineCollections,
+      ...filteredCols.filter(serverCol =>
+        !offlineCollections.some(offlineCol =>
+          String(offlineCol.farmerName).trim().toLowerCase() ===
+          String(serverCol.farmerName).trim().toLowerCase() &&
+          Number(offlineCol.quantity) === Number(serverCol.quantity) &&
+          formatDate(offlineCol.date) === formatDate(serverCol.date)
+        )
+      )
+    ];
+
+    setCollections(mergedCollections);
 
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (err) {
