@@ -34,9 +34,7 @@ const NestleDashboard: React.FC = () => {
         ...s,
         dispatches: d.length,
         pendingDispatches: d.filter(
-          x =>
-            x.status === 'Dispatched' ||
-            x.status === 'Pending Sync'
+          x => x.status === 'Dispatched'
         ).length
       }));
       setRecentDispatches(d.slice(0, 5));
