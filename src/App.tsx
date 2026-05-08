@@ -21,7 +21,7 @@ import FarmersView from "./pages/nestle/FarmersView";
 import DispatchMonitoring from "./pages/nestle/DispatchMonitoring";
 import PricingRules from "./pages/nestle/PricingRules";
 import PaymentsPage from "./pages/nestle/PaymentsPage";
-import AnalyticsPage from "./pages/nestle/AnalyticsPage";
+
 import NestleMilkHistory from "./pages/nestle/NestleMilkHistory";
 import ChillingCentersView from "./pages/nestle/ChillingCentersView";
 import SupportManagement from "@/pages/nestle/SupportManagement";
@@ -37,49 +37,49 @@ const queryClient = new QueryClient();
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Navigate to="/login" replace />} />
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Navigate to="/login" replace />} />
 
-            {/* Chilling Center */}
-            <Route path="/chilling-center" element={<ProtectedRoute allowedRoles={['chilling_center']}><ChillingCenterLayout /></ProtectedRoute>}>
-              <Route index element={<CCDashboard />} />
-              <Route path="register-farmer" element={<RegisterFarmer />} />
-              <Route path="collection" element={<MilkCollectionPage />} />
-              <Route path="quality" element={<QualityTestingPage />} />
-              <Route path="history" element={<CollectionHistory />} />
-              <Route path="dispatch" element={<DispatchPage />} />
-              <Route path="support" element={<CCSupport />} />
-            </Route>
+              {/* Chilling Center */}
+              <Route path="/chilling-center" element={<ProtectedRoute allowedRoles={['chilling_center']}><ChillingCenterLayout /></ProtectedRoute>}>
+                <Route index element={<CCDashboard />} />
+                <Route path="register-farmer" element={<RegisterFarmer />} />
+                <Route path="collection" element={<MilkCollectionPage />} />
+                <Route path="quality" element={<QualityTestingPage />} />
+                <Route path="history" element={<CollectionHistory />} />
+                <Route path="dispatch" element={<DispatchPage />} />
+                <Route path="support" element={<CCSupport />} />
+              </Route>
 
-            {/* Nestlé */}
-            <Route path="/nestle" element={<ProtectedRoute allowedRoles={['nestle_officer']}><NestleLayout /></ProtectedRoute>}>
-              <Route index element={<NestleDashboard />} />
-              <Route path="history" element={<NestleMilkHistory />} />
-              <Route path="centers" element={<ChillingCentersView />} />
-              <Route path="farmers" element={<FarmersView />} />
-              <Route path="dispatches" element={<DispatchMonitoring />} />
-              <Route path="pricing" element={<PricingRules />} />
-              <Route path="payments" element={<PaymentsPage />} />
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="performance" element={<PerformanceDashboard />} />
-              <Route path="predictions" element={<SupplyPredictions />} />
-              <Route path="recommendations" element={<RecommendationManager />} />
-              <Route path="support" element={<SupportManagement />} />
-            </Route>
+              {/* Nestlé */}
+              <Route path="/nestle" element={<ProtectedRoute allowedRoles={['nestle_officer']}><NestleLayout /></ProtectedRoute>}>
+                <Route index element={<NestleDashboard />} />
+                <Route path="history" element={<NestleMilkHistory />} />
+                <Route path="centers" element={<ChillingCentersView />} />
+                <Route path="farmers" element={<FarmersView />} />
+                <Route path="dispatches" element={<DispatchMonitoring />} />
+                <Route path="pricing" element={<PricingRules />} />
+                <Route path="payments" element={<PaymentsPage />} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+                <Route path="performance" element={<PerformanceDashboard />} />
+                <Route path="predictions" element={<SupplyPredictions />} />
+                <Route path="recommendations" element={<RecommendationManager />} />
+                <Route path="support" element={<SupportManagement />} />
+              </Route>
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   </ErrorBoundary>
 );
 
