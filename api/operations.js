@@ -485,34 +485,34 @@ export default async function handler(req, res) {
       const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items, offline_id } = body;
 
       // Prevent duplicate offline sync dispatches
-    if (offline_id) {
-      const { data: existingOfflineDispatch } = await supabase
-        .from('dispatches')
-        .select('id')
-        .eq('offline_id', offline_id)
-        .maybeSingle();
+      if (offline_id) {
+        const { data: existingOfflineDispatch } = await supabase
+          .from('dispatches')
+          .select('id')
+          .eq('offline_id', offline_id)
+          .maybeSingle();
 
-      if (existingOfflineDispatch) {
-        console.log(`[Backend] Duplicate offline dispatch prevented: ${offline_id}`);
+        if (existingOfflineDispatch) {
+          console.log(`[Backend] Duplicate offline dispatch prevented: ${offline_id}`);
 
-        return res.status(200).json({
-          id: existingOfflineDispatch.id,
-          success: true,
-          duplicatePrevented: true
-        });
+          return res.status(200).json({
+            id: existingOfflineDispatch.id,
+            success: true,
+            duplicatePrevented: true
+          });
+        }
       }
-    }
 
-    if (
-      !chillingCenterId ||
-      !transporterName ||
-      !vehicleNumber ||
-      !driverContact ||
-      !dispatchDate ||
-      !items?.length
-    ) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+      if (
+        !chillingCenterId ||
+        !transporterName ||
+        !vehicleNumber ||
+        !driverContact ||
+        !dispatchDate ||
+        !items?.length
+      ) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
 
       // 1. Better Idempotency Check
       const colIds = items.map(i => i.collectionId || i.collection_id).filter(id => id && id !== 0);

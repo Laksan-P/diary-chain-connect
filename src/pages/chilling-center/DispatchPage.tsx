@@ -244,16 +244,20 @@ const DispatchPage: React.FC = () => {
       )
     ];
 
-    setCollections(mergedCollections);
+    setCollections(
+      mergedCollections.filter(
+        col => col.dispatchStatus !== 'Dispatched'
+      )
+    );
 
-      await new Promise(resolve => setTimeout(resolve, 300));
+  await new Promise(resolve => setTimeout(resolve, 300));
     } catch (err) {
       console.error('Critical load data error:', err);
     } finally {
       setIsRefreshing(false);
     }
   };
-
+  
   useEffect(() => {
     if (centerId) loadData();
 
@@ -321,11 +325,24 @@ const DispatchPage: React.FC = () => {
 
     setLoading(true);
     try {
-      await createDispatch(dispatchData);
-      toast({ title: 'Dispatch Created', description: `${selected.length} collections dispatched` });
+    await createDispatch(dispatchData);
+
+    toast({
+      title: 'Dispatch Created',
+      description: `${selected.length} collections dispatched`
+      });
+
+      await loadData();
+
       setSelected([]);
-      setForm({ transporterName: '', vehicleNumber: '', driverContact: '', dispatchDate: form.dispatchDate, tankerCapacity: '' });
-      loadData();
+
+      setForm({
+        transporterName: '',
+        vehicleNumber: '',
+        driverContact: '',
+        dispatchDate: form.dispatchDate,
+        tankerCapacity: ''
+      });
     } catch {
       // API failed — save offline as fallback
       savePendingAction('dispatch', dispatchData);
