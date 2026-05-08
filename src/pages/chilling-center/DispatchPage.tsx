@@ -128,34 +128,34 @@ const DispatchPage: React.FC = () => {
       }).filter(Boolean) as MilkCollection[];
 
       const filteredCols = updatedC.filter(col => {
-      const dispatchedLocally = allDispatches.some(act =>
-        act.data?.items?.some((i: any) =>
-          String(i.collectionId) === String(col.id) ||
-          String(i.offlineCollectionId) === String(col.id)
-        )
-      );
+        const dispatchedLocally = allDispatches.some(act =>
+          act.data?.items?.some((i: any) =>
+            String(i.collectionId) === String(col.id) ||
+            String(i.offlineCollectionId) === String(col.id)
+          )
+        );
 
-      const dispatchedOnServer = d.some(disp =>
-      disp.items?.some((i: any) => {
-        const itemCollectionId =
-          i.collectionId ??
-          i.collection_id ??
-          i.offlineCollectionId;
+        const dispatchedOnServer = d.some(disp =>
+          disp.items?.some((i: any) => {
+            const itemCollectionId =
+              i.collectionId ??
+              i.collection_id ??
+              i.offlineCollectionId;
 
-        return String(itemCollectionId) === String(col.id);
-      })
-    );
+            return String(itemCollectionId) === String(col.id);
+          })
+        );
 
-      const isDispatched =
-      dispatchedLocally ||
-      dispatchedOnServer ||
-      col.dispatchStatus === 'Dispatched';
+        const isDispatched =
+          dispatchedLocally ||
+          dispatchedOnServer ||
+          col.dispatchStatus === 'Dispatched';
 
-    return (
-      col.qualityResult === 'Pass' &&
-      !isDispatched
-    );
-    });
+        return (
+          col.qualityResult === 'Pass' &&
+          !isDispatched
+        );
+      });
 
       const maxId = d.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
 
@@ -237,31 +237,31 @@ const DispatchPage: React.FC = () => {
         })
         .filter(Boolean) as MilkCollection[];
       const mergedCollections = [
-      ...offlineCollections,
-      ...filteredCols.filter(serverCol =>
-        !offlineCollections.some(offlineCol =>
-          String(offlineCol.farmerName).trim().toLowerCase() ===
-          String(serverCol.farmerName).trim().toLowerCase() &&
-          Number(offlineCol.quantity) === Number(serverCol.quantity) &&
-          formatDate(offlineCol.date) === formatDate(serverCol.date)
+        ...offlineCollections,
+        ...filteredCols.filter(serverCol =>
+          !offlineCollections.some(offlineCol =>
+            String(offlineCol.farmerName).trim().toLowerCase() ===
+            String(serverCol.farmerName).trim().toLowerCase() &&
+            Number(offlineCol.quantity) === Number(serverCol.quantity) &&
+            formatDate(offlineCol.date) === formatDate(serverCol.date)
+          )
         )
-      )
-    ];
+      ];
 
-    setCollections(
-      mergedCollections.filter(
-        col => col.dispatchStatus !== 'Dispatched'
-      )
-    );
+      setCollections(
+        mergedCollections.filter(
+          col => col.dispatchStatus !== 'Dispatched'
+        )
+      );
 
-  await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 300));
     } catch (err) {
       console.error('Critical load data error:', err);
     } finally {
       setIsRefreshing(false);
     }
   };
-  
+
   useEffect(() => {
     if (centerId) loadData();
 
@@ -329,11 +329,11 @@ const DispatchPage: React.FC = () => {
 
     setLoading(true);
     try {
-    await createDispatch(dispatchData);
+      await createDispatch(dispatchData);
 
-    toast({
-      title: 'Dispatch Created',
-      description: `${selected.length} collections dispatched`
+      toast({
+        title: 'Dispatch Created',
+        description: `${selected.length} collections dispatched`
       });
 
       await loadData();
