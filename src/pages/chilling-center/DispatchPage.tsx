@@ -137,10 +137,18 @@ const DispatchPage: React.FC = () => {
           
           // Check if this exact dispatch (same items) already exists in server history 'd'
           const itemIds = a.data.items?.map((i: any) => i.collectionId).filter(Boolean) || [];
-          const isAlreadyOnServer = d.some(sd => 
-            sd.vehicleNumber === a.data.vehicleNumber && 
-            sd.items?.some(si => itemIds.includes(si.collectionId))
-          );
+          const isAlreadyOnServer = d.some(sd => {
+          const serverItemIds = sd.items?.map(si => String(si.collectionId)) || [];
+          const offlineItemIds = itemIds.map(id => String(id));
+
+          const sameVehicle = sd.vehicleNumber === a.data.vehicleNumber;
+
+          const sameItems =
+            offlineItemIds.length > 0 &&
+            offlineItemIds.every(id => serverItemIds.includes(id));
+
+          return sameVehicle && sameItems;
+        });
           
           if (isAlreadyOnServer) return null;
 
