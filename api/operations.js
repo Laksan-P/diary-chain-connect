@@ -132,9 +132,9 @@ export default async function handler(req, res) {
 
 
 
-      // Removed: Auto-approve the entire Dispatch if Nestle verification passes
-      // Nestle now verifies each collection individually as requested.
-      if (resultValue === 'Pass' && (user.role === 'nestle' || user.role === 'nestle_officer')) {
+      // Recalculate overall dispatch status after every Nestle inspection
+      if (user.role === 'nestle' || user.role === 'nestle_officer') {
+
         const { data: itemLink } = await supabase
           .from('dispatch_items')
           .select('dispatch_id')
@@ -142,34 +142,43 @@ export default async function handler(req, res) {
           .maybeSingle();
 
         if (itemLink?.dispatch_id) {
-          const dId = itemLink.dispatch_id;
 
-          // Check if all other items in this dispatch are also approved
+          const dispatchId = itemLink.dispatch_id;
+
           const { data: allItems } = await supabase
             .from('dispatch_items')
-            .select('collection_id, milk_collections(dispatch_status)')
-            .eq('dispatch_id', dId);
+            .select(`
+              collection_id,
+              milk_collections(dispatch_status)
+            `)
+            .eq('dispatch_id', dispatchId);
 
-          if (allItems) {
-            const allApproved = allItems.every(item =>
-              item.collection_id === collectionId ? true : item.milk_collections?.dispatch_status === 'Approved'
-            );
+          if (allItems && allItems.length > 0) {
 
-            if (allApproved) {
-              await supabase.from('dispatches').update({ status: 'Approved' }).eq('id', dId);
+            let approvedCount = 0;
+            let rejectedCount = 0;
 
-              // Notify CC about the overall Dispatch Approval
-              const { data: dInfo } = await supabase.from('dispatches').select('chilling_centers(user_id), vehicle_number, transporter_name').eq('id', dId).single();
-              const ccOwnerId = dInfo?.chilling_centers?.user_id;
-              if (ccOwnerId) {
-                await supabase.from('notifications').insert({
-                  user_id: ccOwnerId,
-                  title: 'dispatch_accepted_by_nestle_title',
-                  message: `dispatch_accepted_by_nestle_msg|id:${dId},vehicle:${dInfo.vehicle_number},transporter:${dInfo.transporter_name}`,
-                  type: 'dispatch'
-                });
-              }
+            allItems.forEach(item => {
+              const status = item.milk_collections?.dispatch_status;
+
+              if (status === 'Approved') approvedCount++;
+              if (status === 'Rejected') rejectedCount++;
+            });
+
+            let overallStatus = 'Dispatched';
+
+            if (rejectedCount === allItems.length) {
+              overallStatus = 'Rejected';
+            } else if (approvedCount === allItems.length) {
+              overallStatus = 'Approved';
+            } else if (approvedCount > 0 && rejectedCount > 0) {
+              overallStatus = 'Mixed';
             }
+
+            await supabase
+              .from('dispatches')
+              .update({ status: overallStatus })
+              .eq('id', dispatchId);
           }
         }
       }
@@ -258,20 +267,20 @@ export default async function handler(req, res) {
             .limit(10); // Look at last 10 tests for a better history
 
           if (lastTests && lastTests.length > 0) {
-           let consecutiveFails = 0;
+            let consecutiveFails = 0;
 
-          for (const test of [...lastTests].reverse()) {
-            if (test.result === 'Fail') {
-              consecutiveFails++;
-            } else {
-              consecutiveFails = 0;
+            for (const test of [...lastTests].reverse()) {
+              if (test.result === 'Fail') {
+                consecutiveFails++;
+              } else {
+                consecutiveFails = 0;
+              }
             }
-          }
 
-          const failTests = lastTests.filter(t => t.result === 'Fail');
-          const totalFails = failTests.length;
+            const failTests = lastTests.filter(t => t.result === 'Fail');
+            const totalFails = failTests.length;
 
-          if (consecutiveFails >= 3) {
+            if (consecutiveFails >= 3) {
               const newSeverity = totalFails >= 5 ? 'HIGH' : 'LOW';
 
               // Only proceed if status is not already "Needs Improvement" OR severity has increased to HIGH
