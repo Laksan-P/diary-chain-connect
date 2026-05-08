@@ -258,10 +258,20 @@ export default async function handler(req, res) {
             .limit(10); // Look at last 10 tests for a better history
 
           if (lastTests && lastTests.length > 0) {
-            const failTests = lastTests.filter(t => t.result === 'Fail');
-            const totalFails = failTests.length;
+           let consecutiveFails = 0;
 
-            if (totalFails >= 3) {
+          for (const test of [...lastTests].reverse()) {
+            if (test.result === 'Fail') {
+              consecutiveFails++;
+            } else {
+              consecutiveFails = 0;
+            }
+          }
+
+          const failTests = lastTests.filter(t => t.result === 'Fail');
+          const totalFails = failTests.length;
+
+          if (consecutiveFails >= 3) {
               const newSeverity = totalFails >= 5 ? 'HIGH' : 'LOW';
 
               // Only proceed if status is not already "Needs Improvement" OR severity has increased to HIGH

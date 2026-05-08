@@ -719,7 +719,11 @@ class _HomeScreenState extends State<HomeScreen> {
     // Only show if NOT Good
     if (status == 'Good') return const SizedBox.shrink();
 
-    final rec = _performance['recommendation'] ?? '';
+    String rec = '';
+
+    if (_performance['recommendation'] is String) {
+      rec = _performance['recommendation'];
+    }
     final recData = _performance['recommendationDetails'] as Map<String, dynamic>?;
 
     String displayStatus = status;
@@ -734,7 +738,8 @@ class _HomeScreenState extends State<HomeScreen> {
     List<dynamic> guidance = [];
 
     // Translate the fallback message if present
-    if (displayRec.contains('Performance improvement required')) {
+    // Prevent raw JSON rendering
+    if (displayRec.trim().startsWith('{')) {
       displayRec = Translations.get('perf_fallback_msg', locale);
     }
 
