@@ -133,10 +133,32 @@ const DispatchMonitoring: React.FC = () => {
         // Update local state to show 'Fail'
         setDispatches(ds => ds.map(d => {
           if (d.id === dId) {
-            return {
-              ...d,
-              items: (d.items || []).map(i => i.collectionId === cId ? { ...i, dispatchStatus: 'Rejected', qualityResult: 'Fail' } : i)
-            };
+            const updatedItems = (d.items || []).map(i =>
+            i.collectionId === cId
+              ? {
+                  ...i,
+                  dispatchStatus: 'Rejected',
+                  qualityResult: 'Fail'
+                }
+              : i
+          );
+
+          const hasApproved = updatedItems.some(
+            i => i.dispatchStatus === 'Approved'
+          );
+
+          const hasRejected = updatedItems.some(
+            i => i.dispatchStatus === 'Rejected'
+          );
+
+          return {
+            ...d,
+            items: updatedItems,
+            status:
+              hasApproved && hasRejected
+                ? 'Mixed'
+                : 'Rejected'
+          };
           }
           return d;
         }));
@@ -264,7 +286,8 @@ const DispatchMonitoring: React.FC = () => {
                       />
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      {dispatch.status === 'Dispatched' ? (
+                      {dispatch.status === 'Dispatched' &&
+                        !dispatch.items?.some(i => i.dispatchStatus === 'Rejected') ? (
                         <div className="flex justify-end gap-2">
                           {(() => {
                             const allVerified = dispatch.items?.every(i => i.dispatchStatus === 'Approved' || i.dispatchStatus === 'Rejected');
