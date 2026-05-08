@@ -79,11 +79,14 @@ export default async function handler(req, res) {
       // (Do this before idempotency return to ensure Nestle's verification is ALWAYS saved)
       const updates = {
         quality_result: resultValue,
-        failure_reason: reasonValue,
-        fat: nFat,
-        snf: nSnf,
-        water: nWater
+        failure_reason: reasonValue
       };
+
+      if (!isNestle) {
+        updates.fat = nFat;
+        updates.snf = nSnf;
+        updates.water = nWater;
+      }
 
       // Auto-approve/reject only if tested by Nestle.
       if (isNestle) {
