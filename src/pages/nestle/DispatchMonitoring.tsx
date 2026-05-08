@@ -101,26 +101,26 @@ const DispatchMonitoring: React.FC = () => {
 
       if (res.result === 'Pass') {
         toast({ title: 'Quality Check Passed', description: 'Collection has been verified.' });
-        
+
         // Update local state and check if we should auto-approve the whole dispatch
         setDispatches(prevDispatches => {
           return prevDispatches.map(d => {
             if (d.id === dId) {
-              const updatedItems = (d.items || []).map(i => 
+              const updatedItems = (d.items || []).map(i =>
                 i.collectionId === cId ? { ...i, dispatchStatus: 'Approved', qualityResult: 'Pass' } : i
               );
-              
+
               const allItemsApproved = updatedItems.every(i => i.dispatchStatus === 'Approved');
-              
+
               if (allItemsApproved) {
                 // Trigger backend approval in the background
                 updateDispatchStatus(Number(dId), 'Approved').then(() => {
                   toast({ title: 'Dispatch Fully Approved', description: `All items for dispatch #${dId} are verified.` });
                 }).catch(err => console.error('Auto-approval failed:', err));
-                
+
                 return { ...d, items: updatedItems, status: 'Approved' };
               }
-              
+
               return { ...d, items: updatedItems };
             }
             return d;
@@ -129,24 +129,38 @@ const DispatchMonitoring: React.FC = () => {
 
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
         setTestForm({ snf: '', fat: '', water: '' });
+
+        await fetchDispatches();
       } else {
         // Update local state to show 'Fail'
         setDispatches(ds => ds.map(d => {
           if (d.id === dId) {
             const updatedItems = (d.items || []).map(i =>
-            i.collectionId === cId
-              ? {
+              i.collectionId === cId
+                ? {
                   ...i,
                   dispatchStatus: 'Rejected',
                   qualityResult: 'Fail'
                 }
-              : i
-          );
+                : i
+            );
 
-          return {
-            ...d,
-            items: updatedItems
-          };
+            const hasApproved = updatedItems.some(
+              i => i.dispatchStatus === 'Approved'
+            );
+
+            const hasRejected = updatedItems.some(
+              i => i.dispatchStatus === 'Rejected'
+            );
+
+            return {
+              ...d,
+              items: updatedItems,
+              status:
+                hasApproved && hasRejected
+                  ? 'Mixed'
+                  : 'Rejected'
+            };
           }
           return d;
         }));
@@ -161,6 +175,7 @@ const DispatchMonitoring: React.FC = () => {
         setRejectDialog({ open: true, id: dId });
         setRejectReason(`Quality Check Failed: ${res.reason}${farmerInfo}`);
         toast({ title: 'Quality Check Failed', description: `Routing to rejection for: ${res.reason}${farmerInfo}`, variant: 'destructive' });
+        await fetchDispatches();
       }
     } catch (error) {
       toast({ title: 'System Error', description: 'Failed to submit quality test.', variant: 'destructive' });
@@ -258,16 +273,29 @@ const DispatchMonitoring: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <StatusBadge
-                        status={dispatch.status}
+                        status={(() => {
+                          if (dispatch.status === 'Approved') return 'Approved';
+                          if (dispatch.status === 'Rejected') {
+                            const isManualReject = !dispatch.rejectionReason?.startsWith('Quality Check Failed');
+                            return isManualReject ? 'Rejected' : 'Rejected';
+                          }
+
+                          const allApproved = dispatch.items?.every(i => i.dispatchStatus === 'Approved');
+                          const hasFail = dispatch.items?.some(i => i.qualityResult === 'Fail');
+
+                          if (allApproved && dispatch.status === 'Dispatched') return 'Ready';
+                          return hasFail ? 'Mixed' : dispatch.status;
+                        })()}
                       />
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      {(dispatch.status === 'Dispatched' || dispatch.status === 'Mixed') ? (
+                      {dispatch.status === 'Dispatched' &&
+                        !dispatch.items?.some(i => i.dispatchStatus === 'Rejected') ? (
                         <div className="flex justify-end gap-2">
                           {(() => {
                             const allVerified = dispatch.items?.every(i => i.dispatchStatus === 'Approved' || i.dispatchStatus === 'Rejected');
                             const allApproved = dispatch.items?.every(i => i.dispatchStatus === 'Approved');
-                            
+
                             if (allVerified && allApproved) {
                               return (
                                 <Button
@@ -279,7 +307,7 @@ const DispatchMonitoring: React.FC = () => {
                                 </Button>
                               );
                             }
-                            
+
                             return (
                               <Button
                                 size="sm"
