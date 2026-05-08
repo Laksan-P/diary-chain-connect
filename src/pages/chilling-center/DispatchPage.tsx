@@ -236,14 +236,22 @@ const DispatchPage: React.FC = () => {
       dispatchDate: toISOWithOffset(form.dispatchDate),
       totalQuantity: Number(selectedTotal),
       items: selected.map(id => {
-        const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
-        return {
-          id: 0,
-          dispatchId: 0,
-          collectionId: isOfflineId ? 0 : Number(id),
-          offlineCollectionId: isOfflineId ? String(id) : undefined
-        };
-      }),
+      const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
+
+      const collection = collections.find(c => String(c.id) === String(id));
+
+      return {
+        id: 0,
+        dispatchId: 0,
+        collectionId: isOfflineId ? 0 : Number(id),
+        offlineCollectionId: isOfflineId ? String(id) : undefined,
+
+        // extra offline display data
+        farmerName: collection?.farmerName || 'Offline Farmer',
+        quantity: collection?.quantity || 0,
+        qualityResult: collection?.qualityResult || 'Pass'
+      };
+    }),
     };
 
     if (!isOnline() || dispatchData.items.some(i => i.offlineCollectionId)) {
