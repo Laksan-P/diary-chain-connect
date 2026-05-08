@@ -484,9 +484,35 @@ export default async function handler(req, res) {
       const body = getBody(req);
       const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items, offline_id } = body;
 
-      if (!chillingCenterId || !transporterName || !vehicleNumber || !driverContact || !dispatchDate || !items?.length) {
-        return res.status(400).json({ error: 'Missing required fields' });
+      // Prevent duplicate offline sync dispatches
+    if (offline_id) {
+      const { data: existingOfflineDispatch } = await supabase
+        .from('dispatches')
+        .select('id')
+        .eq('offline_id', offline_id)
+        .maybeSingle();
+
+      if (existingOfflineDispatch) {
+        console.log(`[Backend] Duplicate offline dispatch prevented: ${offline_id}`);
+
+        return res.status(200).json({
+          id: existingOfflineDispatch.id,
+          success: true,
+          duplicatePrevented: true
+        });
       }
+    }
+
+    if (
+      !chillingCenterId ||
+      !transporterName ||
+      !vehicleNumber ||
+      !driverContact ||
+      !dispatchDate ||
+      !items?.length
+    ) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
 
       // 1. Better Idempotency Check
       const colIds = items.map(i => i.collectionId || i.collection_id).filter(id => id && id !== 0);
@@ -534,32 +560,15 @@ export default async function handler(req, res) {
         }
       }
 
-      // Fallback to basic match if collection check didn't catch it
-      const { data: existingMatch } = await supabase
-        .from('dispatches')
-        .select('id')
-        .match({
-          chilling_center_id: chillingCenterId,
-          transporter_name: transporterName,
-          vehicle_number: vehicleNumber
-        })
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existingMatch) {
-        // If it's very recent (last 10 mins), assume it's a duplicate retry
-        // We'll skip date check here to be safe against millisecond mismatches
-        console.log(`[Backend] Recent dispatch with same vehicle found, skipping duplicate: ${existingMatch.id}`);
-        return res.status(200).json({ id: existingMatch.id, success: true });
-      }
-
       const { data: dResult, error: dErr } = await supabase
         .from('dispatches')
         .insert({
-          chilling_center_id: chillingCenterId, transporter_name: transporterName,
-          vehicle_number: vehicleNumber, driver_contact: driverContact,
+          chilling_center_id: chillingCenterId,
+          transporter_name: transporterName,
+          vehicle_number: vehicleNumber,
+          driver_contact: driverContact,
           dispatch_date: dispatchDate,
+          offline_id: offline_id || null,
         })
         .select('id')
         .single();
