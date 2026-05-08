@@ -146,11 +146,15 @@ const DispatchPage: React.FC = () => {
       })
     );
 
-      return (
-        col.qualityResult === 'Pass' &&
-        !dispatchedLocally &&
-        !dispatchedOnServer
-      );
+      const isDispatched =
+      dispatchedLocally ||
+      dispatchedOnServer ||
+      col.dispatchStatus === 'Dispatched';
+
+    return (
+      col.qualityResult === 'Pass' &&
+      !isDispatched
+    );
     });
 
       const maxId = d.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
