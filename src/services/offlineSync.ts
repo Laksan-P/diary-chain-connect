@@ -1,6 +1,7 @@
 import { createCollection, submitQualityTest, createDispatch } from './api';
 import { v4 as uuidv4 } from 'uuid';
 
+
 export interface PendingAction {
   id: string;
   type: 'collection' | 'quality' | 'dispatch' | 'farmer_registration';
@@ -48,7 +49,10 @@ window.addEventListener('offline-action-saved', () => {
 let isSyncing = false;
 
 export const syncActions = async () => {
-  if (isSyncing) return;
+  if (isSyncing) {
+    console.log('[OfflineSync] Sync already in progress. Skipping duplicate trigger.');
+    return;
+  }
   const actions = getPendingActions();
   if (actions.length === 0) return;
 
@@ -204,8 +208,11 @@ export const syncActions = async () => {
     saveCache('farmers', updatedFarmersCache);
   }
 
-  isSyncing = false;
-  window.dispatchEvent(new CustomEvent('offline-sync-complete'));
+  setTimeout(() => {
+    isSyncing = false;
+    window.dispatchEvent(new CustomEvent('offline-sync-complete'));
+  }, 1000);
+
 };
 
 export const isOnline = () => navigator.onLine;
