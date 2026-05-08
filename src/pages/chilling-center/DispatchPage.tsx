@@ -115,7 +115,7 @@ const DispatchPage: React.FC = () => {
       const updatedC = c.map((col: any) => {
         if (!col) return null;
         const qualityTest = allQuality.find(q => q.data && String(q.data.collectionId) === String(col.id));
-        
+
         // Safety check: is this collection in any pending dispatch OR any synced dispatch record?
         const dispatchedLocally = allDispatches.some(act => act.data?.items?.some((i: any) => String(i.collectionId) === String(col.id)));
         const dispatchedOnServer = d.some(disp => disp.items?.some((i: any) => String(i.collectionId) === String(col.id)));
@@ -134,22 +134,22 @@ const DispatchPage: React.FC = () => {
       const offlinePendingDispatches = allDispatches
         .map((a, index) => {
           if (!a.data) return null;
-          
+
           // Check if this exact dispatch (same items) already exists in server history 'd'
           const itemIds = a.data.items?.map((i: any) => i.collectionId).filter(Boolean) || [];
           const isAlreadyOnServer = d.some(sd => {
-          const serverItemIds = sd.items?.map(si => String(si.collectionId)) || [];
-          const offlineItemIds = itemIds.map(id => String(id));
+            const serverItemIds = sd.items?.map(si => String(si.collectionId)) || [];
+            const offlineItemIds = itemIds.map(id => String(id));
 
-          const sameVehicle = sd.vehicleNumber === a.data.vehicleNumber;
+            const sameVehicle = sd.vehicleNumber === a.data.vehicleNumber;
 
-          const sameItems =
-            offlineItemIds.length > 0 &&
-            offlineItemIds.every(id => serverItemIds.includes(id));
+            const sameItems =
+              offlineItemIds.length > 0 &&
+              offlineItemIds.every(id => serverItemIds.includes(id));
 
-          return sameVehicle && sameItems;
-        });
-          
+            return sameVehicle && sameItems;
+          });
+
           if (isAlreadyOnServer) return null;
 
           return {
@@ -236,22 +236,25 @@ const DispatchPage: React.FC = () => {
       dispatchDate: toISOWithOffset(form.dispatchDate),
       totalQuantity: Number(selectedTotal),
       items: selected.map(id => {
-      const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
+        const isOfflineId = isNaN(Number(id)) || String(id).includes('-');
 
-      const collection = collections.find(c => String(c.id) === String(id));
+        const collection = collections.find(c => String(c.id) === String(id));
 
-      return {
-        id: 0,
-        dispatchId: 0,
-        collectionId: isOfflineId ? 0 : Number(id),
-        offlineCollectionId: isOfflineId ? String(id) : undefined,
+        return {
+          id: 0,
+          dispatchId: 0,
 
-        // extra offline display data
-        farmerName: collection?.farmerName || 'Offline Farmer',
-        quantity: collection?.quantity || 0,
-        qualityResult: collection?.qualityResult || 'Pass'
-      };
-    }),
+          // keep original offline ID for display
+          collectionId: isOfflineId ? String(id) : Number(id),
+
+          offlineCollectionId: isOfflineId ? String(id) : undefined,
+
+          // extra offline display data
+          farmerName: collection?.farmerName || 'Offline Farmer',
+          quantity: collection?.quantity || 0,
+          qualityResult: collection?.qualityResult || 'Pass'
+        };
+      }),
     };
 
     if (!isOnline() || dispatchData.items.some(i => i.offlineCollectionId)) {
