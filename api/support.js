@@ -122,10 +122,16 @@ export default async function handler(req, res) {
 
       // 2. Notify CC Owner if it's from a farmer
       if (user.role === 'farmer' && finalCcId) {
-        const { data: ccUser } = await supabase.from('users').select('id').eq('chilling_center_id', finalCcId).single();
-        if (ccUser) {
+
+        const { data: ccData } = await supabase
+          .from('chilling_centers')
+          .select('user_id')
+          .eq('id', finalCcId)
+          .maybeSingle();
+
+        if (ccData?.user_id) {
           await supabase.from('notifications').insert({
-            user_id: ccUser.id,
+            user_id: ccData.user_id,
             title: 'Farmer Support Issue',
             message: `${user.name} submitted a custom issue.`,
             type: 'general'

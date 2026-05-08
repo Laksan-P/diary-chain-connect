@@ -739,7 +739,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Translate the fallback message if present
     // Prevent raw JSON rendering
-    if (displayRec.trim().startsWith('{')) {
+    if (
+    displayRec.trim().startsWith('{') ||
+    displayRec ==
+        'Performance improvement required. Please contact your chilling center.'
+    ) {
       displayRec = Translations.get('perf_fallback_msg', locale);
     }
 
