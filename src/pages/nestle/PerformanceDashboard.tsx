@@ -8,9 +8,11 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts';
-import { getAllPerformance, getFarmerPerformance, getCenterPerformanceDetailed } from '@/services/api';
+import { getAllPerformance, getFarmerPerformance, getCenterPerformanceDetailed, syncFarmerPerformance } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -23,13 +25,36 @@ const PerformanceDashboard: React.FC = () => {
   const [selectedType, setSelectedType] = React.useState<'farmer' | 'center'>('farmer');
   const [selectedId, setSelectedId] = React.useState<number | null>(null);
 
-  const { data: detailedPerf, isLoading: loadingDetail } = useQuery({
+  const { toast } = useToast();
+  const [syncing, setSyncing] = React.useState(false);
+
+  const { data: detailedPerf, isLoading: loadingDetail, refetch: refetchDetail } = useQuery({
     queryKey: ['performance_detail', selectedType, selectedId],
     queryFn: () => selectedType === 'farmer' 
       ? getFarmerPerformance(selectedId!) 
       : getCenterPerformanceDetailed(selectedId!),
     enabled: !!selectedId
   });
+
+  const handleSync = async () => {
+    try {
+      setSyncing(true);
+      const res = await syncFarmerPerformance();
+      toast({
+        title: 'Sync Complete',
+        description: `Successfully updated performance for ${res.updatedCount} farmers.`
+      });
+      refetchDetail();
+    } catch (err: any) {
+      toast({
+        title: 'Sync Failed',
+        description: err.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (loadingAll) return <div className="flex items-center justify-center h-64"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
 
@@ -40,6 +65,19 @@ const PerformanceDashboard: React.FC = () => {
           <h2 className="text-3xl font-bold tracking-tight">Performance Tracking</h2>
           <p className="text-muted-foreground">Automated supply monitoring and quality analytics.</p>
         </div>
+        <Button 
+          variant="outline" 
+          onClick={handleSync} 
+          disabled={syncing}
+          className="flex items-center gap-2"
+        >
+          {syncing ? (
+            <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+          ) : (
+            <TrendingUp className="w-4 h-4" />
+          )}
+          Sync All History
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

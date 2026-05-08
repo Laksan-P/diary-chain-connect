@@ -324,6 +324,13 @@ export const getPredictions = async (): Promise<PredictionData> => {
   return apiFetch<PredictionData>('/api/predictions');
 };
 
+/** POST /api/operations?action=sync-farmer-performance */
+export const syncFarmerPerformance = async (): Promise<{ success: boolean; updatedCount: number }> => {
+  return apiFetch<{ success: boolean; updatedCount: number }>('/api/operations?action=sync-farmer-performance', {
+    method: 'POST'
+  });
+};
+
 // ============ NOTIFICATIONS ============
 
 /** GET /api/notifications?action=list */

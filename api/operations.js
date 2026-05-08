@@ -53,20 +53,26 @@ export default async function handler(req, res) {
       // 2. Determine thresholds based on user role
       const isNestle = user.role === 'nestle' || user.role === 'nestle_officer';
 
+      const reasons = [];
       if (isNestle && original) {
         // Nestlé Rule: Must be >= CC's recorded quality (or industry standards)
         const threshFat = original.fat || 3.5;
         const threshSnf = original.snf || 8.5;
         const threshWater = original.water || 0.5;
 
-        if (nFat < threshFat) { resultValue = 'Fail'; reasonValue = 'Low FAT'; }
-        else if (nSnf < threshSnf) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
-        else if (nWater > threshWater) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
+        if (nFat < threshFat) reasons.push('Low FAT');
+        if (nSnf < threshSnf) reasons.push('Low SNF');
+        if (nWater > threshWater) reasons.push('Excess Water');
       } else {
         // Standard CC Rule: Match base quality requirements
-        if (nFat < 3.5) { resultValue = 'Fail'; reasonValue = 'Low FAT'; }
-        else if (nSnf < 8.5) { resultValue = 'Fail'; reasonValue = 'Low SNF'; }
-        else if (nWater > 0.5) { resultValue = 'Fail'; reasonValue = 'Excess Water'; }
+        if (nFat < 3.5) reasons.push('Low FAT');
+        if (nSnf < 8.5) reasons.push('Low SNF');
+        if (nWater > 0.5) reasons.push('Excess Water');
+      }
+
+      if (reasons.length > 0) {
+        resultValue = 'Fail';
+        reasonValue = reasons.join(', ');
       }
 
       // 3. Update the Milk Collection record IMMEDIATELY 
@@ -246,17 +252,14 @@ export default async function handler(req, res) {
             .select('result, fat, snf, water')
             .in('collection_id', colIds)
             .order('tested_at', { ascending: false })
-            .limit(3);
+            .limit(10); // Look at last 10 tests for a better history
 
           if (lastTests && lastTests.length > 0) {
-            let consecutiveFails = 0;
-            for (const t of lastTests) {
-              if (t.result === 'Fail') consecutiveFails++;
-              else break;
-            }
+            const failTests = lastTests.filter(t => t.result === 'Fail');
+            const totalFails = failTests.length;
 
-            if (consecutiveFails >= 3) {
-              const newSeverity = consecutiveFails >= 3 ? 'HIGH' : 'LOW';
+            if (totalFails >= 3) {
+              const newSeverity = totalFails >= 5 ? 'HIGH' : 'LOW';
 
               // Only proceed if status is not already "Needs Improvement" OR severity has increased to HIGH
               let alreadyHigh = false;
@@ -269,7 +272,7 @@ export default async function handler(req, res) {
 
               if (currentStatus !== 'Needs Improvement' || (newSeverity === 'HIGH' && !alreadyHigh)) {
                 let fatFails = 0, snfFails = 0, waterFails = 0;
-                lastTests.slice(0, consecutiveFails).forEach(t => {
+                failTests.forEach(t => {
                   if (t.fat < 3.5) fatFails++;
                   if (t.snf < 8.5) snfFails++;
                   if (t.water > 0.5) waterFails++;
@@ -371,8 +374,8 @@ export default async function handler(req, res) {
                   });
                 }
               }
-            } else if (lastTests[0].result === 'Pass') {
-              // Auto-recovery: If latest test is Pass, check previous tests to see if we were failing
+            } else if (lastTests[0].result === 'Pass' && totalFails === 0) {
+              // Auto-recovery: ONLY if they pass AND have 0 fails in the recent window
               if (currentStatus === 'Needs Improvement') {
                 await supabase.from('farmers').update({ performance_status: 'Improving', performance_recommendation: null }).eq('id', col.farmer_id);
               } else if (currentStatus === 'Improving') {
@@ -1193,6 +1196,95 @@ export default async function handler(req, res) {
     } catch (outerErr) {
       console.error('Recommendations API outer error:', outerErr);
       return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // ────────── SYNC FARMER PERFORMANCE ──────────
+  if (action === 'sync-farmer-performance' && req.method === 'POST') {
+    try {
+      const { data: farmers } = await supabase.from('farmers').select('id, name, performance_status, user_id');
+      if (!farmers) return res.status(200).json({ count: 0 });
+
+      let updatedCount = 0;
+      for (const farmer of farmers) {
+        const { data: farmerCols } = await supabase.from('milk_collections').select('id').eq('farmer_id', farmer.id);
+        const colIds = farmerCols?.map(c => c.id) || [];
+        
+        if (colIds.length === 0) continue;
+
+        const { data: lastTests } = await supabase
+          .from('quality_tests')
+          .select('result, fat, snf, water')
+          .in('collection_id', colIds)
+          .order('tested_at', { ascending: false })
+          .limit(10);
+
+        if (!lastTests || lastTests.length === 0) continue;
+
+        const failTests = lastTests.filter(t => t.result === 'Fail');
+        const totalFails = failTests.length;
+
+        if (totalFails >= 3) {
+          const newSeverity = totalFails >= 5 ? 'HIGH' : 'LOW';
+          
+          let fatFails = 0, snfFails = 0, waterFails = 0;
+          failTests.forEach(t => {
+            if (t.fat < 3.5) fatFails++;
+            if (t.snf < 8.5) snfFails++;
+            if (t.water > 0.5) waterFails++;
+          });
+
+          const failedTypes = [];
+          if (waterFails > 0) failedTypes.push("WATER");
+          if (snfFails > 0) failedTypes.push("SNF");
+          if (fatFails > 0) failedTypes.push("FAT");
+
+          let recObj = {
+            message_title: "Overall Milk Quality Decline",
+            message_title_ta: "ஒட்டுமொத்த பால் தர சரிவு",
+            message_title_si: "සමස්ත කිරි ගුණාත්මක භාවයේ අඩුවීමක්",
+            short_message: "Multiple quality parameters are failing in your recent supplies",
+            short_message_ta: "உங்கள் சமீபத்திய விநியோகங்களில் பல தர அளவுருக்கள் தோல்வியடைகின்றன",
+            short_message_si: "ඔබේ මෑත කාලීන සැපයුම්වල ගුණාත්මක පරාමිතීන් කිහිපයක් අසමත් වේ",
+            issue: failedTypes.length > 0 ? failedTypes.join(",") : "GENERAL",
+            tips: ["Improve feeding", "Maintain hygiene", "Regular checkups"],
+            severity: newSeverity
+          };
+
+          // Basic templates - the frontend will fetch full details from performance_recommendations table
+          if (failedTypes.length === 1) {
+            if (failedTypes[0] === "WATER") {
+              recObj.message_title = "Milk Dilution Detected";
+              recObj.short_message = "Water content in milk is above acceptable level";
+            } else if (failedTypes[0] === "SNF") {
+              recObj.message_title = "Low SNF Detected";
+              recObj.short_message = "Milk nutrient level (SNF) is below standard";
+            } else if (failedTypes[0] === "FAT") {
+              recObj.message_title = "Low Fat Content Detected";
+              recObj.short_message = "Milk fat percentage is below required level";
+            }
+          }
+
+          await supabase.from('farmers').update({ 
+            performance_status: 'Needs Improvement', 
+            performance_recommendation: JSON.stringify(recObj) 
+          }).eq('id', farmer.id);
+          updatedCount++;
+        } else if (lastTests[0].result === 'Pass' && totalFails === 0) {
+          if (farmer.performance_status !== 'Good') {
+            await supabase.from('farmers').update({ 
+              performance_status: 'Good', 
+              performance_recommendation: null 
+            }).eq('id', farmer.id);
+            updatedCount++;
+          }
+        }
+      }
+
+      return res.status(200).json({ success: true, updatedCount });
+    } catch (err) {
+      console.error('Sync farmer performance error:', err);
+      return res.status(500).json({ error: 'Server error' });
     }
   }
 
