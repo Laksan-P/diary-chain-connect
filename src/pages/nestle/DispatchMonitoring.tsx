@@ -143,21 +143,9 @@ const DispatchMonitoring: React.FC = () => {
               : i
           );
 
-          const hasApproved = updatedItems.some(
-            i => i.dispatchStatus === 'Approved'
-          );
-
-          const hasRejected = updatedItems.some(
-            i => i.dispatchStatus === 'Rejected'
-          );
-
           return {
             ...d,
-            items: updatedItems,
-            status:
-              hasApproved && hasRejected
-                ? 'Mixed'
-                : 'Rejected'
+            items: updatedItems
           };
           }
           return d;
@@ -270,24 +258,11 @@ const DispatchMonitoring: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <StatusBadge
-                        status={(() => {
-                          if (dispatch.status === 'Approved') return 'Approved';
-                          if (dispatch.status === 'Rejected') {
-                            const isManualReject = !dispatch.rejectionReason?.startsWith('Quality Check Failed');
-                            return isManualReject ? 'Rejected' : 'Rejected'; 
-                          }
-                          
-                          const allApproved = dispatch.items?.every(i => i.dispatchStatus === 'Approved');
-                          const hasFail = dispatch.items?.some(i => i.qualityResult === 'Fail');
-                          
-                          if (allApproved && dispatch.status === 'Dispatched') return 'Ready';
-                          return hasFail ? 'Mixed' : dispatch.status;
-                        })()}
+                        status={dispatch.status}
                       />
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      {dispatch.status === 'Dispatched' &&
-                        !dispatch.items?.some(i => i.dispatchStatus === 'Rejected') ? (
+                      {(dispatch.status === 'Dispatched' || dispatch.status === 'Mixed') ? (
                         <div className="flex justify-end gap-2">
                           {(() => {
                             const allVerified = dispatch.items?.every(i => i.dispatchStatus === 'Approved' || i.dispatchStatus === 'Rejected');
