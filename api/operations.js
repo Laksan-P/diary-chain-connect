@@ -155,25 +155,53 @@ export default async function handler(req, res) {
 
           if (allItems && allItems.length > 0) {
 
-            let approvedCount = 0;
-            let rejectedCount = 0;
+            const statuses = allItems.map(
+            item => item.milk_collections?.dispatch_status
+          );
 
-            allItems.forEach(item => {
-              const status = item.milk_collections?.dispatch_status;
+          const approvedCount = statuses.filter(
+            s => s === 'Approved'
+          ).length;
 
-              if (status === 'Approved') approvedCount++;
-              if (status === 'Rejected') rejectedCount++;
-            });
+          const rejectedCount = statuses.filter(
+            s => s === 'Rejected'
+          ).length;
 
-            let overallStatus = 'Dispatched';
+          const testedCount = approvedCount + rejectedCount;
 
-            if (rejectedCount === allItems.length) {
-              overallStatus = 'Rejected';
-            } else if (approvedCount === allItems.length) {
-              overallStatus = 'Approved';
-            } else if (approvedCount > 0 && rejectedCount > 0) {
-              overallStatus = 'Mixed';
-            }
+          let overallStatus = 'Dispatched';
+
+          // ALL tested and ALL rejected
+          if (
+            testedCount === allItems.length &&
+            rejectedCount === allItems.length
+          ) {
+            overallStatus = 'Rejected';
+          }
+
+          // ALL tested and ALL approved
+          else if (
+            testedCount === allItems.length &&
+            approvedCount === allItems.length
+          ) {
+            overallStatus = 'Approved';
+          }
+
+          // MIX of approved/rejected
+          else if (
+            approvedCount > 0 &&
+            rejectedCount > 0
+          ) {
+            overallStatus = 'Mixed';
+          }
+
+          // Some tested, some pending
+          else if (
+            testedCount > 0 &&
+            testedCount < allItems.length
+          ) {
+            overallStatus = 'Mixed';
+          }
 
             await supabase
               .from('dispatches')
