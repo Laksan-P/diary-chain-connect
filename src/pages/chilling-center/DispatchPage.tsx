@@ -127,7 +127,26 @@ const DispatchPage: React.FC = () => {
         };
       }).filter(Boolean) as MilkCollection[];
 
-      const filteredCols = updatedC.filter(col => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending');
+      const filteredCols = updatedC.filter(col => {
+      const dispatchedLocally = allDispatches.some(act =>
+        act.data?.items?.some((i: any) =>
+          String(i.collectionId) === String(col.id) ||
+          String(i.offlineCollectionId) === String(col.id)
+        )
+      );
+
+      const dispatchedOnServer = d.some(disp =>
+        disp.items?.some((i: any) =>
+          String(i.collectionId) === String(col.id)
+        )
+      );
+
+      return (
+        col.qualityResult === 'Pass' &&
+        !dispatchedLocally &&
+        !dispatchedOnServer
+      );
+    });
 
       const maxId = d.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
 

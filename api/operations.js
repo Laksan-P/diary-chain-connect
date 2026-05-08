@@ -46,9 +46,9 @@ export default async function handler(req, res) {
       let reasonValue = null;
 
       // Ensure we are comparing numbers
-      const nFat = parseFloat(String(fat));
-      const nSnf = parseFloat(String(snf));
-      const nWater = parseFloat(String(water));
+      const nFat = Number(parseFloat(String(fat)).toFixed(2));
+      const nSnf = Number(parseFloat(String(snf)).toFixed(2));
+      const nWater = Number(parseFloat(String(water)).toFixed(2));
 
       // 2. Determine thresholds based on user role
       const isNestle = user.role === 'nestle' || user.role === 'nestle_officer';
@@ -56,9 +56,9 @@ export default async function handler(req, res) {
       const reasons = [];
       if (isNestle && original) {
         // Nestlé Rule: Must be >= CC's recorded quality (or industry standards)
-        const threshFat = original.fat || 3.5;
-        const threshSnf = original.snf || 8.5;
-        const threshWater = original.water || 0.5;
+        const threshFat = Number(parseFloat(original.fat || 3.5).toFixed(2));
+        const threshSnf = Number(parseFloat(original.snf || 8.5).toFixed(2));
+        const threshWater = Number(parseFloat(original.water || 0.5).toFixed(2));
 
         if (nFat < threshFat) reasons.push('Low FAT');
         if (nSnf < threshSnf) reasons.push('Low SNF');
@@ -490,7 +490,7 @@ export default async function handler(req, res) {
 
       // 1. Better Idempotency Check
       const colIds = items.map(i => i.collectionId || i.collection_id).filter(id => id && id !== 0);
-      
+
       // Check if any of these collections are already dispatched
       const { data: alreadyDispatched } = await supabase
         .from('milk_collections')
@@ -1240,7 +1240,7 @@ export default async function handler(req, res) {
       for (const farmer of farmers) {
         const { data: farmerCols } = await supabase.from('milk_collections').select('id').eq('farmer_id', farmer.id);
         const colIds = farmerCols?.map(c => c.id) || [];
-        
+
         if (colIds.length === 0) continue;
 
         const { data: lastTests } = await supabase
@@ -1257,7 +1257,7 @@ export default async function handler(req, res) {
 
         if (totalFails >= 3) {
           const newSeverity = totalFails >= 5 ? 'HIGH' : 'LOW';
-          
+
           let fatFails = 0, snfFails = 0, waterFails = 0;
           failTests.forEach(t => {
             if (t.fat < 3.5) fatFails++;
@@ -1296,16 +1296,16 @@ export default async function handler(req, res) {
             }
           }
 
-          await supabase.from('farmers').update({ 
-            performance_status: 'Needs Improvement', 
-            performance_recommendation: JSON.stringify(recObj) 
+          await supabase.from('farmers').update({
+            performance_status: 'Needs Improvement',
+            performance_recommendation: JSON.stringify(recObj)
           }).eq('id', farmer.id);
           updatedCount++;
         } else if (lastTests[0].result === 'Pass' && totalFails === 0) {
           if (farmer.performance_status !== 'Good') {
-            await supabase.from('farmers').update({ 
-              performance_status: 'Good', 
-              performance_recommendation: null 
+            await supabase.from('farmers').update({
+              performance_status: 'Good',
+              performance_recommendation: null
             }).eq('id', farmer.id);
             updatedCount++;
           }
