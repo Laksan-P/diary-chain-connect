@@ -33,7 +33,11 @@ const NestleDashboard: React.FC = () => {
       setStats(s => ({
         ...s,
         dispatches: d.length,
-        pendingDispatches: d.filter(x => x.status === 'Dispatched').length
+        pendingDispatches: d.filter(
+          x =>
+            x.status === 'Dispatched' ||
+            x.status === 'Pending Sync'
+        ).length
       }));
       setRecentDispatches(d.slice(0, 5));
     }).catch(console.error);
@@ -127,11 +131,7 @@ const NestleDashboard: React.FC = () => {
                     <td className="px-4 py-3 text-xs">{d.transporterName}</td>
                     <td className="px-4 py-3">
                       <StatusBadge
-                        status={
-                          d.status === 'Rejected' && d.items?.some((i: any) => i.qualityResult === 'Pass')
-                            ? 'Mixed'
-                            : d.status
-                        }
+                        status={d.status}
                       />
                     </td>
                   </tr>
