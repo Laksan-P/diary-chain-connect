@@ -205,7 +205,9 @@ export default async function handler(req, res) {
 
             await supabase
               .from('dispatches')
-              .update({ status: overallStatus })
+              .update({
+                status: overallStatus
+              })
               .eq('id', dispatchId);
           }
         }
