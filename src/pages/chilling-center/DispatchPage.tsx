@@ -136,10 +136,15 @@ const DispatchPage: React.FC = () => {
       );
 
       const dispatchedOnServer = d.some(disp =>
-        disp.items?.some((i: any) =>
-          String(i.collectionId) === String(col.id)
-        )
-      );
+      disp.items?.some((i: any) => {
+        const itemCollectionId =
+          i.collectionId ??
+          i.collection_id ??
+          i.offlineCollectionId;
+
+        return String(itemCollectionId) === String(col.id);
+      })
+    );
 
       return (
         col.qualityResult === 'Pass' &&
@@ -157,7 +162,13 @@ const DispatchPage: React.FC = () => {
           // Check if this exact dispatch (same items) already exists in server history 'd'
           const itemIds = a.data.items?.map((i: any) => i.collectionId).filter(Boolean) || [];
           const isAlreadyOnServer = d.some(sd => {
-            const serverItemIds = sd.items?.map(si => String(si.collectionId)) || [];
+            const serverItemIds = sd.items?.map((si: any) =>
+              String(
+                si.collectionId ??
+                si.collection_id ??
+                si.offlineCollectionId
+              )
+            ) || [];
             const offlineItemIds = itemIds.map(id => String(id));
 
             const sameVehicle = sd.vehicleNumber === a.data.vehicleNumber;
