@@ -62,7 +62,7 @@ export default async function handler(req, res) {
 
         if (nFat < threshFat) reasons.push('Low FAT');
         if (nSnf < threshSnf) reasons.push('Low SNF');
-        if (nWater > threshWater) reasons.push('Excess Water');
+        if (nWater < threshWater) reasons.push('Excess Water');
       } else {
         // Standard CC Rule: Match base quality requirements
         if (nFat < 3.5) reasons.push('Low FAT');
