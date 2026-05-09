@@ -734,7 +734,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     String displayTitle = Translations.get('performance_alert', locale);
-    String displayRec = rec;
+    String displayRec = status == 'Improving'
+        ? Translations.get('perf_improving_msg', locale)
+        : rec;
     List<dynamic> guidance = [];
 
     // Translate the fallback message if present

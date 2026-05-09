@@ -209,6 +209,7 @@ class Translations {
           'Positive trend detected! Continue maintaining these quality standards.',
       'perf_needs_improvement': 'Needs Improvement',
       'perf_improving': 'Improving',
+      'perf_improving_msg': 'Milk quality is improving. Please continue maintaining these quality standards.',
       'perf_good': 'Good',
       'rec_water':
           'Possible milk dilution detected. Please ensure milk is not diluted with water.',
@@ -436,6 +437,7 @@ class Translations {
           'ධනාත්මක ප්‍රවණතාවක් හඳුනාගෙන ඇත! මෙම ගුණාත්මක ප්‍රමිතීන් දිගටම පවත්වා ගන්න.',
       'perf_needs_improvement': 'වැඩි දියුණු කළ යුතුයි',
       'perf_improving': 'වැඩි දියුණු වෙමින් පවතී',
+      'perf_improving_msg': 'කිරි ගුණාත්මකභාවය වැඩිදියුණු වෙමින් පවතී. කරුණාකර මෙම ගුණාත්මක ප්‍රමිතීන් පවත්වාගෙන යන්න.',
       'perf_good': 'යහපත්',
       'rec_water':
           'කිරිවලට ජලය මිශ්‍ර වී ඇති බව පෙනේ. කරුණාකර කිරිවලට ජලය මිශ්‍ර නොකිරීමට වගබලා ගන්න.',
@@ -665,6 +667,7 @@ class Translations {
           'நேர்மறையான போக்கு கண்டறியப்பட்டுள்ளது! இதே தரத்தை தொடர்ந்து பேணுங்கள்.',
       'perf_needs_improvement': 'மேம்படுத்தப்பட வேண்டும்',
       'perf_improving': 'மேம்பட்டு வருகிறது',
+      'perf_improving_msg': 'பாலின் தரம் மேம்பட்டு வருகிறது. இந்த தரநிலைகளை தொடர்ந்து பராமரிக்கவும்.',
       'perf_good': 'நல்லது',
       'rec_water':
           'பால் நீர்க்கப்பட்டுள்ளதாகக் கண்டறியப்பட்டுள்ளது. பாலில் தண்ணீர் கலக்காமல் இருப்பதை உறுதி செய்யவும்.',
