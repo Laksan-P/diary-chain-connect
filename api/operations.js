@@ -156,52 +156,52 @@ export default async function handler(req, res) {
           if (allItems && allItems.length > 0) {
 
             const statuses = allItems.map(
-            item => item.milk_collections?.dispatch_status
-          );
+              item => item.milk_collections?.dispatch_status
+            );
 
-          const approvedCount = statuses.filter(
-            s => s === 'Approved'
-          ).length;
+            const approvedCount = statuses.filter(
+              s => s === 'Approved'
+            ).length;
 
-          const rejectedCount = statuses.filter(
-            s => s === 'Rejected'
-          ).length;
+            const rejectedCount = statuses.filter(
+              s => s === 'Rejected'
+            ).length;
 
-          const testedCount = approvedCount + rejectedCount;
+            const testedCount = approvedCount + rejectedCount;
 
-          let overallStatus = 'Dispatched';
+            let overallStatus = 'Dispatched';
 
-          // ALL tested and ALL rejected
-          if (
-            testedCount === allItems.length &&
-            rejectedCount === allItems.length
-          ) {
-            overallStatus = 'Rejected';
-          }
+            // ALL tested and ALL rejected
+            if (
+              testedCount === allItems.length &&
+              rejectedCount === allItems.length
+            ) {
+              overallStatus = 'Rejected';
+            }
 
-          // ALL tested and ALL approved
-          else if (
-            testedCount === allItems.length &&
-            approvedCount === allItems.length
-          ) {
-            overallStatus = 'Approved';
-          }
+            // ALL tested and ALL approved
+            else if (
+              testedCount === allItems.length &&
+              approvedCount === allItems.length
+            ) {
+              overallStatus = 'Approved';
+            }
 
-          // MIX of approved/rejected
-          else if (
-            approvedCount > 0 &&
-            rejectedCount > 0
-          ) {
-            overallStatus = 'Mixed';
-          }
+            // MIX of approved/rejected
+            else if (
+              approvedCount > 0 &&
+              rejectedCount > 0
+            ) {
+              overallStatus = 'Mixed';
+            }
 
-          // Some tested, some pending
-          else if (
-            testedCount > 0 &&
-            testedCount < allItems.length
-          ) {
-            overallStatus = 'Mixed';
-          }
+            // Some tested, some pending
+            else if (
+              testedCount > 0 &&
+              testedCount < allItems.length
+            ) {
+              overallStatus = 'Mixed';
+            }
 
             await supabase
               .from('dispatches')
@@ -745,40 +745,40 @@ export default async function handler(req, res) {
 
       let finalDispatchStatus = status;
 
-    // If rejecting, check whether dispatch contains passed collections too
-    if (status === 'Rejected') {
+      // If rejecting, check whether dispatch contains passed collections too
+      if (status === 'Rejected') {
 
-      const { data: dispatchItems } = await supabase
-        .from('dispatch_items')
-        .select(`
+        const { data: dispatchItems } = await supabase
+          .from('dispatch_items')
+          .select(`
           collection_id,
           milk_collections(dispatch_status)
         `)
-        .eq('dispatch_id', id);
+          .eq('dispatch_id', id);
 
-      if (dispatchItems && dispatchItems.length > 0) {
+        if (dispatchItems && dispatchItems.length > 0) {
 
-        const statuses = dispatchItems.map(
-          item => item.milk_collections?.dispatch_status
-        );
+          const statuses = dispatchItems.map(
+            item => item.milk_collections?.dispatch_status
+          );
 
-        const hasApproved = statuses.includes('Approved');
-        const hasRejected = statuses.includes('Rejected');
+          const hasApproved = statuses.includes('Approved');
+          const hasRejected = statuses.includes('Rejected');
 
-        // If both exist -> Mixed
-        if (hasApproved && hasRejected) {
-          finalDispatchStatus = 'Mixed';
+          // If both exist -> Mixed
+          if (hasApproved && hasRejected) {
+            finalDispatchStatus = 'Mixed';
+          }
         }
       }
-    }
 
-    await supabase
-      .from('dispatches')
-      .update({
-        status: finalDispatchStatus,
-        rejection_reason: reason || null
-      })
-      .eq('id', id);
+      await supabase
+        .from('dispatches')
+        .update({
+          status: finalDispatchStatus,
+          rejection_reason: reason || null
+        })
+        .eq('id', id);
 
       // notify CC User (Include Tanker/Vehicle info)
       const ccUserId = dispatch.chilling_centers?.user_id;
@@ -1082,7 +1082,8 @@ export default async function handler(req, res) {
         const passRate = Number(passRateRaw.toFixed(1));
 
         // STRICT RULE: Directly determine status based on 75% threshold
-        const displayStatus = passRate >= 75 ? 'Good' : 'Needs Improvement';
+        const displayStatus =
+          farmer?.performance_status || 'Good';
 
         const threeMonthsAgo = new Date(); threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
         const { data: collections } = await supabase.from('milk_collections').select('date, quantity, quality_result').eq('farmer_id', farmerId).gte('date', threeMonthsAgo.toISOString().split('T')[0]).order('date', { ascending: true });
