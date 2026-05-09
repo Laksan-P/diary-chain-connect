@@ -335,79 +335,71 @@ export default async function handler(req, res) {
                 if (snfFails > 0) failedTypes.push("SNF");
                 if (fatFails > 0) failedTypes.push("FAT");
 
+                const { data: dynamicRecs } = await supabase
+                .from('performance_recommendations')
+                .select('*')
+                .in('issue_type', failedTypes);
+
+              let mergedGuidanceEn = [];
+              let mergedGuidanceSi = [];
+              let mergedGuidanceTa = [];
+
+              if (dynamicRecs && dynamicRecs.length > 0) {
+                mergedGuidanceEn = [
+                  ...new Set(dynamicRecs.flatMap(r => r.guidance_en || []))
+                ];
+
+                mergedGuidanceSi = [
+                  ...new Set(dynamicRecs.flatMap(r => r.guidance_si || []))
+                ];
+
+                mergedGuidanceTa = [
+                  ...new Set(dynamicRecs.flatMap(r => r.guidance_ta || []))
+                ];
+              }
+
                 let recObj = {
-                  message_title: "Overall Milk Quality Decline",
-                  message_title_ta: "ஒட்டுமொத்த பால் தர சரிவு",
-                  message_title_si: "සමස්ත කිරි ගුණාත්මක භාවයේ අඩුවීමක්",
-                  short_message: "Multiple quality parameters are failing",
-                  short_message_ta: "பல தர அளவுருக்கள் தோல்வியடைகின்றன",
-                  short_message_si: "ගුණාත්මක පරාමිති කිහිපයක් අසමත් වේ",
-                  issue: failedTypes.length > 0 ? failedTypes.join(",") : "GENERAL",
-                  tips: [
-                    "Improve overall feeding and nutrition practices",
-                    "Maintain clean and hygienic milking environment",
-                    "Schedule regular veterinary health checkups",
-                    "Follow proper milk storage and delivery practices",
-                    "Monitor previous test results and improve gradually"
-                  ],
-                  tips_ta: [
-                    "ஒட்டுமொத்த உணவு மற்றும் ஊட்டச்சத்து நடைமுறைகளை மேம்படுத்தவும்",
-                    "சுத்தமான மற்றும் சுகாதாரமான பால் கறக்கும் சூழலை பராமரிக்கவும்",
-                    "வழக்கமான கால்நடை சுகாதார பரிசோதனைகளை திட்டமிடுங்கள்",
-                    "சரியான பால் சேமிப்பு மற்றும் விநியோக நடைமுறைகளைப் பின்பற்றவும்",
-                    "முந்தைய சோதனை முடிவுகளைக் கண்காணித்து படிப்படியாக மேம்படுத்தவும்"
-                  ],
-                  tips_si: [
-                    "සමස්ත පෝෂණ හා ආහාර පුරුදු වැඩිදියුණු කරන්න",
-                    "පිරිසිදු හා සෞඛ්‍යාරක්ෂිත කිරි දෙවීමේ පරිසරයක් පවත්වා ගන්න",
-                    "නිතිපතා පශු වෛද්‍ය සෞඛ්‍ය පරීක්ෂණ උපලේඛනගත කරන්න",
-                    "නිසි කිරි ගබඩා කිරීමේ සහ බෙදා හැරීමේ පිළිවෙත් අනුගමනය කරන්න",
-                    "පෙර පරීක්ෂණ ප්‍රතිඵල නිරීක්ෂණය කර ක්‍රමානුකූලව වැඩිදියුණු කරන්න"
-                  ]
+                  message_title:
+                    failedTypes.length > 1
+                      ? "Overall Milk Quality Decline"
+                      : dynamicRecs?.[0]?.title_en || "Milk Quality Alert",
+
+                  message_title_ta:
+                    failedTypes.length > 1
+                      ? "ஒட்டுமொத்த பால் தர சரிவு"
+                      : dynamicRecs?.[0]?.title_ta || "பால் தர எச்சரிக்கை",
+
+                  message_title_si:
+                    failedTypes.length > 1
+                      ? "සමස්ත කිරි ගුණාත්මක භාවයේ අඩුවීමක්"
+                      : dynamicRecs?.[0]?.title_si || "කිරි ගුණාත්මක අනතුරු ඇඟවීම",
+
+                  short_message:
+                    failedTypes.length > 1
+                      ? "Multiple quality parameters are failing in recent supplies"
+                      : dynamicRecs?.[0]?.description_en || "Milk quality issue detected",
+
+                  short_message_ta:
+                    failedTypes.length > 1
+                      ? "சமீபத்திய விநியோகங்களில் பல தர அளவுருக்கள் தோல்வியடைகின்றன"
+                      : dynamicRecs?.[0]?.description_ta || "பால் தர சிக்கல் கண்டறியப்பட்டது",
+
+                  short_message_si:
+                    failedTypes.length > 1
+                      ? "මෑත සැපයුම්වල ගුණාත්මක ගැටලු කිහිපයක් හඳුනාගෙන ඇත"
+                      : dynamicRecs?.[0]?.description_si || "කිරි ගුණාත්මක ගැටලුවක් හඳුනාගෙන ඇත",
+
+                  issue:
+                    failedTypes.length > 0
+                      ? failedTypes.join(",")
+                      : "GENERAL",
+
+                  tips: mergedGuidanceEn,
+                  tips_ta: mergedGuidanceTa,
+                  tips_si: mergedGuidanceSi,
+
+                  severity: newSeverity
                 };
-
-                // Specific case overrides for single issue predominance
-                if (failedTypes.length === 1) {
-                  if (failedTypes[0] === "WATER") {
-                    recObj.message_title = "Milk Dilution Detected";
-                    recObj.message_title_ta = "பாலின் நீர்த்துப்போதல் கண்டறியப்பட்டுள்ளது";
-                    recObj.message_title_si = "කිරි දියාරු වීමක් හඳුනාගෙන ඇත";
-                    recObj.short_message = "Water content in milk is above acceptable level";
-                    recObj.tips = [
-                      "Do not add water to milk under any condition",
-                      "Use clean containers during milking and storage",
-                      "Avoid contamination from rainwater or dirty environments",
-                      "Maintain proper hygiene during milk collection and handling",
-                      "Ensure milk is stored in covered and clean conditions"
-                    ];
-                  } else if (failedTypes[0] === "SNF") {
-                    recObj.message_title = "Low SNF Detected";
-                    recObj.message_title_ta = "குறைந்த SNF கண்டறியப்பட்டுள்ளது";
-                    recObj.message_title_si = "අඩු SNF හඳුනාගෙන ඇත";
-                    recObj.short_message = "Milk nutrient level (SNF) is below standard";
-                    recObj.tips = [
-                      "Provide protein-rich feed such as soybean meal and legume fodder",
-                      "Add mineral mixture supplements to improve milk quality",
-                      "Ensure clean drinking water is always available",
-                      "Maintain a proper and consistent feeding schedule",
-                      "Perform regular deworming and veterinary checkups"
-                    ];
-                  } else if (failedTypes[0] === "FAT") {
-                    recObj.message_title = "Low Fat Content Detected";
-                    recObj.message_title_ta = "குறைந்த கொழுப்பு சத்து கண்டறியப்பட்டுள்ளது";
-                    recObj.message_title_si = "අඩු මේද ප්‍රතිශතයක් හඳුනාගෙන ඇත";
-                    recObj.short_message = "Milk fat percentage is below required level";
-                    recObj.tips = [
-                      "Feed cows with high-energy food such as coconut poonac, maize, and rice bran",
-                      "Increase green grass intake (Napier grass, Guinea grass)",
-                      "Add oil-rich supplements like coconut oil cake or soybean meal",
-                      "Maintain consistent milking times daily",
-                      "Ensure cows are healthy, stress-free, and properly hydrated"
-                    ];
-                  }
-                }
-
-                recObj.severity = newSeverity;
                 const recString = JSON.stringify(recObj);
 
                 await supabase.from('farmers').update({ performance_status: 'Needs Improvement', performance_recommendation: recString }).eq('id', col.farmer_id);
@@ -1385,31 +1377,72 @@ export default async function handler(req, res) {
           if (snfFails > 0) failedTypes.push("SNF");
           if (fatFails > 0) failedTypes.push("FAT");
 
+          // Fetch full recommendations from performance_recommendations table
+          const { data: dynamicRecs } = await supabase
+          .from('performance_recommendations')
+          .select('*')
+          .in('issue_type', failedTypes);
+
+          let mergedGuidanceEn = [];
+          let mergedGuidanceSi = [];
+          let mergedGuidanceTa = [];
+
+          if (dynamicRecs && dynamicRecs.length > 0) {
+            mergedGuidanceEn = [
+              ...new Set(dynamicRecs.flatMap(r => r.guidance_en || []))
+            ];
+
+            mergedGuidanceSi = [
+              ...new Set(dynamicRecs.flatMap(r => r.guidance_si || []))
+            ];
+
+            mergedGuidanceTa = [
+              ...new Set(dynamicRecs.flatMap(r => r.guidance_ta || []))
+            ];
+          }
+
           let recObj = {
-            message_title: "Overall Milk Quality Decline",
-            message_title_ta: "ஒட்டுமொத்த பால் தர சரிவு",
-            message_title_si: "සමස්ත කිරි ගුණාත්මක භාවයේ අඩුවීමක්",
-            short_message: "Multiple quality parameters are failing in your recent supplies",
-            short_message_ta: "உங்கள் சமீபத்திய விநியோகங்களில் பல தர அளவுருக்கள் தோல்வியடைகின்றன",
-            short_message_si: "ඔබේ මෑත කාලීන සැපයුම්වල ගුණාත්මක පරාමිතීන් කිහිපයක් අසමත් වේ",
-            issue: failedTypes.length > 0 ? failedTypes.join(",") : "GENERAL",
-            tips: ["Improve feeding", "Maintain hygiene", "Regular checkups"],
+            message_title:
+              failedTypes.length > 1
+                ? "Overall Milk Quality Decline"
+                : dynamicRecs?.[0]?.title_en || "Milk Quality Alert",
+
+            message_title_ta:
+              failedTypes.length > 1
+                ? "ஒட்டுமொத்த பால் தர சரிவு"
+                : dynamicRecs?.[0]?.title_ta || "பால் தர எச்சரிக்கை",
+
+            message_title_si:
+              failedTypes.length > 1
+                ? "සමස්ත කිරි ගුණාත්මක භාවයේ අඩුවීමක්"
+                : dynamicRecs?.[0]?.title_si || "කිරි ගුණාත්මක අනතුරු ඇඟවීම",
+
+            short_message:
+              failedTypes.length > 1
+                ? "Multiple quality parameters are failing in your recent supplies"
+                : dynamicRecs?.[0]?.description_en || "Milk quality issue detected",
+
+            short_message_ta:
+              failedTypes.length > 1
+                ? "சமீபத்திய விநியோகங்களில் பல தர சிக்கல்கள் கண்டறியப்பட்டுள்ளன"
+                : dynamicRecs?.[0]?.description_ta || "பால் தர சிக்கல் கண்டறியப்பட்டது",
+
+            short_message_si:
+              failedTypes.length > 1
+                ? "මෑත සැපයුම්වල ගුණාත්මක ගැටලු කිහිපයක් හඳුනාගෙන ඇත"
+                : dynamicRecs?.[0]?.description_si || "කිරි ගුණාත්මක ගැටලුවක් හඳුනාගෙන ඇත",
+
+            issue:
+              failedTypes.length > 0
+                ? failedTypes.join(",")
+                : "GENERAL",
+
+            tips: mergedGuidanceEn,
+            tips_ta: mergedGuidanceTa,
+            tips_si: mergedGuidanceSi,
+
             severity: newSeverity
           };
-
-          // Basic templates - the frontend will fetch full details from performance_recommendations table
-          if (failedTypes.length === 1) {
-            if (failedTypes[0] === "WATER") {
-              recObj.message_title = "Milk Dilution Detected";
-              recObj.short_message = "Water content in milk is above acceptable level";
-            } else if (failedTypes[0] === "SNF") {
-              recObj.message_title = "Low SNF Detected";
-              recObj.short_message = "Milk nutrient level (SNF) is below standard";
-            } else if (failedTypes[0] === "FAT") {
-              recObj.message_title = "Low Fat Content Detected";
-              recObj.short_message = "Milk fat percentage is below required level";
-            }
-          }
 
           await supabase.from('farmers').update({
             performance_status: 'Needs Improvement',
