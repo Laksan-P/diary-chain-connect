@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   AlertTriangle, CheckCircle2, Info, TrendingUp, Users,
-  Droplets, Beaker, Zap
+  Droplets, Beaker, Zap, Phone
 } from 'lucide-react';
 import { getFarmers } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -118,9 +118,21 @@ const NestleRecommendations: React.FC = () => {
                       </Badge>
                       <span className="text-xs font-mono text-muted-foreground bg-white/50 px-2 py-0.5 rounded border">{farmer.farmerId}</span>
                     </div>
+                    <div className="flex items-center justify-between gap-3">
                     <CardTitle className="text-xl flex items-center gap-2">
                       {farmer.name}
                     </CardTitle>
+
+                      {farmer.phone && (
+                        <button
+                          onClick={() => window.location.href = `tel:${farmer.phone}`}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 transition-all text-sm font-medium"
+                        >
+                          <Phone className="w-4 h-4" />
+                          Call
+                        </button>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2 mt-2">
                       {issues.includes('WATER') && <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none flex gap-1 items-center py-1"><Droplets className="w-3 h-3" /> Water Failure</Badge>}
                       {issues.includes('SNF') && <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-none flex gap-1 items-center py-1"><Beaker className="w-3 h-3" /> Low SNF</Badge>}
