@@ -27,6 +27,8 @@ export default async function handler(req, res) {
           id, farmer_id, user_id, name, address, phone, nic, chilling_center_id,
           chilling_centers (name),
           milk_collections (quantity),
+          performance_status,
+          performance_recommendation,
           created_at
         `);
 
@@ -47,7 +49,10 @@ export default async function handler(req, res) {
           name: f.name, address: f.address, phone: f.phone, nic: f.nic,
           chillingCenterId: f.chilling_center_id,
           chillingCenterName: f.chilling_centers?.name,
-          totalQuantity, createdAt: f.created_at,
+          totalQuantity, 
+          performance_status: f.performance_status,
+          performance_recommendation: f.performance_recommendation,
+          createdAt: f.created_at,
         };
       });
 
@@ -70,6 +75,8 @@ export default async function handler(req, res) {
           id, farmer_id, user_id, name, address, phone, nic, chilling_center_id,
           chilling_centers (name),
           milk_collections (quantity),
+          performance_status,
+          performance_recommendation,
           created_at
         `)
         .eq('id', id)
@@ -100,7 +107,10 @@ export default async function handler(req, res) {
         account_number: bank.account_number || '',
         accountNumber: bank.account_number || '',
         branch: bank.branch || '',
-        totalQuantity, createdAt: f.created_at,
+        totalQuantity, 
+        performance_status: f.performance_status,
+        performance_recommendation: f.performance_recommendation,
+        createdAt: f.created_at,
       });
     } catch (err) {
       console.error('Get farmer error:', err);
