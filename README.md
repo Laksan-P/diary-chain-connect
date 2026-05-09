@@ -60,9 +60,9 @@ The application follows a modern, decoupled serverless architecture:
 🔗 **Live URL:** https://diary-chain-connect.vercel.app/
 
 ### Mobile Application (Farmer App)
-* **APK Download Link 1:** https://bit.ly/42ToiS5
-* **APK Download Link 2:** https://appurl.io/XO4SbhkJqe
-* **Backup Link:** https://drive.google.com/file/d/1hCNGG_4Cz0rwPzEDDE4KIvxhFKLdNMIr/view?usp=sharing
+* **APK Download Link 1:** https://bit.ly/4fhmwl4
+* **APK Download Link 2:** https://appurl.io/hofC7P3aSC
+* **Backup Link:** https://drive.google.com/file/d/1ypGjBozaOJeq0tyZJIO4u4JohYHDANCr/view?usp=sharing
 
 **Installation Instructions:**
 1. Download the APK file to your Android device.
