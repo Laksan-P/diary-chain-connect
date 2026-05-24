@@ -1,91 +1,121 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Milk, Users, Beaker, Truck, AlertTriangle, TrendingUp, Info } from 'lucide-react';
 import StatCard from '@/components/StatCard';
 import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { getCollections, getFarmers, getDispatches, getChillingCenter } from '@/services/api';
-import type { MilkCollection, ChillingCenter } from '@/types';
-import { formatDate, formatQuantity, parseNumber } from '@/lib/utils';
+import type { ChillingCenter } from '@/types';
+import { formatDate, formatQuantity } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { mergeFarmersWithPending } from '@/services/offlineSync';
+import { saveCache, getCache } from '@/services/offlineSync';
+import { getDispatchEligibleCollections, getQualityEligibleCollections } from '@/services/offlinePreload';
+import { buildDashboardStats, type DashboardStats } from '@/services/dashboardStatsHelpers';
+import type { HistoryCollection } from '@/services/collectionDisplayHelpers';
+
+const OFFLINE_RELOAD_EVENTS = [
+  'offline-action-saved',
+  'offline-sync-started',
+  'offline-sync-complete',
+  'online',
+  'offline',
+] as const;
+
+const emptyStats: DashboardStats = {
+  farmerCount: 0,
+  totalQuantity: 0,
+  qualityPassRate: 0,
+  dispatchCount: 0,
+  recentCollections: [],
+};
 
 const CCDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [collections, setCollections] = useState<MilkCollection[]>([]);
+  const [stats, setStats] = useState<DashboardStats>(emptyStats);
   const [loading, setLoading] = useState(true);
-  const [farmerCount, setFarmerCount] = useState(0);
-  const [dispatchCount, setDispatchCount] = useState(0);
   const [centerDetails, setCenterDetails] = useState<ChillingCenter | null>(null);
 
-  useEffect(() => {
+  const loadDashboard = useCallback(async () => {
     const centerId = user?.chillingCenterId;
-    if (centerId) {
-      // Use allSettled so one failing API doesn't block the entire dashboard
-      Promise.allSettled([
-        getCollections(centerId), 
-        getFarmers(centerId), 
-        getDispatches(centerId),
-        getChillingCenter(centerId)
-      ]).then(([colsResult, farmersResult, dispatchesResult, detailsResult]) => {
-        if (colsResult.status === 'fulfilled') setCollections(colsResult.value);
-        if (farmersResult.status === 'fulfilled') {
-          setFarmerCount(mergeFarmersWithPending(farmersResult.value).length);
-        }
-        if (dispatchesResult.status === 'fulfilled') setDispatchCount(dispatchesResult.value.length);
-        if (detailsResult.status === 'fulfilled') setCenterDetails(detailsResult.value);
-        
-        // Log any failures for debugging
-        [colsResult, farmersResult, dispatchesResult, detailsResult].forEach((r, i) => {
-          if (r.status === 'rejected') console.error(`Dashboard API call ${i} failed:`, r.reason);
-        });
-
-        setLoading(false);
-      });
-    } else {
+    if (!centerId) {
       setLoading(false);
+      return;
     }
 
-    const handleUpdate = () => {
-      const centerId = user?.chillingCenterId;
-      if (centerId) {
-        Promise.allSettled([
-          getCollections(centerId), 
-          getFarmers(centerId), 
-          getDispatches(centerId),
-          getChillingCenter(centerId)
-        ]).then(([colsResult, farmersResult, dispatchesResult, detailsResult]) => {
-          if (colsResult.status === 'fulfilled') setCollections(colsResult.value);
-          if (farmersResult.status === 'fulfilled') {
-            setFarmerCount(mergeFarmersWithPending(farmersResult.value).length);
-          }
-          if (dispatchesResult.status === 'fulfilled') setDispatchCount(dispatchesResult.value.length);
-          if (detailsResult.status === 'fulfilled') setCenterDetails(detailsResult.value);
-        });
-      }
-    };
+    setStats(buildDashboardStats());
+    const cachedCenter = getCache('chilling_center_details');
+    if (cachedCenter) setCenterDetails(cachedCenter);
+    setLoading(false);
 
-    window.addEventListener('offline-sync-complete', handleUpdate);
-    window.addEventListener('online', handleUpdate);
-    window.addEventListener('offline-action-saved', handleUpdate);
+    if (!navigator.onLine) return;
 
-    return () => {
-      window.removeEventListener('offline-sync-complete', handleUpdate);
-      window.removeEventListener('online', handleUpdate);
-      window.removeEventListener('offline-action-saved', handleUpdate);
-    };
+    const [colsResult, farmersResult, dispatchesResult, detailsResult] = await Promise.allSettled([
+      getCollections(centerId),
+      getFarmers(centerId),
+      getDispatches(centerId),
+      getChillingCenter(centerId),
+    ]);
+
+    if (colsResult.status === 'fulfilled') {
+      saveCache('collection_history', colsResult.value);
+      saveCache('collections', colsResult.value);
+      saveCache('dispatch_all_collections', colsResult.value);
+      saveCache('quality_eligible_collections', getQualityEligibleCollections(colsResult.value));
+      saveCache('dispatch_eligible_collections', getDispatchEligibleCollections(colsResult.value));
+    }
+
+    if (farmersResult.status === 'fulfilled') {
+      saveCache('farmers', farmersResult.value);
+    }
+
+    if (dispatchesResult.status === 'fulfilled') {
+      saveCache('dispatch_history', dispatchesResult.value);
+    }
+
+    if (detailsResult.status === 'fulfilled') {
+      saveCache('chilling_center_details', detailsResult.value);
+      setCenterDetails(detailsResult.value);
+    }
+
+    setStats(
+      buildDashboardStats(
+        colsResult.status === 'fulfilled' ? colsResult.value : undefined,
+        farmersResult.status === 'fulfilled' ? farmersResult.value : undefined,
+        dispatchesResult.status === 'fulfilled' ? dispatchesResult.value : undefined
+      )
+    );
   }, [user]);
 
-  const totalQty = collections.reduce((s, c) => s + parseNumber(c.quantity), 0);
-  const displayPassRate = centerDetails?.quality_pass_rate ?? 0;
+  useEffect(() => {
+    loadDashboard();
+
+    const handleUpdate = () => loadDashboard();
+    OFFLINE_RELOAD_EVENTS.forEach(event => window.addEventListener(event, handleUpdate));
+    return () => OFFLINE_RELOAD_EVENTS.forEach(event => window.removeEventListener(event, handleUpdate));
+  }, [loadDashboard]);
 
   const recentColumns = [
-    { key: 'farmerCode', header: 'Farmer ID' },
+    { key: 'farmerCode', header: 'Farmer ID', render: (r: HistoryCollection) => r.farmerCode || r.farmerId || '—' },
     { key: 'farmerName', header: 'Name' },
-    { key: 'date', header: 'Date', render: (r: MilkCollection) => formatDate(r.date) },
-    { key: 'quantity', header: 'Qty (L)', render: (r: MilkCollection) => formatQuantity(r.quantity) },
-    { key: 'qualityResult', header: 'Quality', render: (r: MilkCollection) => r.qualityResult ? <StatusBadge status={r.qualityResult} /> : <span className="text-muted-foreground">—</span> },
-    { key: 'dispatchStatus', header: 'Status', render: (r: MilkCollection) => r.dispatchStatus ? <StatusBadge status={r.dispatchStatus} /> : <span className="text-muted-foreground">Pending</span> },
+    { key: 'date', header: 'Date', render: (r: HistoryCollection) => formatDate(r.date) },
+    { key: 'quantity', header: 'Qty (L)', render: (r: HistoryCollection) => formatQuantity(r.quantity) },
+    {
+      key: 'qualityResult',
+      header: 'Quality',
+      render: (r: HistoryCollection) => {
+        if (r.isOffline && !r.qualityResult) return <StatusBadge status="Pending Sync" />;
+        return r.qualityResult ? <StatusBadge status={r.qualityResult} /> : <span className="text-muted-foreground">—</span>;
+      },
+    },
+    {
+      key: 'dispatchStatus',
+      header: 'Status',
+      render: (r: HistoryCollection) => {
+        if (r.qualityResult === 'Fail') return <StatusBadge status="Rejected" />;
+        if (r.isOffline) return <StatusBadge status="Pending Sync" />;
+        return r.dispatchStatus ? <StatusBadge status={r.dispatchStatus} /> : <span className="text-muted-foreground">Pending</span>;
+      },
+    },
   ];
 
   return (
@@ -123,17 +153,16 @@ const CCDashboard: React.FC = () => {
         </Alert>
       )}
 
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Registered Farmers" value={farmerCount} icon={Users} variant="default" trend={{ value: 12, label: 'this month' }} />
-        <StatCard title="Total Collection" value={formatQuantity(totalQty)} icon={Milk} variant="success" trend={{ value: 8, label: 'vs last week' }} />
-        <StatCard title="Quality Pass Rate" value={`${displayPassRate}%`} icon={Beaker} variant={displayPassRate >= 75 ? 'success' : 'warning'} />
-        <StatCard title="Dispatches" value={dispatchCount} icon={Truck} variant="default" />
+        <StatCard title="Registered Farmers" value={stats.farmerCount} icon={Users} variant="default" trend={{ value: 12, label: 'this month' }} />
+        <StatCard title="Total Collection" value={formatQuantity(stats.totalQuantity)} icon={Milk} variant="success" trend={{ value: 8, label: 'vs last week' }} />
+        <StatCard title="Quality Pass Rate" value={`${stats.qualityPassRate}%`} icon={Beaker} variant={stats.qualityPassRate >= 75 ? 'success' : 'warning'} />
+        <StatCard title="Dispatches" value={stats.dispatchCount} icon={Truck} variant="default" />
       </div>
 
       <div>
         <h3 className="text-lg font-display font-semibold text-foreground mb-3">Recent Collections</h3>
-        <DataTable columns={recentColumns} data={collections.slice(0, 10)} loading={loading} />
+        <DataTable columns={recentColumns} data={stats.recentCollections} loading={loading} />
       </div>
     </div>
   );

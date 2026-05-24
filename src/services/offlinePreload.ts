@@ -1,4 +1,4 @@
-import { getFarmers, getCollections, getDispatches } from './api';
+import { getFarmers, getCollections, getDispatches, getChillingCenter } from './api';
 import { getCache, saveCache, getPendingActions, mergeFarmersWithPending } from './offlineSync';
 import type { MilkCollection, Dispatch } from '@/types';
 import type { PendingActionData } from './offlineSyncHelpers';
@@ -39,10 +39,11 @@ export const getCachedCollections = (): MilkCollection[] =>
 export async function preloadOfflineData(centerId: number): Promise<void> {
   if (!centerId || !navigator.onLine) return;
 
-  const [farmersResult, collectionsResult, dispatchesResult] = await Promise.allSettled([
+  const [farmersResult, collectionsResult, dispatchesResult, centerResult] = await Promise.allSettled([
     getFarmers(centerId),
     getCollections(centerId),
     getDispatches(centerId),
+    getChillingCenter(centerId),
   ]);
 
   if (farmersResult.status === 'fulfilled') {
@@ -60,6 +61,10 @@ export async function preloadOfflineData(centerId: number): Promise<void> {
 
   if (dispatchesResult.status === 'fulfilled') {
     saveCache('dispatch_history', dispatchesResult.value);
+  }
+
+  if (centerResult.status === 'fulfilled') {
+    saveCache('chilling_center_details', centerResult.value);
   }
 }
 
