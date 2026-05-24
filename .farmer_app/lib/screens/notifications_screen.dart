@@ -129,9 +129,46 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     // Title mappings
     if (raw == 'Quality Test Passed') return 'quality_test_passed_title';
     if (raw == 'Quality Test Failed') return 'quality_test_failed_title';
+    if (raw == 'Nestle Quality Pass' || raw == 'Milk Quality Verified by Nestlé') {
+      return 'nestle_quality_test_passed_title';
+    }
+    if (raw == 'Nestle Quality Fail' || raw == 'Milk Quality Rejected by Nestlé') {
+      return 'nestle_quality_test_failed_title';
+    }
     if (raw == 'Milk Dispatched') return 'milk_dispatched_title';
     if (raw == 'Dispatch Approved') return 'dispatch_approved_title';
     if (raw == 'Dispatch Rejected') return 'dispatch_rejected_title';
+
+    // Nestlé verification: "Your milk collection on YYYY-MM-DD has passed Nestlé quality verification."
+    final nestlePassMatch = RegExp(
+      r'^Your milk collection on (\S+) has passed Nestlé quality verification\.$',
+    ).firstMatch(raw);
+    if (nestlePassMatch != null) {
+      return 'nestle_quality_test_passed_msg|date:${nestlePassMatch.group(1)}';
+    }
+
+    // Nestlé verification fail
+    final nestleFailMatch = RegExp(
+      r'^Your milk collection on (\S+) did not pass Nestlé quality verification\. Reason: (.+)$',
+    ).firstMatch(raw);
+    if (nestleFailMatch != null) {
+      return 'nestle_quality_test_failed_msg|date:${nestleFailMatch.group(1)},reason:${nestleFailMatch.group(2)}';
+    }
+
+    // Legacy Nestlé messages
+    final legacyNestlePassMatch = RegExp(
+      r'^Final verification by Nestlé for your collection on (\S+) was successful\.$',
+    ).firstMatch(raw);
+    if (legacyNestlePassMatch != null) {
+      return 'nestle_quality_test_passed_msg|date:${legacyNestlePassMatch.group(1)}';
+    }
+
+    final legacyNestleFailMatch = RegExp(
+      r'^Final verification by Nestlé for your collection on (\S+) failed\. Reason: (.+)$',
+    ).firstMatch(raw);
+    if (legacyNestleFailMatch != null) {
+      return 'nestle_quality_test_failed_msg|date:${legacyNestleFailMatch.group(1)},reason:${legacyNestleFailMatch.group(2)}';
+    }
 
     // Message: "Your milk collection on YYYY-MM-DD passed quality testing."
     final passMatch = RegExp(

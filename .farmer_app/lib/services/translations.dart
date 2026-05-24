@@ -104,12 +104,12 @@ class Translations {
           'Next payment processing will initiate in {days} days.',
       'payment_ready_msg':
           'Payment day has arrived! Nestlé will credit your account today.',
-      'nestle_quality_test_passed_title': 'Nestle Quality Pass',
+      'nestle_quality_test_passed_title': 'Milk Quality Verified by Nestlé',
       'nestle_quality_test_passed_msg':
-          'Final verification by Nestlé for your collection on {date} was successful.',
-      'nestle_quality_test_failed_title': 'Nestle Quality Fail',
+          'Your milk collection on {date} has passed Nestlé quality verification.',
+      'nestle_quality_test_failed_title': 'Milk Quality Rejected by Nestlé',
       'nestle_quality_test_failed_msg':
-          'Final verification by Nestlé for your collection on {date} failed. Reason: {reason}',
+          'Your milk collection on {date} did not pass Nestlé quality verification. Reason: {reason}',
       'new_dispatch_alert_title': 'New Dispatch Incoming',
       'new_dispatch_alert_msg':
           'Tanker {vehicle} from {cc} is on its way to HQ.',

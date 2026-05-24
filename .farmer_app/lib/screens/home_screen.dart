@@ -216,12 +216,17 @@ class _HomeScreenState extends State<HomeScreen> {
       final reason =
           col['reason'] ?? col['failureReason'] ?? col['rejectReason'] ?? '';
 
-      // Look for a notification about this specific date and collection
-      final exists = _notifications.any(
-        (n) =>
-            (n['message']?.toString().contains(date) ?? false) &&
-            (n['type'] == 'quality_result' || n['type'] == 'general'),
-      );
+      // Look for a CC/chilling-center quality notification for this date (not Nestlé verification)
+      final exists = _notifications.any((n) {
+        if (n['type'] != 'quality_result' && n['type'] != 'general') return false;
+        final msg = n['message']?.toString() ?? '';
+        final title = n['title']?.toString() ?? '';
+        if (!msg.contains(date)) return false;
+        if (title.contains('nestle_quality') || msg.contains('nestle_quality')) {
+          return false;
+        }
+        return true;
+      });
 
       if (!exists) {
         String title = 'Milk Collection Recorded';

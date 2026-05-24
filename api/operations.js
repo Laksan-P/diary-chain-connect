@@ -1,6 +1,7 @@
 import supabase from './_lib/supabase.js';
 import { authenticate } from './_lib/auth.js';
 import { cors } from './_lib/cors.js';
+import { sendNestleQualityVerificationNotification } from './_lib/nestleQualityNotifications.js';
 
 function getBody(req) {
   if (!req.body) return {};
@@ -55,6 +56,12 @@ export default async function handler(req, res) {
                 dispatch_status: existingTest.result === 'Pass' ? 'Approved' : 'Rejected',
               })
               .eq('id', collectionId);
+
+            await sendNestleQualityVerificationNotification(supabase, {
+              collectionId,
+              resultValue: existingTest.result,
+              reasonValue: existingTest.reason,
+            });
           }
 
           return res.status(200).json({
@@ -277,27 +284,38 @@ export default async function handler(req, res) {
           : `date:${date},reason:${reasonValue || 'N/A'}`;
 
         if (userId) {
-          // 1. If tested by Nestle, send both the quality test result AND dispatch status
           if (user.role === 'nestle_officer' || user.role === 'nestle') {
-            // Nestlé quality test result notification to farmer
-            await supabase.from('notifications').insert({
-              user_id: userId,
-              title: titleKey,
-              message: `${msgKey}|${params}`,
-              type: 'quality_result'
+            await sendNestleQualityVerificationNotification(supabase, {
+              collectionId,
+              resultValue,
+              reasonValue,
             });
 
-            // Dispatch status notification to farmer
+            const dispatchParams = resultValue === 'Pass'
+              ? `date:${date},collectionId:${collectionId}`
+              : `date:${date},collectionId:${collectionId},reason:${reasonValue || 'N/A'}`;
+
             const dispatchTitle = resultValue === 'Pass' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
             const dispatchMsg = resultValue === 'Pass' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
-            await supabase.from('notifications').insert({
-              user_id: userId,
-              title: dispatchTitle,
-              message: `${dispatchMsg}|${params}`,
-              type: 'dispatch'
-            });
 
-            // Notify Chilling Center about Nestlé's verification result
+            const { data: existingDispatchNote } = await supabase
+              .from('notifications')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('type', 'dispatch')
+              .eq('title', dispatchTitle)
+              .like('message', `%collectionId:${collectionId}%`)
+              .maybeSingle();
+
+            if (!existingDispatchNote) {
+              await supabase.from('notifications').insert({
+                user_id: userId,
+                title: dispatchTitle,
+                message: `${dispatchMsg}|${dispatchParams}`,
+                type: 'dispatch',
+              });
+            }
+
             if (ccUserId) {
               const ccTitle = resultValue === 'Pass' ? 'cc_collection_passed_nestle_title' : 'cc_collection_rejected_nestle_title';
               const ccMsg = resultValue === 'Pass' ? 'cc_collection_passed_nestle_msg' : 'cc_collection_rejected_nestle_msg';
@@ -305,7 +323,7 @@ export default async function handler(req, res) {
                 user_id: ccUserId,
                 title: ccTitle,
                 message: `${ccMsg}|id:${collectionId},farmer:${farmerName},result:${resultValue}${reasonValue ? `,reason:${reasonValue}` : ''}`,
-                type: 'quality_result'
+                type: 'quality_result',
               });
             }
           } else {
