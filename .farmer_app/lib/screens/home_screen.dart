@@ -241,15 +241,10 @@ class _HomeScreenState extends State<HomeScreen> {
           message = 'quality_test_passed_msg|date:$date';
         } else if (qResult == 'fail') {
           title = 'quality_test_failed_title';
-          // Translate common reasons if possible
-          String displayReason = reason.toString();
-          if (displayReason.toLowerCase().contains('fat')) {
-            displayReason = Translations.get('low_fat', locale);
-          } else if (displayReason.toLowerCase().contains('snf')) {
-            displayReason = Translations.get('low_snf', locale);
-          } else if (displayReason.toLowerCase().contains('water')) {
-            displayReason = Translations.get('excess_water', locale);
-          }
+          String displayReason = Translations.translateReason(
+            reason.toString(),
+            locale,
+          );
 
           message = 'quality_test_failed_msg|date:$date,reason:$displayReason';
         }

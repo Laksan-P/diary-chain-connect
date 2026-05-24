@@ -182,6 +182,17 @@ class Translations {
       'low_fat': 'Low FAT',
       'low_snf': 'Low SNF',
       'excess_water': 'Excess Water',
+      'reason_excess_water': 'Excess Water',
+      'reason_high_water_content': 'High Water Content',
+      'reason_low_fat': 'Low FAT',
+      'reason_low_snf': 'Low SNF',
+      'reason_contaminated_milk': 'Contaminated Milk',
+      'reason_poor_quality': 'Poor Quality',
+      'reason_temperature_issue': 'Temperature Issue',
+      'reason_failed_quality_standard': 'Failed Quality Standard',
+      'reason_quality_standards_not_met': 'Quality standards not met',
+      'reason_rejected_by_nestle': 'Rejected by Nestlé',
+      'reason_batch_quality_standards_not_met': 'Batch quality standards not met',
       'unknown_error': 'Unknown Error',
       'faq_support': 'FAQ & Support',
       'faq_support_desc': 'Get help and contact support',
@@ -416,9 +427,20 @@ class Translations {
       'pending_sync': 'සමමුහුර්ත වීමට ඇත',
       'monthly_earnings': 'මාසික ආදායම',
       'monthly_liters': 'මාසික ලීටර්',
-      'low_fat': 'මේදය අඩුයි (Low FAT)',
-      'low_snf': 'SNF අඩුයි (Low SNF)',
-      'excess_water': 'වැඩිපුර ජලය (Excess Water)',
+      'low_fat': 'මේදය අඩුයි',
+      'low_snf': 'SNF අඩුයි',
+      'excess_water': 'අධික ජල ප්‍රමාණය',
+      'reason_excess_water': 'අධික ජල ප්‍රමාණය',
+      'reason_high_water_content': 'අධික ජල ප්‍රමාණය',
+      'reason_low_fat': 'අඩු මේද ප්‍රමාණය',
+      'reason_low_snf': 'අඩු SNF ප්‍රමාණය',
+      'reason_contaminated_milk': 'දූෂිත කිරි',
+      'reason_poor_quality': 'දුර්වල තත්ත්වය',
+      'reason_temperature_issue': 'උෂ්ණත්ව ගැටලුව',
+      'reason_failed_quality_standard': 'තත්ත්ව ප්‍රමිතියට නොගැලපේ',
+      'reason_quality_standards_not_met': 'අවශ්‍ය තත්ත්ව ප්‍රමිතීන් සපුරා නොමැත',
+      'reason_rejected_by_nestle': 'නෙස්ලේ ආයතනය විසින් ප්‍රතික්ෂේප කරන ලදී',
+      'reason_batch_quality_standards_not_met': 'කැටිගත තත්ත්ව ප්‍රමිතීන් සපුරා නොමැත',
       'unknown_error': 'හඳුනා නොගත් දෝෂයකි',
       'faq_support': 'ප්‍රශ්න හා සහාය',
       'faq_support_desc': 'උදවු සහ සහාය ලබාගන්න',
@@ -658,7 +680,18 @@ class Translations {
       'monthly_liters': 'மாதாந்திர லிட்டர்',
       'low_fat': 'கொழுப்பு குறைவு (Low FAT)',
       'low_snf': 'SNF குறைவு (Low SNF)',
-      'excess_water': 'அதிகப்படியான நீர் (Excess Water)',
+      'excess_water': 'அதிகப்படியான நீர்',
+      'reason_excess_water': 'அதிகப்படியான நீர்',
+      'reason_high_water_content': 'அதிக நீர் உள்ளடக்கம்',
+      'reason_low_fat': 'குறைந்த கொழுப்பு',
+      'reason_low_snf': 'குறைந்த SNF',
+      'reason_contaminated_milk': 'மாசுபட்ட பால்',
+      'reason_poor_quality': 'மோசமான தரம்',
+      'reason_temperature_issue': 'வெப்பநிலை சிக்கல்',
+      'reason_failed_quality_standard': 'தர தரநிலையை பூர்த்தி செய்யவில்லை',
+      'reason_quality_standards_not_met': 'தேவையான தர தரநிலைகளை பூர்த்தி செய்யவில்லை',
+      'reason_rejected_by_nestle': 'நெஸ்லேயால் நிராகரிக்கப்பட்டது',
+      'reason_batch_quality_standards_not_met': 'தொகுப்பு தர தரநிலைகளை பூர்த்தி செய்யவில்லை',
       'unknown_error': 'அறியப்படாத பிழை',
       'faq_support': 'கேள்விகள் & ஆதரவு',
       'faq_support_desc': 'உதவி மற்றும் ஆதரவு',
@@ -714,6 +747,81 @@ class Translations {
           'செயல்திறன் மேம்பாடு தேவை. உங்கள் குளிர்விக்கும் மையத்தைத் தொடர்பு கொள்ளவும்.',
     },
   };
+
+  static String translateReason(String raw, String locale) {
+    if (raw.isEmpty || raw == 'N/A') return raw;
+
+    final normalized = locale.split('_').first.split('-').first.toLowerCase();
+    final parts = raw.split(',').map((p) => p.trim()).where((p) => p.isNotEmpty);
+
+    return parts.map((part) => _translateSingleReason(part, normalized)).join(', ');
+  }
+
+  static String? _reasonLookupKey(String part) {
+    final trimmed = part.trim();
+    if (trimmed.isEmpty) return null;
+
+    if (trimmed.startsWith('reason_')) return trimmed;
+
+    final lower = trimmed.toLowerCase();
+
+    const englishToKey = {
+      'excess water': 'reason_excess_water',
+      'high water content': 'reason_high_water_content',
+      'low fat': 'reason_low_fat',
+      'low snf': 'reason_low_snf',
+      'contaminated milk': 'reason_contaminated_milk',
+      'poor quality': 'reason_poor_quality',
+      'temperature issue': 'reason_temperature_issue',
+      'failed quality standard': 'reason_failed_quality_standard',
+      'quality standards not met': 'reason_quality_standards_not_met',
+      'rejected by nestlé': 'reason_rejected_by_nestle',
+      'rejected by nestle': 'reason_rejected_by_nestle',
+      'batch quality standards not met': 'reason_batch_quality_standards_not_met',
+    };
+
+    if (englishToKey.containsKey(lower)) return englishToKey[lower];
+
+    if (lower.contains('excess water') || lower.contains('water')) {
+      return 'reason_excess_water';
+    }
+    if (lower.contains('low fat') || lower.contains('fat')) {
+      return 'reason_low_fat';
+    }
+    if (lower.contains('low snf') || lower.contains('snf')) {
+      return 'reason_low_snf';
+    }
+    if (lower.contains('quality standard')) {
+      return 'reason_quality_standards_not_met';
+    }
+    if (lower.contains('contaminat')) {
+      return 'reason_contaminated_milk';
+    }
+    if (lower.contains('temperature')) {
+      return 'reason_temperature_issue';
+    }
+    if (lower.contains('poor quality')) {
+      return 'reason_poor_quality';
+    }
+
+    return null;
+  }
+
+  static String _translateSingleReason(String part, String locale) {
+    final key = _reasonLookupKey(part);
+    if (key != null) {
+      final translated = get(key, locale);
+      if (translated != key) return translated;
+    }
+
+    // Legacy short keys used in home_screen synthesizer
+    final lower = part.toLowerCase();
+    if (lower.contains('excess water')) return get('reason_excess_water', locale);
+    if (lower.contains('low fat')) return get('reason_low_fat', locale);
+    if (lower.contains('low snf')) return get('reason_low_snf', locale);
+
+    return part;
+  }
 
   static String get(String key, String locale, {Map<String, String>? params}) {
     final normalized = locale.split('_').first.split('-').first.toLowerCase();

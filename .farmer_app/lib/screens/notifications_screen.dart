@@ -297,13 +297,41 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Map<String, String> _parseMessageParams(String paramStr) {
     final Map<String, String> params = {};
-    for (var p in paramStr.split(',')) {
+    if (paramStr.isEmpty) return params;
+
+    const reasonPrefix = 'reason:';
+    final reasonIdx = paramStr.indexOf(reasonPrefix);
+    var head = paramStr;
+    String? reasonValue;
+
+    if (reasonIdx >= 0) {
+      head = paramStr.substring(0, reasonIdx);
+      if (head.endsWith(',')) {
+        head = head.substring(0, head.length - 1);
+      }
+      reasonValue = paramStr.substring(reasonIdx + reasonPrefix.length).trim();
+    }
+
+    for (var p in head.split(',')) {
+      if (p.trim().isEmpty) continue;
       final colonIdx = p.indexOf(':');
       if (colonIdx > 0) {
         params[p.substring(0, colonIdx).trim()] = p.substring(colonIdx + 1).trim();
       }
     }
+
+    if (reasonValue != null && reasonValue.isNotEmpty) {
+      params['reason'] = reasonValue;
+    }
+
     return params;
+  }
+
+  void _localizeReasonInParams(Map<String, String> params) {
+    final reason = params['reason'];
+    if (reason != null && reason.isNotEmpty && reason != 'N/A') {
+      params['reason'] = Translations.translateReason(reason, _locale);
+    }
   }
 
   String get _locale {
@@ -354,6 +382,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         );
       } catch (_) {}
     }
+
+    _localizeReasonInParams(params);
 
     return params;
   }
@@ -437,6 +467,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         key = 'payment_disbursed_msg';
       }
 
+      _localizeReasonInParams(mergedParams);
+
       var resolved = Translations.get(key, _locale, params: mergedParams);
       if (resolved == key || _looksLikeRawKey(resolved)) {
         resolved = _fallbackForKey(key, mergedParams);
@@ -445,6 +477,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     final key = _canonicalKey(migrated);
+    _localizeReasonInParams(params);
     var resolved = Translations.get(key, _locale, params: params.isEmpty ? null : params);
     if (resolved == key || _looksLikeRawKey(resolved)) {
       resolved = _fallbackForKey(key, params);
@@ -481,6 +514,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               !allParams.containsKey('cycleEnd'))) {
         key = 'payment_disbursed_msg';
       }
+
+      _localizeReasonInParams(allParams);
 
       var resolved = Translations.get(key, _locale, params: allParams);
       if (resolved == key || _looksLikeRawKey(resolved)) {
