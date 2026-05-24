@@ -286,7 +286,10 @@ const PricingRules: React.FC = () => {
                 <div className="flex flex-col gap-1">
                   <p className="text-sm text-muted-foreground">Example earnings based on the **{rules.find(r => r.isActive)?.basePricePerLiter ? `Rs. ${rules.find(r => r.isActive)?.basePricePerLiter}` : 'Current'} Active** strategy</p>
                   <p className="text-[10px] font-mono text-primary font-bold bg-primary/5 w-max px-2 py-0.5 rounded border border-primary/10">
-                    METHOD: Base + (ActualFat - 3.5) × FatRate + (ActualSNF - 8.5) × SNFRate
+                    METHOD: Base + max(0, ActualFat - 3.5) × FatRate + max(0, ActualSNF - 8.5) × SNFRate
+                  </p>
+                  <p className="text-xs text-muted-foreground max-w-3xl leading-relaxed">
+                    Only values above the standard Fat/SNF thresholds receive a bonus. Below-standard accepted milk receives the base rate only. Rejected milk is excluded from payment.
                   </p>
                 </div>
               </div>
@@ -313,7 +316,13 @@ const PricingRules: React.FC = () => {
                   { name: 'Premium (Buffalo)', fat: 7.0, snf: 9.5, labelColor: 'bg-indigo-500' },
                   { name: 'Choice (Cow)', fat: 4.5, snf: 8.8, labelColor: 'bg-emerald-500' },
                   { name: 'Standard (Cow)', fat: 3.5, snf: 8.5, labelColor: 'bg-amber-500' },
-                  { name: 'Below Standard', fat: 3.0, snf: 8.0, labelColor: 'bg-rose-500' },
+                  {
+                    name: 'Below Standard',
+                    fat: 3.0,
+                    snf: 8.0,
+                    labelColor: 'bg-rose-500',
+                    helperText: 'Accepted below-threshold sample — no quality bonus',
+                  },
                 ].map((scenario, idx) => {
                   const activeRule = rules.find(r => r.isActive) || rules[0] || { basePricePerLiter: 0, fatBonus: 0, snfBonus: 0 };
                   
@@ -332,7 +341,11 @@ const PricingRules: React.FC = () => {
                           <div className={`w-1.5 h-8 rounded-full ${scenario.labelColor}`} />
                           <div>
                             <p className="font-bold text-foreground leading-none mb-1">{scenario.name}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">Quality Tier {4-idx}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">
+                              {'helperText' in scenario && scenario.helperText
+                                ? scenario.helperText
+                                : `Quality Tier ${4 - idx}`}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -345,7 +358,7 @@ const PricingRules: React.FC = () => {
                             +Rs. {totalBonus.toFixed(2)}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground/50">—</span>
+                          <span className="text-muted-foreground font-medium">Rs. 0.00</span>
                         )}
                       </td>
                       <td className="px-6 py-5 text-right">
