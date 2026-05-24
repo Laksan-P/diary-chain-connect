@@ -175,12 +175,38 @@ export interface FarmerRegistration {
 }
 
 export interface PredictionData {
+  history: {
+    weekly: { period: string; totalLiters: number }[];
+    monthly: { period: string; totalLiters: number }[];
+  };
+  forecast: {
+    nextWeek: {
+      period: string;
+      predictedLiters: number;
+      confidence: string;
+    } | null;
+    weekly: { period: string; predictedLiters: number; confidence: string }[];
+    monthly: { period: string; predictedLiters: number; confidence: string }[];
+  };
+  summary: {
+    currentWeeklyAverage: number | null;
+    forecastHorizon: string;
+    confidence: 'High' | 'Medium' | 'Low' | 'Not Available';
+    status: string;
+  };
+  warning: {
+    level?: string;
+    type?: string;
+    status: string;
+    message?: string;
+  } | null;
+  message: string | null;
   actualData: { week: string; value: number }[];
-  forecastData: { week: string; value: number }[];
+  forecastData: { week: string; value: number; confidence?: string }[];
   centerPredictions: {
     centerId: string;
     name: string;
-    predictions: { week: string; value: number }[];
+    predictions: { week: string; value: number; confidence?: string }[];
   }[];
   alerts: {
     level: 'Critical' | 'Warning';
