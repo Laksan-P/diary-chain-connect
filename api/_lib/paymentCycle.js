@@ -71,3 +71,12 @@ export function resolveActivePaymentCycle(unpaidCollections, now = new Date()) {
     cycleKey: `${period.start.toISOString().slice(0, 10)}_${period.end.toISOString().slice(0, 10)}`,
   };
 }
+
+/** Inclusive cycle dates for farmer-facing payment messages. */
+export function getCycleDisplayRange(period) {
+  const cycleStart = period.start.toISOString().slice(0, 10);
+  const endInclusive = new Date(period.end);
+  endInclusive.setDate(endInclusive.getDate() - 1);
+  const cycleEnd = endInclusive.toISOString().slice(0, 10);
+  return { cycleStart, cycleEnd };
+}

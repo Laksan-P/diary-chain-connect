@@ -1,7 +1,12 @@
 import supabase from './_lib/supabase.js';
 import { authenticate } from './_lib/auth.js';
 import { cors } from './_lib/cors.js';
-import { resolveActivePaymentCycle } from './_lib/paymentCycle.js';
+import { getCyclePayoutDate, getCyclePeriod, getCycleDisplayRange } from './_lib/paymentCycle.js';
+import {
+  buildCycleSummaryMeta,
+  getUnpaidApprovedCollections,
+  processFarmerSettlement,
+} from './_lib/paymentSettlement.js';
 
 function getBody(req) {
   if (!req.body) return {};
@@ -17,30 +22,14 @@ export default async function handler(req, res) {
   const user = authenticate(req, res);
   if (!user) return;
 
-  const { action, id } = req.query;
+  const { action } = req.query;
 
-  // 1. Identification & 2. Cycle Check & 3. Grouping & 4. Pricing & 5. Summary Generation
   if (action === 'cycle-summary' && req.method === 'GET') {
     try {
-      const { data: collections, error: colErr } = await supabase
-        .from('milk_collections')
-        .select(`id, farmer_id, quantity, quality_result, dispatch_status, date, milk_type, created_at, fat, snf`)
-        .eq('dispatch_status', 'Approved');
-
-      if (colErr) throw colErr;
-
-      const unpaid = collections || [];
-      if (unpaid.length === 0) {
-        return res.status(200).json({
-          cycleReached: false,
-          summary: [],
-          message: 'No pending payment summaries for this cycle.',
-        });
-      }
-
       const skipCycle = req.query.skipCycle === 'true';
-      const activeCycle = resolveActivePaymentCycle(unpaid);
-      if (!activeCycle || activeCycle.cycleCollections.length === 0) {
+      const unpaid = await getUnpaidApprovedCollections(supabase);
+
+      if (!unpaid.length) {
         return res.status(200).json({
           cycleReached: false,
           summary: [],
@@ -48,11 +37,10 @@ export default async function handler(req, res) {
         });
       }
 
-      const { period, cycleCollections, daysUntilCycle, cycleReached, cycleKey } = activeCycle;
-      const isCycleReached = cycleReached || skipCycle;
-      const filteredUnpaid = cycleCollections;
+      const cycleMeta = buildCycleSummaryMeta(unpaid, new Date(), skipCycle);
+      const isCycleReached = cycleMeta.cycleReached;
 
-      const farmerIds = [...new Set(filteredUnpaid.map(c => c.farmer_id))];
+      const farmerIds = [...new Set(unpaid.map(c => c.farmer_id))];
       const { data: farmers } = await supabase
         .from('farmers')
         .select('id, name, farmer_id')
@@ -63,7 +51,7 @@ export default async function handler(req, res) {
         return acc;
       }, {});
 
-      const farmerGroups = filteredUnpaid.reduce((acc, c) => {
+      const farmerGroups = unpaid.reduce((acc, c) => {
         const fid = c.farmer_id;
         const fData = farmerMap[fid] || {};
         if (!acc[fid]) {
@@ -90,8 +78,12 @@ export default async function handler(req, res) {
       }, {});
 
       const { data: rule, error: ruleErr } = await supabase
-        .from('pricing_rules').select('*').eq('is_active', true)
-        .order('effective_from', { ascending: false }).limit(1).maybeSingle();
+        .from('pricing_rules')
+        .select('*')
+        .eq('is_active', true)
+        .order('effective_from', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (ruleErr) throw ruleErr;
 
@@ -102,13 +94,18 @@ export default async function handler(req, res) {
         f.collections.forEach(col => {
           const fatRate = rule ? parseFloat(rule.fat_bonus || 0) : 0;
           const snfRate = rule ? parseFloat(rule.snf_bonus || 0) : 0;
-
           const fBonus = Math.max(0, (col.fat - 3.5) * fatRate);
           const sBonus = Math.max(0, (col.snf - 8.5) * snfRate);
           const finalRate = basePrice + fBonus + sBonus;
-
           farmerTotal += col.quantity * finalRate;
         });
+
+        const earliestDate = f.collections
+          .map(c => c.date)
+          .sort()[0];
+        const period = getCyclePeriod(getCyclePayoutDate(earliestDate));
+        const cycleKey = `${period.start.toISOString().slice(0, 10)}_${period.end.toISOString().slice(0, 10)}`;
+        const { cycleStart, cycleEnd } = getCycleDisplayRange(period);
 
         return {
           ...f,
@@ -116,16 +113,22 @@ export default async function handler(req, res) {
           totalPayment: farmerTotal.toFixed(2),
           status: 'Pending',
           cycleKey,
+          cycleStart,
+          cycleEnd,
         };
       });
 
+      const earliestUnpaid = unpaid.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      )[0];
+      const activePeriod = getCyclePeriod(getCyclePayoutDate(earliestUnpaid.date));
+
       return res.status(200).json({
         cycleReached: isCycleReached,
-        daysUntilCycle,
-        payoutDate: period.payoutDate.toISOString(),
-        cycleStart: period.start.toISOString(),
-        cycleEnd: period.end.toISOString(),
-        cycleKey,
+        daysUntilCycle: cycleMeta.daysUntilCycle,
+        payoutDate: cycleMeta.payoutDate || activePeriod.payoutDate.toISOString(),
+        cycleStart: activePeriod.start.toISOString(),
+        cycleEnd: activePeriod.end.toISOString(),
         summary,
       });
     } catch (err) {
@@ -134,7 +137,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // 7. Approve & 8. Process & 9. Update Status & 10. Record & 11. Notify
   if (action === 'process-batch' && req.method === 'POST') {
     try {
       const { summaryItems } = getBody(req);
@@ -142,75 +144,25 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'summaryItems required' });
       }
 
-      let processedCount = 0;
-
+      const results = [];
       for (const item of summaryItems) {
-        const { farmerId, collections, collectionIds, totalPayment, totalQty } = item;
-        const requestedIds = collectionIds || (
-          Array.isArray(collections) && typeof collections[0] === 'number'
-            ? collections
-            : (collections || []).map(c => c.id)
-        );
-
-        if (!requestedIds?.length) continue;
-
-        const { data: collectionRows, error: colLookupErr } = await supabase
-          .from('milk_collections')
-          .select('id, dispatch_status, date')
-          .in('id', requestedIds);
-
-        if (colLookupErr) throw colLookupErr;
-
-        const eligibleIds = (collectionRows || [])
-          .filter(c => c.dispatch_status === 'Approved')
-          .map(c => c.id);
-
-        if (eligibleIds.length === 0) continue;
-
-        const { data: payRecord, error: pErr } = await supabase
-          .from('payments')
-          .insert({
-            farmer_id: farmerId,
-            collection_id: eligibleIds[0],
-            quantity: totalQty,
-            amount: totalPayment,
-            base_pay: totalPayment,
-            status: 'Pending',
-          })
-          .select('id')
-          .single();
-
-        if (pErr) throw pErr;
-
-        await supabase
-          .from('payments')
-          .update({ status: 'Paid', paid_at: new Date().toISOString() })
-          .eq('id', payRecord.id);
-
-        await supabase
-          .from('milk_collections')
-          .update({ dispatch_status: 'Paid' })
-          .in('id', eligibleIds);
-
-        const { data: farmerData } = await supabase.from('farmers').select('user_id').eq('id', farmerId).single();
-        if (farmerData?.user_id) {
-          await supabase.from('notifications').insert({
-            user_id: farmerData.user_id,
-            title: 'payment_received_title',
-            message: `payment_received_msg|amount:${totalPayment},qty:${totalQty}`,
-            type: 'payment',
-          });
-        }
-
-        processedCount += 1;
+        results.push(await processFarmerSettlement(supabase, item));
       }
+
+      const processedCount = results.filter(r => r.status === 'processed').length;
+      const skippedCount = results.filter(r => r.status === 'skipped').length;
 
       return res.status(200).json({
         success: true,
         processedCount,
-        message: processedCount > 0
-          ? 'Batch processed successfully'
-          : 'No eligible collections remained for this cycle batch.',
+        skippedCount,
+        results,
+        message:
+          processedCount > 0
+            ? 'Batch processed successfully'
+            : skippedCount > 0
+              ? 'All summaries were already disbursed'
+              : 'No eligible collections remained for this batch',
       });
     } catch (err) {
       console.error(err);
@@ -226,17 +178,22 @@ export default async function handler(req, res) {
           id, farmer_id, collection_id, quantity, base_pay, amount, status, paid_at, created_at,
           farmers (name, farmer_id)
         `)
-        .eq('status', 'Paid');
+        .eq('status', 'Paid')
+        .gt('amount', 0);
 
       if (req.query.farmerId) {
         query = query.eq('farmer_id', req.query.farmerId);
       } else if (req.query.centerId) {
-        const { data: ccFarmers } = await supabase.from('farmers').select('id').eq('chilling_center_id', req.query.centerId);
+        const { data: ccFarmers } = await supabase
+          .from('farmers')
+          .select('id')
+          .eq('chilling_center_id', req.query.centerId);
         const ids = ccFarmers?.map(f => f.id) || [];
         query = query.in('farmer_id', ids);
       }
 
-      const { data: payments } = await query.order('paid_at', { ascending: false });
+      const { data: payments, error } = await query.order('paid_at', { ascending: false });
+      if (error) throw error;
 
       const flattened = (payments || []).map(p => ({
         id: p.id,
@@ -251,7 +208,10 @@ export default async function handler(req, res) {
       }));
 
       return res.status(200).json(flattened);
-    } catch (err) { return res.status(500).json({ error: 'Server error' }); }
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Server error' });
+    }
   }
 
   return res.status(400).json({ error: 'Invalid action' });

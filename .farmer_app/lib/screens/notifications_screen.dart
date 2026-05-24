@@ -215,6 +215,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
     if (raw == 'Payment Received') return 'payment_received_title';
 
+    final disbursedCycleMatch = RegExp(
+      r'^Your payment of Rs\. (\S+) for (\S+) to (\S+) has been disbursed\.$',
+    ).firstMatch(raw);
+    if (disbursedCycleMatch != null) {
+      return 'payment_disbursed_cycle_msg|amount:${disbursedCycleMatch.group(1)},cycleStart:${disbursedCycleMatch.group(2)},cycleEnd:${disbursedCycleMatch.group(3)}';
+    }
+
+    final disbursedMatch = RegExp(
+      r'^Your payment of Rs\. (\S+) has been disbursed\.$',
+    ).firstMatch(raw);
+    if (disbursedMatch != null) {
+      return 'payment_disbursed_msg|amount:${disbursedMatch.group(1)}';
+    }
+
     // Message: "Payment of Rs. 129960.00 for 1083L of milk has been processed."
     final paymentMatch = RegExp(
       r'^Payment of Rs. (\S+) for (\S+)L of milk has been processed\.$',

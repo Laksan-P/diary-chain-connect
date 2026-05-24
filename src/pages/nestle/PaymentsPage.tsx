@@ -105,32 +105,45 @@ const PaymentsPage: React.FC = () => {
   }, []);
 
   const handleProcessBatch = async () => {
+    if (!cycleData?.summary?.length) return;
+
     setLoading(true);
     try {
-      await processPaymentBatch(cycleData.summary);
+      const result = await processPaymentBatch(cycleData.summary);
 
-      toast({
-        title: 'Payments Processed (Steps 8-11)',
-        description: 'Collections marked Paid, transactions recorded, and farmers notified.',
-      });
+      if (result.processedCount > 0) {
+        toast({
+          title: 'Payments Processed',
+          description: `${result.processedCount} farmer settlement(s) disbursed and marked paid.`,
+        });
+      } else if (result.skippedCount > 0) {
+        toast({
+          title: 'Already Disbursed',
+          description: result.message || 'These summaries were already paid.',
+        });
+      }
 
       await loadHistory();
 
-      const data = await getPaymentCycleSummary(false);
-      if (data.summary?.length > 0) {
-        setCycleData(data);
+      const refreshed = await getPaymentCycleSummary(false);
+      if (refreshed.summary?.length > 0) {
+        setCycleData(refreshed);
         setActiveTab('review');
-        toast({
-          title: 'Next Cycle Ready',
-          description: `${data.summary.length} pending farmer summary(ies) remain for the active cycle.`,
-        });
+        if (result.processedCount > 0) {
+          toast({
+            title: 'Remaining Pending Summaries',
+            description: `${refreshed.summary.length} unpaid farmer summary(ies) still await disbursement.`,
+          });
+        }
       } else {
         setCycleData(null);
         setActiveTab('history');
-        toast({
-          title: 'Cycle Complete',
-          description: data.message || 'No pending payment summaries for this cycle.',
-        });
+        if (result.processedCount > 0) {
+          toast({
+            title: 'Cycle Complete',
+            description: refreshed.message || 'No pending payment summaries for this cycle.',
+          });
+        }
       }
     } catch (e: any) {
       toast({ title: 'Critical Error', description: e.message, variant: 'destructive' });

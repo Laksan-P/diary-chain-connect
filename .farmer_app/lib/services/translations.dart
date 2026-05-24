@@ -96,6 +96,10 @@ class Translations {
       'payment_received_title': 'Payment Received',
       'payment_received_msg':
           'Payment of Rs. {amount} for {qty}L of milk has been processed.',
+      'payment_disbursed_msg':
+          'Your payment of Rs. {amount} has been disbursed.',
+      'payment_disbursed_cycle_msg':
+          'Your payment of Rs. {amount} for {cycleStart} to {cycleEnd} has been disbursed.',
       'registration_successful_title': 'Registration Successful',
       'registration_welcome_msg':
           'Welcome, {name}! Your farmer account {code} is now active.',
@@ -320,6 +324,10 @@ class Translations {
       'payment_received_title': 'ගෙවීම් ලැබුණි',
       'payment_received_msg':
           'කිරි ලීටර් {qty} ක් සඳහා රු. {amount} ක ගෙවීමක් සිදුකර ඇත.',
+      'payment_disbursed_msg':
+          'රු. {amount} ක ඔබේ ගෙවීම් මුදල් ගෙවා ඇත.',
+      'payment_disbursed_cycle_msg':
+          '{cycleStart} සිට {cycleEnd} දක්වා කාල පරිච්චේදය සඳහා ඔබේ රු. {amount} ක ගෙවීම් මුදල් ගෙවා ඇත.',
       'registration_successful_title': 'ලියාපදිංචිය සාර්ථකයි',
       'registration_welcome_msg':
           'ආයුබෝවන් {name}! ඔබගේ {code} ගොවි ගිණුම දැන් සක්‍රීයයි.',
@@ -550,6 +558,10 @@ class Translations {
       'payment_received_title': 'கொடுப்பனவு பெறப்பட்டது',
       'payment_received_msg':
           '{qty}L பாலுக்கான ரூ. {amount} கொடுப்பனவு செயலாக்கப்பட்டது.',
+      'payment_disbursed_msg':
+          'உங்கள் ரூ. {amount} கொடுப்பனவு வழங்கப்பட்டது.',
+      'payment_disbursed_cycle_msg':
+          '{cycleStart} முதல் {cycleEnd} வரையிலான காலத்திற்கான உங்கள் ரூ. {amount} கொடுப்பனவு வழங்கப்பட்டது.',
       'registration_successful_title': 'பதிவு வெற்றிகரமாக முடிந்தது',
       'registration_welcome_msg':
           'வரவேற்கிறோம் {name}! உங்கள் விவசாயி கணக்கு {code} இப்போது செயல்பாட்டில் உள்ளது.',
