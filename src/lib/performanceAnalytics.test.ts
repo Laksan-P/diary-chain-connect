@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatPassRate,
   formatTrendPassRate,
+  formatVolumeLiters,
   getQualityTone,
   hasEnoughTrendMonths,
   PASS_RATE_THRESHOLD,
@@ -26,7 +27,13 @@ describe('performanceAnalytics', () => {
   it('formats pass rates without long decimals', () => {
     expect(formatPassRate(71.42857142857143)).toBe('71.4%');
     expect(formatTrendPassRate(71)).toBe('71%');
+    expect(formatTrendPassRate(80)).toBe('80%');
     expect(formatPassRate(null)).toBe('No Data');
+  });
+
+  it('formats volume liters cleanly', () => {
+    expect(formatVolumeLiters(150)).toBe('150 L');
+    expect(formatVolumeLiters(123.456)).toBe('123.5 L');
   });
 
   it('requires at least two months for trend history', () => {

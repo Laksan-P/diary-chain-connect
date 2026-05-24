@@ -69,3 +69,8 @@ export function formatTrendPassRate(value: number | null | undefined): string {
   if (value == null) return '';
   return `${Number(value.toFixed(1))}%`;
 }
+
+export function formatVolumeLiters(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '0 L';
+  return `${Number(value.toFixed(1))} L`;
+}

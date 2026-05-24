@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   formatPassRate,
   formatTrendPassRate,
+  formatVolumeLiters,
   getListBadgeClasses,
   getQualityCardClasses,
   getQualityTone,
@@ -269,10 +270,12 @@ const PerformanceDashboard: React.FC = () => {
                       {!enoughTrendHistory ? (
                         <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm text-center px-6">
                           <BarChart3 className="w-8 h-8 mb-2 opacity-30" />
-                          <p>Not enough monthly history for trend.</p>
-                          {trendData.length === 1 && (
-                            <p className="text-xs mt-1">
-                              {trendData[0].month}: {trendData[0].volume} L supplied
+                          <p>
+                            Not enough monthly history for trend. Add approved collections across at least 2 different months to view the trend.
+                          </p>
+                          {trendData.length >= 1 && (
+                            <p className="text-xs mt-2 text-foreground/70">
+                              {trendData[trendData.length - 1].month}: {formatVolumeLiters(trendData[trendData.length - 1].volume)} total
                             </p>
                           )}
                         </div>
@@ -312,10 +315,12 @@ const PerformanceDashboard: React.FC = () => {
                       {qualityChartData.length < 2 ? (
                         <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm text-center px-6">
                           <CheckCircle2 className="w-8 h-8 mb-2 opacity-30" />
-                          <p>Not enough monthly history for trend.</p>
-                          {qualityChartData.length === 1 && (
-                            <p className="text-xs mt-1">
-                              {qualityChartData[0].month}: {formatTrendPassRate(qualityChartData[0].passRate)}
+                          <p>
+                            Not enough monthly inspection history for trend. At least 2 months of Nestlé-inspected collections are required.
+                          </p>
+                          {qualityChartData.length >= 1 && (
+                            <p className="text-xs mt-2 text-foreground/70">
+                              {qualityChartData[qualityChartData.length - 1].month}: {formatTrendPassRate(qualityChartData[qualityChartData.length - 1].passRate)} pass rate
                             </p>
                           )}
                         </div>
