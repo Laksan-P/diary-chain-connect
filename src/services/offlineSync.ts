@@ -74,19 +74,12 @@ export const cleanOfflineFarmerCache = (): unknown[] => {
 export const cleanAllOfflineCaches = () => {
   cleanOfflineFarmerCache();
 
-  ['cache_collection_history', 'dispatch_all_collections', 'dispatch_pending_collections'].forEach(key => {
-    const raw = localStorage.getItem(key);
-    if (!raw) return;
-    try {
-      const data = JSON.parse(raw);
-      if (Array.isArray(data)) {
-        const cleaned = data.filter((item: Record<string, unknown>) => !isOfflineId(item?.id));
-        if (cleaned.length !== data.length) {
-          localStorage.setItem(key, JSON.stringify(cleaned));
-        }
-      }
-    } catch {
-      /* ignore malformed cache */
+  ['collection_history', 'dispatch_all_collections', 'dispatch_pending_collections'].forEach(key => {
+    const data = getCache(key);
+    if (!Array.isArray(data)) return;
+    const cleaned = data.filter((item: Record<string, unknown>) => !isOfflineId(item?.id));
+    if (cleaned.length !== data.length) {
+      saveCache(key, cleaned);
     }
   });
 };
@@ -197,12 +190,10 @@ const canSyncDispatch = (
   });
 
 const getCachedCollectionsForDuplicateCheck = (): Record<string, unknown>[] => {
-  const sources = ['cache_collection_history', 'dispatch_all_collections', 'cache_collections'];
+  const sources = ['collection_history', 'dispatch_all_collections', 'collections'];
   const merged: Record<string, unknown>[] = [];
   for (const key of sources) {
-    const fromPrefixed = getCache(key.replace(/^cache_/, ''));
-    const direct = localStorage.getItem(key);
-    const data = fromPrefixed ?? (direct ? JSON.parse(direct) : null);
+    const data = getCache(key);
     if (Array.isArray(data)) merged.push(...data);
   }
   return merged;
