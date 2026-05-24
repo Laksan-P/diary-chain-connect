@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import NotificationBell from '@/components/NotificationBell';
 import FloatingFaqButton from '@/components/FloatingFaqButton';
+import OfflineSyncStatus from '@/components/OfflineSyncStatus';
 
 const navItems = [
   { title: 'Dashboard', path: '/chilling-center', icon: Milk },
@@ -24,18 +25,6 @@ const ChillingCenterLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-  React.useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -90,12 +79,7 @@ const ChillingCenterLayout: React.FC = () => {
           <h1 className="font-display font-semibold text-foreground flex-1">Chilling Center Dashboard</h1>
           <NotificationBell />
         </header>
-        {!isOnline && (
-          <div className="bg-destructive/10 border-b border-destructive/20 py-2 px-6 flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-            <span className="text-xs font-medium text-destructive">Offline Mode – Data will sync when connection is restored</span>
-          </div>
-        )}
+        <OfflineSyncStatus />
         <main className="flex-1 overflow-auto p-6 relative">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
             <Outlet />

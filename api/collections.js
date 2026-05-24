@@ -19,9 +19,9 @@ export default async function handler(req, res) {
   const { action } = req.query;
 
   // Debug logging
-  console.log("METHOD:", req.method);
-  console.log("ACTION:", action);
-  console.log("BODY:", getBody(req));
+  if (action === 'create') {
+    console.log("ACTION:", action);
+  }
 
   // ────────── GET /api/collections?action=list ──────────
   if (action === 'list' && req.method === 'GET') {
@@ -80,36 +80,42 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      // Soft idempotency check (since offline_id column is missing)
-      const { data: existing } = await supabase
+      // Soft idempotency check (offline_id column not available in DB)
+      let existingQuery = supabase
         .from('milk_collections')
         .select('id')
-        .match({ 
-          farmer_id: farmerId, 
-          chilling_center_id: chillingCenterId, 
-          date: date, 
-          time: time, 
-          quantity: quantity 
-        })
-        .maybeSingle();
+        .eq('farmer_id', farmerId)
+        .eq('chilling_center_id', chillingCenterId)
+        .eq('date', date)
+        .eq('time', time)
+        .eq('quantity', quantity);
+
+      if (milkType) {
+        existingQuery = existingQuery.eq('milk_type', milkType);
+      }
+
+      const { data: existing } = await existingQuery.maybeSingle();
 
       let newId;
       if (existing) {
-        console.log(`[Backend] Collection already exists, skipping duplicate: ${existing.id}`);
-        newId = existing.id;
-      } else {
-        const { data: insertRows, error: insertErr } = await supabase
-          .from('milk_collections')
-          .insert({
-            farmer_id: farmerId, chilling_center_id: chillingCenterId,
-            date, time, temperature, quantity, milk_type: milkType || 'Cow',
-          })
-          .select('id')
-          .single();
-
-        if (insertErr) throw insertErr;
-        newId = insertRows.id;
+        return res.status(200).json({
+          id: existing.id,
+          farmerId,
+          existing: true,
+          offline_id,
+        });
       }
+      const { data: insertRows, error: insertErr } = await supabase
+        .from('milk_collections')
+        .insert({
+          farmer_id: farmerId, chilling_center_id: chillingCenterId,
+          date, time, temperature, quantity, milk_type: milkType || 'Cow',
+        })
+        .select('id')
+        .single();
+
+      if (insertErr) throw insertErr;
+      newId = insertRows.id;
 
       const { data: mc, error: fetchErr } = await supabase
         .from('milk_collections')

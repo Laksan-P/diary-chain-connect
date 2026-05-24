@@ -8,7 +8,7 @@ import type { MilkCollection, ChillingCenter } from '@/types';
 import { formatDate, formatQuantity, parseNumber } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { getPendingActions } from '@/services/offlineSync';
+import { mergeFarmersWithPending } from '@/services/offlineSync';
 
 const CCDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -30,9 +30,7 @@ const CCDashboard: React.FC = () => {
       ]).then(([colsResult, farmersResult, dispatchesResult, detailsResult]) => {
         if (colsResult.status === 'fulfilled') setCollections(colsResult.value);
         if (farmersResult.status === 'fulfilled') {
-          const serverFarmers = farmersResult.value;
-          const pendingRegistrations = getPendingActions().filter((a: any) => a.type === 'farmer_registration');
-          setFarmerCount(serverFarmers.length + pendingRegistrations.length);
+          setFarmerCount(mergeFarmersWithPending(farmersResult.value).length);
         }
         if (dispatchesResult.status === 'fulfilled') setDispatchCount(dispatchesResult.value.length);
         if (detailsResult.status === 'fulfilled') setCenterDetails(detailsResult.value);
@@ -59,9 +57,7 @@ const CCDashboard: React.FC = () => {
         ]).then(([colsResult, farmersResult, dispatchesResult, detailsResult]) => {
           if (colsResult.status === 'fulfilled') setCollections(colsResult.value);
           if (farmersResult.status === 'fulfilled') {
-            const serverFarmers = farmersResult.value;
-            const pendingRegistrations = getPendingActions().filter((a: any) => a.type === 'farmer_registration');
-            setFarmerCount(serverFarmers.length + pendingRegistrations.length);
+            setFarmerCount(mergeFarmersWithPending(farmersResult.value).length);
           }
           if (dispatchesResult.status === 'fulfilled') setDispatchCount(dispatchesResult.value.length);
           if (detailsResult.status === 'fulfilled') setCenterDetails(detailsResult.value);
@@ -71,16 +67,14 @@ const CCDashboard: React.FC = () => {
 
     window.addEventListener('offline-sync-complete', handleUpdate);
     window.addEventListener('online', handleUpdate);
+    window.addEventListener('offline-action-saved', handleUpdate);
 
     return () => {
       window.removeEventListener('offline-sync-complete', handleUpdate);
       window.removeEventListener('online', handleUpdate);
+      window.removeEventListener('offline-action-saved', handleUpdate);
     };
   }, [user]);
-
-  if (centerDetails) {
-    console.log(`[Frontend CC Debug] PassRate: ${centerDetails.quality_pass_rate}, Status: ${centerDetails.performance_status}, ShowAlert: ${centerDetails.show_alert}`);
-  }
 
   const totalQty = collections.reduce((s, c) => s + parseNumber(c.quantity), 0);
   const displayPassRate = centerDetails?.quality_pass_rate ?? 0;

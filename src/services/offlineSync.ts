@@ -1,223 +1,368 @@
 import { createCollection, submitQualityTest, createDispatch } from './api';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  dedupeFarmers,
+  findDuplicatePendingAction,
+  isDuplicateCollection,
+  isOfflineId,
+  mergeFarmersWithPending as mergeFarmersWithPendingHelper,
+  normalizeFarmerKey,
+  pendingRegistrationsToFarmers as pendingRegistrationsToFarmersHelper,
+  stripOfflineRecords,
+  type PendingActionData,
+} from './offlineSyncHelpers';
 
-
-export interface PendingAction {
-  id: string;
-  type: 'collection' | 'quality' | 'dispatch' | 'farmer_registration';
-  data: any;
-  timestamp: number;
-  syncedServerId?: number | string; // Set after successful sync
-}
+export type PendingAction = PendingActionData;
+export {
+  dedupeFarmers,
+  isDuplicateCollection,
+  normalizeFarmerKey,
+  normalizeCollectionKey,
+  normalizeQualityKey,
+  normalizeDispatchKey,
+} from './offlineSyncHelpers';
 
 const STORAGE_KEY = 'pending_actions';
+const SYNC_DEBOUNCE_MS = 400;
 
 export const getPendingActions = (): PendingAction[] => {
   const stored = localStorage.getItem(STORAGE_KEY);
   return stored ? JSON.parse(stored) : [];
 };
 
-export const savePendingAction = (type: PendingAction['type'], data: any) => {
+const persistActions = (actions: PendingAction[]) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(actions));
+};
+
+const updateActionStatus = (id: string, updates: Partial<PendingAction>) => {
+  const actions = getPendingActions().map(a => (a.id === id ? { ...a, ...updates } : a));
+  persistActions(actions);
+};
+
+export const savePendingAction = (type: PendingAction['type'], data: Record<string, unknown>): string => {
   const actions = getPendingActions();
+  const existing = findDuplicatePendingAction(actions, type, data);
+  if (existing) return existing.id;
+
   const newAction: PendingAction = {
     id: uuidv4(),
     type,
     data,
     timestamp: Date.now(),
+    syncStatus: 'pending',
   };
   actions.push(newAction);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(actions));
+  persistActions(actions);
   window.dispatchEvent(new CustomEvent('offline-action-saved', { detail: newAction }));
   return newAction.id;
 };
 
 export const removePendingAction = (id: string) => {
-  const actions = getPendingActions();
-  const filtered = actions.filter(a => a.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  persistActions(getPendingActions().filter(a => a.id !== id));
   window.dispatchEvent(new CustomEvent('offline-action-saved'));
 };
 
-// Trigger sync whenever something is saved and we are online
-window.addEventListener('offline-action-saved', () => {
-  if (navigator.onLine && !isSyncing) {
-    console.log('[OfflineSync] Action saved. Triggering auto-sync...');
-    syncActions().catch(err => console.error('[OfflineSync] Auto-sync failed:', err));
+export const cleanOfflineFarmerCache = (): unknown[] => {
+  const farmersCache = getCache('farmers') || [];
+  const cleaned = stripOfflineRecords(farmersCache);
+  if (cleaned.length !== farmersCache.length) {
+    saveCache('farmers', cleaned);
   }
-});
+  return cleaned;
+};
+
+export const cleanAllOfflineCaches = () => {
+  cleanOfflineFarmerCache();
+
+  ['cache_collection_history', 'dispatch_all_collections', 'dispatch_pending_collections'].forEach(key => {
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) {
+        const cleaned = data.filter((item: Record<string, unknown>) => !isOfflineId(item?.id));
+        if (cleaned.length !== data.length) {
+          localStorage.setItem(key, JSON.stringify(cleaned));
+        }
+      }
+    } catch {
+      /* ignore malformed cache */
+    }
+  });
+};
 
 let isSyncing = false;
+let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let activeSyncPromise: Promise<void> | null = null;
 
-export const syncActions = async () => {
-  if (isSyncing) {
-    console.log('[OfflineSync] Sync already in progress. Skipping duplicate trigger.');
-    return;
+export const isSyncInProgress = () => isSyncing;
+
+export const getSyncSummary = () => {
+  const actions = getPendingActions();
+  return {
+    total: actions.length,
+    pending: actions.filter(a => !a.syncStatus || a.syncStatus === 'pending').length,
+    syncing: actions.filter(a => a.syncStatus === 'syncing').length,
+    failed: actions.filter(a => a.syncStatus === 'failed').length,
+    failedActions: actions.filter(a => a.syncStatus === 'failed'),
+    isSyncing,
+    isOnline: navigator.onLine,
+  };
+};
+
+const mapFarmerSyncResult = (
+  action: PendingAction,
+  serverId: number | string,
+  idMappings: { farmers: Record<string, number | string> }
+) => {
+  const keys = [action.id, action.data.tempId, action.data.farmerId].filter(Boolean).map(String);
+  for (const key of keys) {
+    idMappings.farmers[key] = serverId;
   }
+  updatePendingIdReferences(keys, serverId, 'farmer');
+};
+
+const updatePendingIdReferences = (
+  offlineIds: string[],
+  serverId: number | string,
+  type: 'collection' | 'farmer'
+) => {
+  const offlineIdSet = new Set(offlineIds.filter(Boolean).map(String));
+  let changed = false;
+
+  const updatedActions = getPendingActions().map(action => {
+    if (type === 'collection') {
+      if (action.type === 'dispatch' && action.data.items) {
+        action.data.items = (action.data.items as Array<Record<string, unknown>>).map(item => {
+          if (item.offlineCollectionId && offlineIdSet.has(String(item.offlineCollectionId))) {
+            changed = true;
+            return { ...item, collectionId: serverId };
+          }
+          return item;
+        });
+      }
+      if (
+        action.type === 'quality' &&
+        action.data.offlineCollectionId &&
+        offlineIdSet.has(String(action.data.offlineCollectionId))
+      ) {
+        action.data.collectionId = serverId;
+        changed = true;
+      }
+    } else if (type === 'farmer') {
+      if (action.type === 'collection' && offlineIdSet.has(String(action.data.farmerId))) {
+        action.data.farmerId = serverId;
+        changed = true;
+      }
+    }
+    return action;
+  });
+
+  if (changed) persistActions(updatedActions);
+};
+
+const resolveFarmerId = (
+  farmerRef: string,
+  idMappings: { farmers: Record<string, number | string> }
+): number | string | null => {
+  const resolved = idMappings.farmers[farmerRef] ?? farmerRef;
+  if (String(resolved).startsWith('OFF-')) return null;
+  return resolved;
+};
+
+const resolveCollectionId = (
+  action: PendingAction,
+  idMappings: { collections: Record<string, number | string> }
+): number | null => {
+  const offlineRef = action.data.offlineCollectionId
+    ? String(action.data.offlineCollectionId)
+    : null;
+  const mapped = offlineRef ? idMappings.collections[offlineRef] : null;
+  const raw = mapped ?? action.data.collectionId;
+  const numeric = Number(raw);
+  if (!numeric || String(raw).startsWith('OFF-')) return null;
+  return numeric;
+};
+
+const canSyncDispatch = (
+  action: PendingAction,
+  idMappings: { collections: Record<string, number | string> }
+): boolean =>
+  ((action.data.items as Array<Record<string, unknown>>) || []).every(item => {
+    const offlineRef = item.offlineCollectionId ? String(item.offlineCollectionId) : null;
+    const mapped = offlineRef ? idMappings.collections[offlineRef] : null;
+    const raw = mapped ?? item.collectionId;
+    const numeric = Number(raw);
+    return numeric > 0 && !String(raw).startsWith('OFF-');
+  });
+
+const getCachedCollectionsForDuplicateCheck = (): Record<string, unknown>[] => {
+  const sources = ['cache_collection_history', 'dispatch_all_collections', 'cache_collections'];
+  const merged: Record<string, unknown>[] = [];
+  for (const key of sources) {
+    const fromPrefixed = getCache(key.replace(/^cache_/, ''));
+    const direct = localStorage.getItem(key);
+    const data = fromPrefixed ?? (direct ? JSON.parse(direct) : null);
+    if (Array.isArray(data)) merged.push(...data);
+  }
+  return merged;
+};
+
+export const checkDuplicateCollection = (data: Record<string, unknown>): boolean =>
+  isDuplicateCollection(data, getPendingActions(), getCachedCollectionsForDuplicateCheck());
+
+export const pendingRegistrationsToFarmers = () =>
+  pendingRegistrationsToFarmersHelper(getPendingActions());
+
+export const mergeFarmersWithPending = (serverOrCachedFarmers: unknown[] = []) =>
+  mergeFarmersWithPendingHelper(serverOrCachedFarmers as Record<string, unknown>[], getPendingActions());
+
+export const syncActions = async (): Promise<void> => {
+  if (isSyncing) return activeSyncPromise ?? Promise.resolve();
+
   const actions = getPendingActions();
   if (actions.length === 0) return;
 
-  console.log(`[OfflineSync] Starting sync for ${actions.length} actions...`);
   isSyncing = true;
+  window.dispatchEvent(new CustomEvent('offline-sync-started'));
 
-  const remainingActions: PendingAction[] = [];
+  const run = async () => {
+    const idMappings = getCache('sync_id_mappings') || { collections: {}, farmers: {} };
+    const { registerFarmerByCenter } = await import('@/services/api');
 
-  // Sync in order: farmer_registration → collection → quality → dispatch
-  const farmers = actions.filter(a => a.type === 'farmer_registration');
-  const collections = actions.filter(a => a.type === 'collection');
-  const qualities = actions.filter(a => a.type === 'quality');
-  const dispatches = actions.filter(a => a.type === 'dispatch');
-
-  // Load persistent mappings (offlineId -> serverId)
-  const idMappings = getCache('sync_id_mappings') || { collections: {}, farmers: {} };
-
-  const { registerFarmerByCenter } = await import('@/services/api');
-
-  // Helper to update all pending actions when an ID is resolved
-  const updatePendingIdReferences = (offlineId: string, serverId: number | string, type: 'collection' | 'farmer') => {
-    const allActions = getPendingActions();
-    let changed = false;
-
-    const updatedActions = allActions.map(action => {
-      if (type === 'collection') {
-        if (action.type === 'dispatch' && action.data.items) {
-          action.data.items = action.data.items.map((item: any) => {
-            if (item.offlineCollectionId === offlineId) {
-              changed = true;
-              return { ...item, collectionId: serverId };
-            }
-            return item;
+    for (const action of getPendingActions().filter(a => a.type === 'farmer_registration')) {
+      updateActionStatus(action.id, { syncStatus: 'syncing', errorMessage: undefined });
+      try {
+        const result = await registerFarmerByCenter({ ...action.data, offline_id: action.id } as Parameters<typeof registerFarmerByCenter>[0] & { offline_id: string });
+        if (result?.id) {
+          mapFarmerSyncResult(action, result.id, idMappings);
+          saveCache('sync_id_mappings', idMappings);
+          removePendingAction(action.id);
+          cleanOfflineFarmerCache();
+        } else {
+          updateActionStatus(action.id, {
+            syncStatus: 'failed',
+            errorMessage: 'Server returned no farmer ID',
           });
         }
-        if (action.type === 'quality' && action.data.offlineCollectionId === offlineId) {
-          action.data.collectionId = serverId;
-          changed = true;
-        }
-      } else if (type === 'farmer') {
-        if (action.type === 'collection' && action.data.farmerId === offlineId) {
-          action.data.farmerId = serverId;
-          changed = true;
-        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Farmer sync failed';
+        updateActionStatus(action.id, { syncStatus: 'failed', errorMessage: message });
+        console.error(`[OfflineSync] Farmer sync failed for ${action.data.name}:`, message);
       }
-      return action;
-    });
-
-    if (changed) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedActions));
     }
+
+    for (const action of getPendingActions().filter(a => a.type === 'collection')) {
+      const farmerRef = String(action.data.farmerId);
+      const resolvedFarmerId = resolveFarmerId(farmerRef, idMappings);
+      if (resolvedFarmerId == null) continue;
+
+      updateActionStatus(action.id, { syncStatus: 'syncing', errorMessage: undefined });
+      try {
+        const result = await createCollection({
+          ...action.data,
+          farmerId: Number(resolvedFarmerId),
+          offline_id: action.id,
+        } as Parameters<typeof createCollection>[0] & { offline_id: string });
+        if (result?.id) {
+          idMappings.collections[action.id] = result.id;
+          updatePendingIdReferences([action.id], result.id, 'collection');
+          saveCache('sync_id_mappings', idMappings);
+          removePendingAction(action.id);
+        } else {
+          updateActionStatus(action.id, {
+            syncStatus: 'failed',
+            errorMessage: 'Server returned no collection ID',
+          });
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Collection sync failed';
+        updateActionStatus(action.id, { syncStatus: 'failed', errorMessage: message });
+        console.error('[OfflineSync] Collection sync failed:', message);
+      }
+    }
+
+    saveCache('sync_id_mappings', idMappings);
+
+    for (const action of getPendingActions().filter(a => a.type === 'quality')) {
+      const collectionId = resolveCollectionId(action, idMappings);
+      if (collectionId == null) continue;
+
+      updateActionStatus(action.id, { syncStatus: 'syncing', errorMessage: undefined });
+      try {
+        await submitQualityTest({
+          ...action.data,
+          collectionId,
+          offlineCollectionId: action.data.offlineCollectionId as string | undefined,
+          offline_id: action.id,
+        } as Parameters<typeof submitQualityTest>[0] & { offline_id: string });
+        removePendingAction(action.id);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Quality sync failed';
+        updateActionStatus(action.id, { syncStatus: 'failed', errorMessage: message });
+        console.error('[OfflineSync] Quality sync failed:', message);
+      }
+    }
+
+    for (const action of getPendingActions().filter(a => a.type === 'dispatch')) {
+      if (!canSyncDispatch(action, idMappings)) continue;
+
+      updateActionStatus(action.id, { syncStatus: 'syncing', errorMessage: undefined });
+      try {
+        const resolvedItems = (action.data.items as Array<Record<string, unknown>>)?.map(item => {
+          const offlineRef = item.offlineCollectionId ? String(item.offlineCollectionId) : null;
+          const mapped = offlineRef ? idMappings.collections[offlineRef] : null;
+          const raw = mapped ?? item.collectionId;
+          return { ...item, collectionId: Number(raw) || 0 };
+        });
+
+        const result = await createDispatch({
+          ...action.data,
+          items: resolvedItems,
+          offline_id: action.id,
+        } as Parameters<typeof createDispatch>[0] & { offline_id: string });
+
+        if (result?.id) {
+          removePendingAction(action.id);
+        } else {
+          updateActionStatus(action.id, {
+            syncStatus: 'failed',
+            errorMessage: 'Server returned no dispatch ID',
+          });
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Dispatch sync failed';
+        updateActionStatus(action.id, { syncStatus: 'failed', errorMessage: message });
+        console.error('[OfflineSync] Dispatch sync failed:', message);
+      }
+    }
+
+    cleanAllOfflineCaches();
   };
 
-  for (const action of farmers) {
-    try {
-      console.log(`[OfflineSync] Syncing farmer: ${action.data.name}...`);
-      const result = await registerFarmerByCenter({ ...action.data, offline_id: action.id });
-
-      if (result?.id) {
-        console.log(`[OfflineSync] Farmer ${action.data.name} synced successfully. New ID: ${result.id}`);
-        idMappings.farmers[action.id] = result.id;
-        updatePendingIdReferences(action.id, result.id, 'farmer');
-        removePendingAction(action.id);
-      } else {
-        console.warn(`[OfflineSync] Farmer ${action.data.name} sync returned no ID.`, result);
-      }
-    } catch (error: any) {
-      console.error(`[OfflineSync] Farmer sync failed for ${action.data.name}:`, error.message || error);
-      if (error.message?.includes('409') || error.message?.includes('already registered')) {
-        console.warn(`[OfflineSync] Conflict detected for ${action.data.name}. Removing duplicate action.`);
-        removePendingAction(action.id);
-      }
-    }
-  }
-
-  for (const action of collections) {
-    try {
-      const resolvedFarmerId = idMappings.farmers[action.data.farmerId] || action.data.farmerId;
-      const result = await createCollection({ ...action.data, farmerId: resolvedFarmerId, offline_id: action.id });
-      if (result?.id) {
-        idMappings.collections[action.id] = result.id;
-        updatePendingIdReferences(action.id, result.id, 'collection');
-        removePendingAction(action.id); // Remove immediately on success
-      }
-    } catch (error) {
-      console.error(`[OfflineSync] Collection sync failed:`, error);
-    }
-  }
-
-  saveCache('sync_id_mappings', idMappings);
-
-  for (const action of qualities) {
-    try {
-      const realId = action.data.offlineCollectionId
-        ? (idMappings.collections[action.data.offlineCollectionId] || action.data.collectionId)
-        : action.data.collectionId;
-
-      await submitQualityTest({
-        ...action.data,
-        collectionId: Number(realId) || 0,
-        offlineCollectionId: action.data.offlineCollectionId,
-        offline_id: action.id,
-      });
-      removePendingAction(action.id); // Remove immediately on success
-    } catch (error) {
-      console.error(`[OfflineSync] Quality sync failed:`, error);
-    }
-  }
-
-  for (const action of dispatches) {
-  try {
-    // Skip if already synced
-    const latestActions = getPendingActions();
-    const stillExists = latestActions.find(a => a.id === action.id);
-
-    if (!stillExists) {
-      console.log(`[OfflineSync] Dispatch ${action.id} already synced. Skipping.`);
-      continue;
-    }
-
-    const resolvedItems = action.data.items?.map((item: any) => {
-      const realId = item.offlineCollectionId
-        ? (idMappings.collections[item.offlineCollectionId] || item.collectionId)
-        : item.collectionId;
-
-      return {
-        ...item,
-        collectionId: Number(realId) || 0
-      };
+  activeSyncPromise = run()
+    .catch(err => console.error('[OfflineSync] Sync cycle error:', err))
+    .finally(() => {
+      isSyncing = false;
+      activeSyncPromise = null;
+      window.dispatchEvent(new CustomEvent('offline-sync-complete'));
     });
 
-    const result = await createDispatch({
-      ...action.data,
-      items: resolvedItems,
-      offline_id: action.id
-    });
+  return activeSyncPromise;
+};
 
-    if (result && result.id) {
-      console.log(`[OfflineSync] Dispatch synced successfully: ${result.id}`);
-      removePendingAction(action.id);
-    }
-  } catch (error) {
-    console.error(`[OfflineSync] Dispatch sync failed:`, error);
-  }
-} 
-
-  console.log(`[OfflineSync] Sync cycle complete.`);
-
-  // Final Cache Cleanup to prevent duplication in UI
-  const farmersCache = getCache('farmers') || [];
-  const updatedFarmersCache = farmersCache.filter((f: any) => !String(f.id).startsWith('OFF-') && !String(f.farmerId).startsWith('OFF-'));
-  if (farmersCache.length !== updatedFarmersCache.length) {
-    saveCache('farmers', updatedFarmersCache);
-  }
-
-  setTimeout(() => {
-    isSyncing = false;
-    window.dispatchEvent(new CustomEvent('offline-sync-complete'));
-  }, 1000);
-
+export const requestSync = () => {
+  if (!navigator.onLine) return;
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(() => {
+    syncDebounceTimer = null;
+    syncActions().catch(err => console.error('[OfflineSync] Debounced sync failed:', err));
+  }, SYNC_DEBOUNCE_MS);
 };
 
 export const isOnline = () => navigator.onLine;
 
-export const saveCache = (key: string, data: any) => {
+export const saveCache = (key: string, data: unknown) => {
   localStorage.setItem(`cache_${key}`, JSON.stringify(data));
 };
 
@@ -226,33 +371,24 @@ export const getCache = (key: string) => {
   return data ? JSON.parse(data) : null;
 };
 
-export const getPendingByType = (type: PendingAction['type']) => {
-  return getPendingActions().filter(a => a.type === type);
-};
+export const getPendingByType = (type: PendingAction['type']) =>
+  getPendingActions().filter(a => a.type === type);
 
-// Show offline pending records only when offline OR when server doesn't have them yet
-export const shouldShowOfflineRecord = (offlineId: string, serverIds: number[]) => {
-  // If we're online and the server already has this record, don't show the offline copy
-  return !navigator.onLine;
-};
+export const shouldShowOfflineRecord = (_offlineId: string, _serverIds: number[]) =>
+  !navigator.onLine;
 
-window.addEventListener('online', async () => {
-  console.log('Online restored, syncing...');
-  await syncActions();
-});
+if (typeof window !== 'undefined') {
+  window.addEventListener('offline-action-saved', () => requestSync());
 
-// Periodic sync (heartbeat) to ensure stuck records are eventually pushed
-setInterval(async () => {
-  if (navigator.onLine && !isSyncing) {
-    const actions = getPendingActions();
-    if (actions.length > 0) {
-      console.log(`Periodic sync: ${actions.length} actions pending...`);
-      await syncActions();
+  window.addEventListener('online', () => requestSync());
+
+  setInterval(() => {
+    if (navigator.onLine && !isSyncing && getPendingActions().length > 0) {
+      requestSync();
     }
-  }
-}, 60000); // Every 60 seconds
+  }, 60000);
 
-// Immediate sync on load if online
-if (navigator.onLine) {
-  syncActions().catch(err => console.error('Initial sync failed:', err));
+  if (navigator.onLine) {
+    requestSync();
+  }
 }

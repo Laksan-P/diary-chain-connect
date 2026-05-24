@@ -220,16 +220,66 @@ export default async function handler(req, res) {
       const body = getBody(req);
       const { name, address, phone, nic, chillingCenterId, bankName, accountNumber, branch, email, password, offline_id } = body;
 
-      console.log(`[AUTH:register-farmer-by-center] Processing registration for ${name} (OfflineID: ${offline_id || 'N/A'})`);
-
       if (!name || !chillingCenterId) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      const { data: existingEmail } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
-      if (existingEmail) {
-        console.warn(`[AUTH:register-farmer-by-center] Email ${email} already exists.`);
-        return res.status(409).json({ error: 'Email already registered' });
+      const findExistingFarmer = async () => {
+        if (email) {
+          const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+          if (existingUser) {
+            const { data: farmer } = await supabase
+              .from('farmers')
+              .select('id, farmer_id, user_id, name, address, phone, nic')
+              .eq('user_id', existingUser.id)
+              .maybeSingle();
+            if (farmer) return farmer;
+          }
+        }
+
+        if (nic && nic.trim() !== '') {
+          const { data: farmer } = await supabase
+            .from('farmers')
+            .select('id, farmer_id, user_id, name, address, phone, nic')
+            .eq('nic', nic)
+            .eq('chilling_center_id', chillingCenterId)
+            .maybeSingle();
+          if (farmer) return farmer;
+        }
+
+        if (phone && phone.trim() !== '') {
+          const { data: farmer } = await supabase
+            .from('farmers')
+            .select('id, farmer_id, user_id, name, address, phone, nic')
+            .eq('phone', phone)
+            .eq('chilling_center_id', chillingCenterId)
+            .maybeSingle();
+          if (farmer) return farmer;
+        }
+
+        const { data: farmer } = await supabase
+          .from('farmers')
+          .select('id, farmer_id, user_id, name, address, phone, nic')
+          .eq('name', name)
+          .eq('chilling_center_id', chillingCenterId)
+          .maybeSingle();
+        return farmer || null;
+      };
+
+      const existingFarmer = await findExistingFarmer();
+      if (existingFarmer) {
+        return res.status(200).json({
+          id: existingFarmer.id,
+          farmerId: existingFarmer.farmer_id,
+          userId: existingFarmer.user_id,
+          name: existingFarmer.name,
+          address: existingFarmer.address,
+          phone: existingFarmer.phone,
+          nic: existingFarmer.nic,
+          success: true,
+          existing: true,
+          offline_id,
+        });
       }
 
       let userId = null;
@@ -282,8 +332,6 @@ export default async function handler(req, res) {
         });
       }
 
-      console.log(`[AUTH:register-farmer-by-center] Success! Created farmer ${farmerCode} (DB ID: ${farmerRowId})`);
-
       return res.status(201).json({
         id: farmerRowId,
         farmerId: farmerCode,
@@ -292,7 +340,8 @@ export default async function handler(req, res) {
         address,
         phone,
         nic,
-        success: true
+        success: true,
+        offline_id,
       });
     } catch (err) {
       console.error('[AUTH:register-farmer-by-center] Unexpected error:', err);

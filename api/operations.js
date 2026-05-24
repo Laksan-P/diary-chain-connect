@@ -26,11 +26,40 @@ export default async function handler(req, res) {
   if (action === 'quality-test' && req.method === 'POST') {
     try {
       const body = getBody(req);
-      let { collectionId, snf, fat, water, offlineCollectionId } = body;
+      let { collectionId, snf, fat, water, offlineCollectionId, offline_id } = body;
 
       if ((!collectionId || collectionId === 0) && offlineCollectionId) {
-        // offline_id column doesn't exist — the sync engine resolves IDs before calling this
         console.warn('Quality test: collectionId is 0 and offline_id lookup not available');
+      }
+
+      if (collectionId && collectionId !== 0) {
+        const nFat = Number(parseFloat(String(fat)).toFixed(2));
+        const nSnf = Number(parseFloat(String(snf)).toFixed(2));
+        const nWater = Number(parseFloat(String(water)).toFixed(2));
+
+        const { data: existingTest } = await supabase
+          .from('quality_tests')
+          .select('id, result, reason')
+          .eq('collection_id', collectionId)
+          .eq('fat', nFat)
+          .eq('snf', nSnf)
+          .eq('water', nWater)
+          .maybeSingle();
+
+        if (existingTest) {
+          return res.status(200).json({
+            id: existingTest.id,
+            collectionId,
+            snf,
+            fat,
+            water,
+            result: existingTest.result,
+            reason: existingTest.reason,
+            testedAt: new Date().toISOString(),
+            existing: true,
+            offline_id,
+          });
+        }
       }
 
       // 1. Fetch original collection data for comparison
@@ -528,22 +557,24 @@ export default async function handler(req, res) {
       const body = getBody(req);
       const { chillingCenterId, transporterName, vehicleNumber, driverContact, dispatchDate, items, offline_id } = body;
 
-      // Prevent duplicate offline sync dispatches
+      // Prevent duplicate offline sync dispatches (soft fallback if offline_id column missing)
       if (offline_id) {
-        const { data: existingOfflineDispatch } = await supabase
-          .from('dispatches')
-          .select('id')
-          .eq('offline_id', offline_id)
-          .maybeSingle();
+        try {
+          const { data: existingOfflineDispatch, error: offlineLookupErr } = await supabase
+            .from('dispatches')
+            .select('id')
+            .eq('offline_id', offline_id)
+            .maybeSingle();
 
-        if (existingOfflineDispatch) {
-          console.log(`[Backend] Duplicate offline dispatch prevented: ${offline_id}`);
-
-          return res.status(200).json({
-            id: existingOfflineDispatch.id,
-            success: true,
-            duplicatePrevented: true
-          });
+          if (!offlineLookupErr && existingOfflineDispatch) {
+            return res.status(200).json({
+              id: existingOfflineDispatch.id,
+              success: true,
+              duplicatePrevented: true,
+            });
+          }
+        } catch {
+          /* offline_id column may not exist — fall through to collection-based check */
         }
       }
 

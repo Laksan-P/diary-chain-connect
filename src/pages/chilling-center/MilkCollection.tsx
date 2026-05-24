@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Milk } from 'lucide-react';
+import { Milk } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,15 @@ import { useToast } from '@/hooks/use-toast';
 import { getFarmers, createCollection } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Farmer } from '@/types';
-import { savePendingAction, isOnline, saveCache, getCache, getPendingActions } from '@/services/offlineSync';
+import {
+  savePendingAction,
+  isOnline,
+  saveCache,
+  getCache,
+  mergeFarmersWithPending,
+  cleanOfflineFarmerCache,
+  checkDuplicateCollection,
+} from '@/services/offlineSync';
 
 const MilkCollectionPage: React.FC = () => {
   const { user } = useAuth();
@@ -34,49 +42,20 @@ const MilkCollectionPage: React.FC = () => {
 
   useEffect(() => {
     const loadFarmers = async () => {
-      // 1. Always check cache first for instant loading
+      cleanOfflineFarmerCache();
       const cached = getCache('farmers') || [];
-      const pendingRegistrations = getPendingActions().filter(a => a.type === 'farmer_registration');
-      const offlineFarmers = pendingRegistrations.map(a => ({
-      id: a.data.tempId || a.data.farmerId || `OFF-${a.id}`,
-      farmerId: a.data.farmerId || a.data.tempId || `OFF-${a.id}`,
-      name: a.data.name,
-      nic: a.data.nic,
-      phone: a.data.phone,
-      address: a.data.address || '',
-      chillingCenterId: a.data.chillingCenterId,
-      userId: 0,
-      createdAt: new Date().toISOString(),
-    } as Farmer));
+      setFarmers(mergeFarmersWithPending(cached) as unknown as Farmer[]);
 
-      setFarmers([...cached, ...offlineFarmers]);
-
-      // 2. If online, fetch fresh data and update cache
       if (isOnline()) {
         try {
           const serverData = user?.chillingCenterId
             ? await getFarmers(user.chillingCenterId)
             : await getFarmers();
 
-          // Merge with any pending offline registrations to ensure they don't disappear
-          const pendingRegistrations = getPendingActions().filter(a => a.type === 'farmer_registration');
-          const offlineFarmers = pendingRegistrations.map(a => ({
-          id: a.data.tempId || a.data.farmerId || `OFF-${a.id}`,
-          farmerId: a.data.farmerId || a.data.tempId || `OFF-${a.id}`,
-          name: a.data.name,
-          nic: a.data.nic,
-          phone: a.data.phone,
-          address: a.data.address || '',
-          chillingCenterId: a.data.chillingCenterId,
-          userId: 0,
-          createdAt: new Date().toISOString(),
-        } as Farmer));
-
-          const mergedFarmers = [...serverData, ...offlineFarmers];
-          setFarmers(mergedFarmers);
-          saveCache('farmers', mergedFarmers);
+          setFarmers(mergeFarmersWithPending(serverData) as unknown as Farmer[]);
+          saveCache('farmers', serverData);
         } catch (err) {
-          console.error("Failed to fetch fresh farmers:", err);
+          console.error('Failed to fetch fresh farmers:', err);
         }
       }
     };
@@ -113,6 +92,15 @@ const MilkCollectionPage: React.FC = () => {
       milkType: form.milkType as 'Buffalo' | 'Cow' | 'Goat',
       farmerName: farmers.find(f => String(f.id) === form.farmerId)?.name || 'Unknown Farmer',
     };
+
+    if (checkDuplicateCollection(collectionData)) {
+      toast({
+        title: 'Duplicate Record',
+        description: 'A milk collection with the same farmer, date, time, and quantity is already pending or cached.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     if (!isOnline()) {
       savePendingAction('collection', collectionData);
@@ -153,18 +141,6 @@ const MilkCollectionPage: React.FC = () => {
           <p className="text-muted-foreground">Enter milk delivery details</p>
         </div>
       </div>
-
-      {getPendingActions().length > 0 && (
-        <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-amber-700">Synchronization Pending</p>
-            <p className="text-xs text-amber-600/80">{getPendingActions().length} actions will be synced when online</p>
-          </div>
-        </div>
-      )}
 
       <motion.form onSubmit={handleSubmit} className="glass-card p-6 space-y-5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="grid grid-cols-2 gap-4">

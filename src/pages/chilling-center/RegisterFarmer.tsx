@@ -62,25 +62,13 @@ const RegisterFarmer: React.FC = () => {
       toast({ title: 'Farmer Registered', description: `Farmer ID: ${farmer.farmerId}` });
       setForm({ name: '', address: '', phone: '', nic: '', chillingCenterId: '', bankName: '', accountNumber: '', branch: '', email: '', password: '' });
     } catch {
-      // Offline fallback
-      const { savePendingAction, getCache, saveCache } = await import('@/services/offlineSync');
-      const tempId = `OFF-${Date.now()}`; 
-      const offlineFarmerData = { ...farmerData, tempId };
+      // Offline fallback — pending_actions is the single source for unsynced farmers
+      const { savePendingAction } = await import('@/services/offlineSync');
+      const tempId = `OFF-${Date.now()}`;
+      const offlineFarmerData = { ...farmerData, tempId, farmerId: tempId };
       savePendingAction('farmer_registration', offlineFarmerData);
-      
-      // Add to local farmers cache so they appear in dropdown immediately
-      const cachedFarmers = getCache('farmers') || [];
-      cachedFarmers.push({
-        id: tempId,
-        farmerId: tempId,
-        name: form.name,
-        nic: form.nic,
-        phone: form.phone,
-        chillingCenterId: farmerData.chillingCenterId,
-      });
-      saveCache('farmers', cachedFarmers);
 
-      toast({ 
+      toast({
         title: 'Saved Offline', 
         description: 'Network unavailable. Farmer registered locally and will sync when online.',
       });
