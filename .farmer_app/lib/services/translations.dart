@@ -716,7 +716,9 @@ class Translations {
   };
 
   static String get(String key, String locale, {Map<String, String>? params}) {
-    String text = _data[locale]?[key] ?? _data['en']?[key] ?? key;
+    final normalized = locale.split('_').first.split('-').first.toLowerCase();
+    String text =
+        _data[normalized]?[key] ?? _data['en']?[key] ?? key;
     if (params != null) {
       params.forEach((k, v) {
         text = text.replaceAll('{$k}', v);

@@ -53,8 +53,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _filteredNotifications = List.from(_localNotifications);
       } else {
         _filteredNotifications = _localNotifications.where((n) {
-          final title = _translate(n['title']).toLowerCase();
-          final message = _translate(n['message']).toLowerCase();
+          final title = _translateNotificationField(n, isTitle: true).toLowerCase();
+          final message = _translateNotificationField(n, isTitle: false).toLowerCase();
           return title.contains(query.toLowerCase()) ||
               message.contains(query.toLowerCase());
         }).toList();
@@ -237,6 +237,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (raw == 'payment_disbursed_cycle_msg' || raw == 'payment_disbursed_msg') {
       return raw;
     }
+    if (raw == 'nestle_quality_pass_title' ||
+        raw == 'nestle_quality_rejected_title' ||
+        raw == 'nestle_quality_pass_msg' ||
+        raw == 'nestle_quality_rejected_msg') {
+      return raw;
+    }
 
     final disbursedCycleMatch = RegExp(
       r'^Your payment of Rs\. (\S+) for (\S+) to (\S+) has been disbursed\.$',
@@ -300,55 +306,199 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return params;
   }
 
-  String _translate(String? raw) {
-    if (raw == null || raw.isEmpty) return '';
+  String get _locale {
+    final code = widget.locale.split('_').first.split('-').first.toLowerCase();
+    return code;
+  }
+
+  bool _looksLikeRawKey(String text) {
+    if (text.isEmpty) return false;
+    return RegExp(r'^[a-z][a-z0-9_]*_(title|msg)$').hasMatch(text);
+  }
+
+  String _canonicalKey(String key) {
+    switch (key) {
+      case 'nestle_quality_test_passed_title':
+        return 'nestle_quality_pass_title';
+      case 'nestle_quality_test_failed_title':
+        return 'nestle_quality_rejected_title';
+      case 'nestle_quality_test_passed_msg':
+        return 'nestle_quality_pass_msg';
+      case 'nestle_quality_test_failed_msg':
+        return 'nestle_quality_rejected_msg';
+      default:
+        return key;
+    }
+  }
+
+  Map<String, String> _extractNotificationParams(dynamic note) {
+    final params = <String, String>{};
+
+    for (final field in ['message', 'title']) {
+      final text = note[field]?.toString() ?? '';
+      if (!text.contains('|')) continue;
+      params.addAll(_parseMessageParams(text.substring(text.indexOf('|') + 1)));
+    }
+
+    for (final dateKey in ['date', 'cycleStart', 'cycleEnd']) {
+      if (params.containsKey(dateKey)) {
+        params[dateKey] = _formatNotificationDate(params[dateKey]!);
+      }
+    }
+
+    if (!params.containsKey('date') && note['createdAt'] != null) {
+      try {
+        final created = DateTime.parse(note['createdAt'].toString()).toLocal();
+        params['date'] = _formatNotificationDate(
+          DateFormat('yyyy-MM-dd').format(created),
+        );
+      } catch (_) {}
+    }
+
+    return params;
+  }
+
+  String _nestleQualityFallback(String key, Map<String, String> params) {
+    final date = params['date'] ?? '';
+    final hasDate = date.isNotEmpty;
+
+    switch (_canonicalKey(key)) {
+      case 'nestle_quality_pass_title':
+        return 'Nestlé Quality Pass';
+      case 'nestle_quality_rejected_title':
+        return 'Nestlé Quality Rejected';
+      case 'nestle_quality_pass_msg':
+        return hasDate
+            ? 'Final verification by Nestlé for your collection on $date was successful.'
+            : 'Final verification by Nestlé was successful.';
+      case 'nestle_quality_rejected_msg':
+        return hasDate
+            ? 'Final verification by Nestlé for your collection on $date did not meet the required quality standard.'
+            : 'Final verification by Nestlé did not meet the required quality standard.';
+      default:
+        return key;
+    }
+  }
+
+  String _fallbackForKey(String key, Map<String, String> params) {
+    final canonical = _canonicalKey(key);
+
+    final translated = Translations.get(
+      canonical,
+      _locale,
+      params: params.isEmpty ? null : params,
+    );
+    if (translated != canonical) {
+      return _stripUnresolvedPlaceholders(translated);
+    }
+
+    if (canonical.startsWith('nestle_quality_')) {
+      return _nestleQualityFallback(canonical, params);
+    }
+
+    if (canonical.startsWith('payment_')) {
+      final payment = _paymentFallback(canonical, params);
+      if (payment != canonical) return payment;
+    }
+
+    return key;
+  }
+
+  String _stripUnresolvedPlaceholders(String text) {
+    var resolved = text.replaceAll(RegExp(r'\s?\(on \{date\}\)'), '');
+    resolved = resolved.replaceAll(RegExp(r'\{\w+\}'), '');
+    resolved = resolved.replaceAll(RegExp(r'\s{2,}'), ' ');
+    return resolved.trim();
+  }
+
+  String _translateNotificationField(dynamic note, {required bool isTitle}) {
+    final raw = (isTitle ? note['title'] : note['message'])?.toString() ?? '';
+    if (raw.isEmpty) return '';
+
+    final params = _extractNotificationParams(note);
     final migrated = _migrateLegacy(raw);
 
     if (migrated.contains('|')) {
       final pipeIdx = migrated.indexOf('|');
-      var key = migrated.substring(0, pipeIdx);
+      var key = _canonicalKey(migrated.substring(0, pipeIdx));
       final paramStr = migrated.substring(pipeIdx + 1);
-      final Map<String, String> params = _parseMessageParams(paramStr);
-
-      // Map legacy Nestlé keys to current keys
-      if (key == 'nestle_quality_test_passed_msg') key = 'nestle_quality_pass_msg';
-      if (key == 'nestle_quality_test_failed_msg') key = 'nestle_quality_rejected_msg';
+      final mergedParams = {...params, ..._parseMessageParams(paramStr)};
 
       for (final dateKey in ['date', 'cycleStart', 'cycleEnd']) {
-        if (params.containsKey(dateKey)) {
-          params[dateKey] = _formatNotificationDate(params[dateKey]!);
+        if (mergedParams.containsKey(dateKey) &&
+            RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(mergedParams[dateKey]!)) {
+          mergedParams[dateKey] = _formatNotificationDate(mergedParams[dateKey]!);
         }
       }
 
       if (key == 'payment_disbursed_cycle_msg' &&
-          (!params.containsKey('cycleStart') || !params.containsKey('cycleEnd'))) {
+          (!mergedParams.containsKey('cycleStart') ||
+              !mergedParams.containsKey('cycleEnd'))) {
         key = 'payment_disbursed_msg';
       }
 
-      String resolved = Translations.get(key, widget.locale, params: params);
-      if (resolved == key) {
-        resolved = _paymentFallback(key, params);
+      var resolved = Translations.get(key, _locale, params: mergedParams);
+      if (resolved == key || _looksLikeRawKey(resolved)) {
+        resolved = _fallbackForKey(key, mergedParams);
       }
-      resolved = resolved.replaceAll(RegExp(r'\s?\(on \{date\}\)'), '');
-      resolved = resolved.replaceAll(RegExp(r'\{\w+\}'), '');
-      return resolved.trim();
+      return _stripUnresolvedPlaceholders(resolved);
     }
 
-    String resolved = Translations.get(migrated, widget.locale);
-    if (resolved == migrated) {
-      if (migrated == 'nestle_quality_test_passed_title') {
-        resolved = Translations.get('nestle_quality_pass_title', widget.locale);
-      } else if (migrated == 'nestle_quality_test_failed_title') {
-        resolved = Translations.get('nestle_quality_rejected_title', widget.locale);
-      } else if (migrated.startsWith('payment_')) {
-        resolved = _paymentFallback(migrated, {});
+    final key = _canonicalKey(migrated);
+    var resolved = Translations.get(key, _locale, params: params.isEmpty ? null : params);
+    if (resolved == key || _looksLikeRawKey(resolved)) {
+      resolved = _fallbackForKey(key, params);
+    }
+    return _stripUnresolvedPlaceholders(resolved);
+  }
+
+  String _translate(String? raw, {Map<String, String>? params, dynamic note}) {
+    if (raw == null || raw.isEmpty) return '';
+    if (note != null) {
+      return _translateNotificationField(
+        note,
+        isTitle: raw == note['title']?.toString(),
+      );
+    }
+
+    final mergedParams = params ?? {};
+    final migrated = _migrateLegacy(raw);
+
+    if (migrated.contains('|')) {
+      final pipeIdx = migrated.indexOf('|');
+      var key = _canonicalKey(migrated.substring(0, pipeIdx));
+      final paramStr = migrated.substring(pipeIdx + 1);
+      final allParams = {...mergedParams, ..._parseMessageParams(paramStr)};
+
+      for (final dateKey in ['date', 'cycleStart', 'cycleEnd']) {
+        if (allParams.containsKey(dateKey)) {
+          allParams[dateKey] = _formatNotificationDate(allParams[dateKey]!);
+        }
       }
+
+      if (key == 'payment_disbursed_cycle_msg' &&
+          (!allParams.containsKey('cycleStart') ||
+              !allParams.containsKey('cycleEnd'))) {
+        key = 'payment_disbursed_msg';
+      }
+
+      var resolved = Translations.get(key, _locale, params: allParams);
+      if (resolved == key || _looksLikeRawKey(resolved)) {
+        resolved = _fallbackForKey(key, allParams);
+      }
+      return _stripUnresolvedPlaceholders(resolved);
     }
-    if (resolved.contains('{')) {
-      resolved = resolved.replaceAll(RegExp(r'\{\w+\}'), '');
-      resolved = resolved.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+
+    final key = _canonicalKey(migrated);
+    var resolved = Translations.get(
+      key,
+      _locale,
+      params: mergedParams.isEmpty ? null : mergedParams,
+    );
+    if (resolved == key || _looksLikeRawKey(resolved)) {
+      resolved = _fallbackForKey(key, mergedParams);
     }
-    return resolved;
+    return _stripUnresolvedPlaceholders(resolved);
   }
 
   @override
@@ -602,47 +752,56 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _translate(note['title']),
-                        style: TextStyle(
-                          fontWeight: isRead
-                              ? FontWeight.bold
-                              : FontWeight.w900,
-                          fontSize: 14,
-                          color: isDark
-                              ? (isRead ? Colors.white70 : Colors.white)
-                              : (isRead ? Colors.black54 : Colors.black87),
+                      Expanded(
+                        child: Text(
+                          _translateNotificationField(note, isTitle: true),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: isRead
+                                ? FontWeight.bold
+                                : FontWeight.w900,
+                            fontSize: 14,
+                            color: isDark
+                                ? (isRead ? Colors.white70 : Colors.white)
+                                : (isRead ? Colors.black54 : Colors.black87),
+                          ),
                         ),
                       ),
                       if (!isRead && type != 'payment_reminder')
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFFFFB000)
-                                : const Color(0xFF1B264F),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color:
-                                    (isDark
-                                            ? const Color(0xFFFFB000)
-                                            : const Color(0xFF1B264F))
-                                        .withValues(alpha: 0.2),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8, top: 2),
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFFFFB000)
+                                  : const Color(0xFF1B264F),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      (isDark
+                                              ? const Color(0xFFFFB000)
+                                              : const Color(0xFF1B264F))
+                                          .withValues(alpha: 0.2),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    _translate(note['message']),
+                    _translateNotificationField(note, isTitle: false),
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: isDark
                           ? (isRead ? Colors.white24 : Colors.white60)
