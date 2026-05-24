@@ -99,6 +99,26 @@ export const normalizeQualityKey = (data: Record<string, unknown>): string => {
   return `qt:${collectionId}:${fat}:${snf}:${water}`;
 };
 
+/** True when a quality pending action references a real collection. */
+export const hasValidQualityCollectionRef = (data: Record<string, unknown>): boolean => {
+  const offlineRef = data.offlineCollectionId;
+  if (typeof offlineRef === 'string' && offlineRef.trim()) {
+    return isOfflineId(offlineRef) || offlineRef.includes('-');
+  }
+
+  const collectionId = Number(data.collectionId);
+  return Number.isFinite(collectionId) && collectionId > 0;
+};
+
+export const isValidQualityPendingData = (data: Record<string, unknown>): boolean => {
+  if (!hasValidQualityCollectionRef(data)) return false;
+
+  return [data.snf, data.fat, data.water].every(value => {
+    const num = Number(value);
+    return Number.isFinite(num);
+  });
+};
+
 export const normalizeDispatchKey = (data: Record<string, unknown>): string => {
   const centerId = data.chillingCenterId;
   const vehicle = data.vehicleNumber;

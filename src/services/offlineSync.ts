@@ -5,6 +5,7 @@ import {
   findDuplicatePendingAction,
   isDuplicateCollection,
   isOfflineId,
+  isValidQualityPendingData,
   mergeFarmersWithPending as mergeFarmersWithPendingHelper,
   normalizeFarmerKey,
   pendingRegistrationsToFarmers as pendingRegistrationsToFarmersHelper,
@@ -20,6 +21,7 @@ export {
   normalizeCollectionKey,
   normalizeQualityKey,
   normalizeDispatchKey,
+  isValidQualityPendingData,
 } from './offlineSyncHelpers';
 
 const STORAGE_KEY = 'pending_actions';
@@ -27,7 +29,16 @@ const SYNC_DEBOUNCE_MS = 400;
 
 export const getPendingActions = (): PendingAction[] => {
   const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
+  const actions: PendingAction[] = stored ? JSON.parse(stored) : [];
+  const valid = actions.filter(
+    action => action.type !== 'quality' || isValidQualityPendingData(action.data)
+  );
+
+  if (valid.length !== actions.length) {
+    persistActions(valid);
+  }
+
+  return valid;
 };
 
 const persistActions = (actions: PendingAction[]) => {
@@ -40,6 +51,11 @@ const updateActionStatus = (id: string, updates: Partial<PendingAction>) => {
 };
 
 export const savePendingAction = (type: PendingAction['type'], data: Record<string, unknown>): string => {
+  if (type === 'quality' && !isValidQualityPendingData(data)) {
+    console.warn('[OfflineSync] Refusing invalid quality pending action', data);
+    return '';
+  }
+
   const actions = getPendingActions();
   const existing = findDuplicatePendingAction(actions, type, data);
   if (existing) return existing.id;

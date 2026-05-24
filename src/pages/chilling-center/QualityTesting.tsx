@@ -10,7 +10,8 @@ import { getCollections, submitQualityTest } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, QualityTest } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
-import { savePendingAction, isOnline, saveCache, getCache, getPendingByType } from '@/services/offlineSync';
+import { savePendingAction, isOnline, saveCache, getCache } from '@/services/offlineSync';
+import { isOfflineId } from '@/services/offlineSyncHelpers';
 import {
   getCachedCollections,
   getQualityEligibleCollections,
@@ -18,6 +19,57 @@ import {
   OFFLINE_EMPTY_MESSAGE,
 } from '@/services/offlinePreload';
 import OfflineEmptyState from '@/components/OfflineEmptyState';
+
+const COLLECTION_REQUIRED_MSG = 'Please select a milk collection before submitting quality test.';
+
+const isOfflineCollectionRef = (ref: string): boolean =>
+  isOfflineId(ref) || ref.includes('-');
+
+const isValidCollectionRef = (ref: string): boolean => {
+  const trimmed = ref.trim();
+  if (!trimmed) return false;
+  if (isOfflineCollectionRef(trimmed)) return true;
+  const num = Number.parseInt(trimmed, 10);
+  return Number.isFinite(num) && num > 0;
+};
+
+const validateQualityForm = (form: { collectionId: string; snf: string; fat: string; water: string }): string | null => {
+  if (!isValidCollectionRef(form.collectionId)) {
+    return COLLECTION_REQUIRED_MSG;
+  }
+
+  const snf = Number.parseFloat(form.snf);
+  const fat = Number.parseFloat(form.fat);
+  const water = Number.parseFloat(form.water);
+
+  if ([snf, fat, water].some(value => Number.isNaN(value))) {
+    return 'Please enter valid SNF, FAT, and Water values.';
+  }
+
+  return null;
+};
+
+const buildQualityTestPayload = (form: { collectionId: string; snf: string; fat: string; water: string }) => {
+  const collectionRef = form.collectionId.trim();
+  const offline = isOfflineCollectionRef(collectionRef);
+
+  return {
+    collectionId: offline ? 0 : Number.parseInt(collectionRef, 10),
+    offlineCollectionId: offline ? collectionRef : undefined,
+    snf: Number.parseFloat(form.snf),
+    fat: Number.parseFloat(form.fat),
+    water: Number.parseFloat(form.water),
+  };
+};
+
+const computeLocalQualityResult = (fat: number, snf: number, water: number) => {
+  const reasons: string[] = [];
+  if (fat < 3.5) reasons.push('Low FAT');
+  if (snf < 8.5) reasons.push('Low SNF');
+  if (water > 0.5) reasons.push('Excess Water');
+  const result = reasons.length === 0 ? 'Pass' : 'Fail';
+  return { result, reason: reasons.join(', ') || undefined };
+};
 
 const OFFLINE_RELOAD_EVENTS = ['offline-action-saved', 'offline-sync-complete', 'offline-sync-started', 'online', 'offline'] as const;
 
@@ -70,33 +122,29 @@ const QualityTestingPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check if it's an offline ID (UUID)
-    const isOfflineId = isNaN(parseInt(form.collectionId)) || form.collectionId.includes('-');
-    
-    const testData = {
-      collectionId: isOfflineId ? 0 : parseInt(form.collectionId),
-      offlineCollectionId: isOfflineId ? form.collectionId : undefined,
-      snf: parseFloat(form.snf),
-      fat: parseFloat(form.fat),
-      water: parseFloat(form.water),
-    };
 
-    if (!isOnline() || isOfflineId) {
-      // Compute result locally — same logic as server
-      const fat = parseFloat(form.fat);
-      const snf = parseFloat(form.snf);
-      const water = parseFloat(form.water);
-      const reasons: string[] = [];
-      if (fat < 3.5) reasons.push('Low FAT');
-      if (snf < 8.5) reasons.push('Low SNF');
-      if (water > 0.5) reasons.push('Excess Water');
-      const localResult = reasons.length === 0 ? 'Pass' : 'Fail';
-      const localReason = reasons.join(', ') || undefined;
+    const validationError = validateQualityForm(form);
+    if (validationError) {
+      toast({ title: 'Validation Error', description: validationError, variant: 'destructive' });
+      return;
+    }
 
-      savePendingAction('quality', { ...testData, result: localResult, reason: localReason });
-      
-      // Show result on screen — same as online
+    const testData = buildQualityTestPayload(form);
+    const isOfflineCollection = Boolean(testData.offlineCollectionId);
+    const { snf, fat, water } = testData;
+    const { result: localResult, reason: localReason } = computeLocalQualityResult(fat, snf, water);
+
+    if (!isOnline() || isOfflineCollection) {
+      const savedId = savePendingAction('quality', { ...testData, result: localResult, reason: localReason });
+      if (!savedId) {
+        toast({
+          title: 'Validation Error',
+          description: COLLECTION_REQUIRED_MSG,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       setResult({
         id: 0,
         collectionId: testData.collectionId,
@@ -108,8 +156,8 @@ const QualityTestingPage: React.FC = () => {
         testedAt: new Date().toISOString(),
       });
 
-      toast({ 
-        title: `Quality: ${localResult}`, 
+      toast({
+        title: `Quality: ${localResult}`,
         description: localReason || 'All parameters within range',
       });
       setCollections(prev => prev.filter(c => String(c.id) !== String(form.collectionId)));
@@ -126,21 +174,22 @@ const QualityTestingPage: React.FC = () => {
       setCollections(prev => prev.filter(c => String(c.id) !== String(form.collectionId)));
       setForm({ collectionId: '', snf: '', fat: '', water: '' });
     } catch {
-      // API failed — compute locally and save offline
-      const fat = parseFloat(form.fat);
-      const snf = parseFloat(form.snf);
-      const water = parseFloat(form.water);
-      const reasons: string[] = [];
-      if (fat < 3.5) reasons.push('Low FAT');
-      if (snf < 8.5) reasons.push('Low SNF');
-      if (water > 0.5) reasons.push('Excess Water');
-      const localResult = reasons.length === 0 ? 'Pass' : 'Fail';
-      const localReason = reasons.join(', ') || undefined;
+      const savedId = savePendingAction('quality', { ...testData, result: localResult, reason: localReason });
+      if (!savedId) {
+        toast({
+          title: 'Validation Error',
+          description: COLLECTION_REQUIRED_MSG,
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      savePendingAction('quality', { ...testData, result: localResult, reason: localReason });
       setResult({
-        id: 0, collectionId: testData.collectionId,
-        snf, fat, water,
+        id: 0,
+        collectionId: testData.collectionId,
+        snf,
+        fat,
+        water,
         result: localResult as 'Pass' | 'Fail',
         reason: localReason,
         testedAt: new Date().toISOString(),
@@ -188,7 +237,7 @@ const QualityTestingPage: React.FC = () => {
           <div className="space-y-2"><Label>FAT %</Label><Input type="number" step="0.01" min="0" max="100" placeholder="e.g. 3.5" value={form.fat} onChange={e => { if (e.target.value.length <= 5) update('fat', e.target.value) }} required /></div>
           <div className="space-y-2"><Label>Water %</Label><Input type="number" step="0.01" min="0" max="100" placeholder="e.g. 0.3" value={form.water} onChange={e => { if (e.target.value.length <= 5) update('water', e.target.value) }} required /></div>
         </div>
-        <Button type="submit" className="w-full btn-press" disabled={loading || collections.length === 0}>
+        <Button type="submit" className="w-full btn-press" disabled={loading || collections.length === 0 || !form.collectionId}>
           {loading ? 'Testing...' : 'Submit Quality Test'}
         </Button>
       </motion.form>

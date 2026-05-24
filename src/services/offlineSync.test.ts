@@ -237,6 +237,69 @@ describe('offlineSync storage integration', () => {
     expect(getPendingActions()).toHaveLength(1);
   });
 
+  it('rejects quality pending actions without a valid collection reference', async () => {
+    const { savePendingAction, getPendingActions } = await import('./offlineSync');
+
+    const rejectedId = savePendingAction('quality', {
+      collectionId: 0,
+      snf: 8.5,
+      fat: 3.5,
+      water: 0.3,
+      result: 'Pass',
+    });
+
+    expect(rejectedId).toBe('');
+    expect(getPendingActions()).toHaveLength(0);
+  });
+
+  it('purges invalid quality pending actions already stored locally', async () => {
+    localStorage.setItem(
+      'pending_actions',
+      JSON.stringify([
+        {
+          id: 'bad-quality',
+          type: 'quality',
+          data: { collectionId: 0, snf: 8.5, fat: 3.5, water: 0.3, result: 'Pass' },
+          timestamp: Date.now(),
+        },
+        {
+          id: 'good-quality',
+          type: 'quality',
+          data: {
+            collectionId: 12,
+            snf: 8.5,
+            fat: 3.5,
+            water: 0.3,
+            result: 'Pass',
+          },
+          timestamp: Date.now(),
+        },
+      ])
+    );
+
+    const { getPendingActions } = await import('./offlineSync');
+    const actions = getPendingActions();
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0].id).toBe('good-quality');
+  });
+
+  it('saves valid offline quality pending actions', async () => {
+    const { savePendingAction, getPendingActions } = await import('./offlineSync');
+
+    const id = savePendingAction('quality', {
+      collectionId: 0,
+      offlineCollectionId: 'OFF-col-1',
+      snf: 8.5,
+      fat: 3.5,
+      water: 0.3,
+      result: 'Pass',
+    });
+
+    expect(id).not.toBe('');
+    expect(getPendingActions()).toHaveLength(1);
+  });
+
   it('survives refresh — pending farmer still deduped in merge list', async () => {
     const { savePendingAction, mergeFarmersWithPending } = await import('./offlineSync');
     savePendingAction('farmer_registration', {
