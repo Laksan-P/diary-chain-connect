@@ -1,22 +1,32 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
-  TrendingUp, TrendingDown, AlertCircle, CheckCircle2, 
-  BarChart3, Users, Building2, ChevronRight, Info
+  TrendingUp, AlertCircle, CheckCircle2, 
+  BarChart3, Users, ChevronRight, Info, Lightbulb
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, BarChart, Bar, Cell
+  ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 import { getAllPerformance, getFarmerPerformance, getCenterPerformanceDetailed, syncFarmerPerformance } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  formatPassRate,
+  formatTrendPassRate,
+  getListBadgeClasses,
+  getQualityCardClasses,
+  getQualityTone,
+  getStatusCardClasses,
+  hasEnoughTrendMonths,
+  PASS_RATE_THRESHOLD,
+} from '@/lib/performanceAnalytics';
 
 const PerformanceDashboard: React.FC = () => {
+  const queryClient = useQueryClient();
   const { data: allStats, isLoading: loadingAll } = useQuery({
     queryKey: ['performance_all'],
     queryFn: getAllPerformance
@@ -28,7 +38,7 @@ const PerformanceDashboard: React.FC = () => {
   const { toast } = useToast();
   const [syncing, setSyncing] = React.useState(false);
 
-  const { data: detailedPerf, isLoading: loadingDetail, refetch: refetchDetail } = useQuery({
+  const { data: detailedPerf, isLoading: loadingDetail } = useQuery({
     queryKey: ['performance_detail', selectedType, selectedId],
     queryFn: () => selectedType === 'farmer' 
       ? getFarmerPerformance(selectedId!) 
@@ -44,7 +54,8 @@ const PerformanceDashboard: React.FC = () => {
         title: 'Sync Complete',
         description: `Successfully updated performance for ${res.updatedCount} farmers.`
       });
-      refetchDetail();
+      await queryClient.invalidateQueries({ queryKey: ['performance_all'] });
+      await queryClient.invalidateQueries({ queryKey: ['performance_detail'] });
     } catch (err: any) {
       toast({
         title: 'Sync Failed',
@@ -55,6 +66,15 @@ const PerformanceDashboard: React.FC = () => {
       setSyncing(false);
     }
   };
+
+  const inspectedCount = detailedPerf?.inspectedCount ?? 0;
+  const passRateDisplay = detailedPerf?.passRateDisplay ?? detailedPerf?.passRate;
+  const qualityTone = getQualityTone(passRateDisplay, inspectedCount);
+  const qualityClasses = getQualityCardClasses(qualityTone);
+  const trendData = detailedPerf?.trends ?? [];
+  const enoughTrendHistory = hasEnoughTrendMonths(trendData);
+  const qualityChartData = trendData.filter((t: { passRate?: number | null }) => t.passRate != null);
+  const recommendations: string[] = detailedPerf?.recommendations ?? [];
 
   if (loadingAll) return <div className="flex items-center justify-center h-64"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
 
@@ -102,11 +122,7 @@ const PerformanceDashboard: React.FC = () => {
                   >
                     <div>
                       <p className="text-sm font-semibold">{f.name}</p>
-                      <Badge variant="outline" className={`text-[10px] uppercase mt-1 ${
-                        f.performance_status === 'Good' ? 'bg-emerald-50 text-emerald-700' : 
-                        f.performance_status === 'Improving' ? 'bg-blue-50 text-blue-700' :
-                        'bg-amber-50 text-amber-700'
-                      }`}>
+                      <Badge variant="outline" className={`text-[10px] uppercase mt-1 ${getListBadgeClasses(f.performance_status, 'farmer')}`}>
                         {f.performance_status}
                       </Badge>
                     </div>
@@ -122,11 +138,7 @@ const PerformanceDashboard: React.FC = () => {
                   >
                     <div>
                       <p className="text-sm font-semibold">{c.name}</p>
-                      <Badge variant="outline" className={`text-[10px] uppercase mt-1 ${
-                        c.performance_status === 'Good' ? 'bg-emerald-50 text-emerald-700' : 
-                        c.performance_status === 'Improving' ? 'bg-blue-50 text-blue-700' :
-                        'bg-red-50 text-red-700'
-                      }`}>
+                      <Badge variant="outline" className={`text-[10px] uppercase mt-1 ${getListBadgeClasses(c.performance_status, 'center')}`}>
                         {c.performance_status}
                       </Badge>
                     </div>
@@ -156,15 +168,33 @@ const PerformanceDashboard: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-muted-foreground">Quality Pass Rate</p>
-                        <h3 className="text-2xl font-bold">{detailedPerf.passRate.toFixed(1)}%</h3>
+                        <h3 className="text-2xl font-bold">
+                          {inspectedCount > 0 ? formatPassRate(passRateDisplay) : 'Not Enough Data'}
+                        </h3>
+                        {inspectedCount > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {PASS_RATE_THRESHOLD}% threshold · {inspectedCount} inspected
+                          </p>
+                        )}
                       </div>
-                      <div className={`p-2 rounded-full ${detailedPerf.passRate >= 75 ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
-                        {detailedPerf.passRate >= 75 ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                      <div className={`p-2 rounded-full ${qualityClasses.icon}`}>
+                        {qualityTone === 'success' ? (
+                          <CheckCircle2 className="w-5 h-5" />
+                        ) : qualityTone === 'warning' ? (
+                          <AlertCircle className="w-5 h-5" />
+                        ) : (
+                          <Info className="w-5 h-5" />
+                        )}
                       </div>
                     </div>
-                    <div className="mt-4 h-2 bg-muted rounded-full overflow-hidden">
-                      <div className={`h-full transition-all duration-1000 ${detailedPerf.passRate >= 75 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${detailedPerf.passRate}%` }} />
-                    </div>
+                    {inspectedCount > 0 && (
+                      <div className="mt-4 h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-1000 ${qualityClasses.bar}`}
+                          style={{ width: `${Math.min(passRateDisplay ?? 0, 100)}%` }}
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
                 <Card>
@@ -174,16 +204,12 @@ const PerformanceDashboard: React.FC = () => {
                         <p className="text-sm font-medium text-muted-foreground">Performance Status</p>
                         <h3 className="text-2xl font-bold">{detailedPerf.status}</h3>
                       </div>
-                      <div className={`p-2 rounded-full ${
-                        detailedPerf.status === 'Good' ? 'bg-emerald-100 text-emerald-600' : 
-                        detailedPerf.status === 'Improving' ? 'bg-blue-100 text-blue-600' :
-                        'bg-amber-100 text-amber-600'
-                      }`}>
+                      <div className={`p-2 rounded-full ${getStatusCardClasses(detailedPerf.status)}`}>
                         <TrendingUp className="w-5 h-5" />
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <Info className="w-3 h-3" /> System calculated based on recent activity
+                      <Info className="w-3 h-3" /> Based on Nestlé-inspected collections
                     </p>
                   </CardContent>
                 </Card>
@@ -203,63 +229,31 @@ const PerformanceDashboard: React.FC = () => {
                 </Card>
               </div>
 
-              {/* Recommendation Alert - Hide if status is Good */}
-              {detailedPerf.recommendation && detailedPerf.status !== 'Good' && (() => {
-                let recData: any = null;
-                try {
-                  if (detailedPerf.recommendation.startsWith('{')) {
-                    recData = JSON.parse(detailedPerf.recommendation);
-                  }
-                } catch (e) {}
-
-                if (recData) {
-                  return (
-                    <Alert className={`${detailedPerf.status === 'Good' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'} border-l-4 border-l-amber-500`}>
-                      <Info className="h-5 w-5 text-amber-600" />
-                      <div className="ml-2">
-                        <AlertTitle className="text-lg font-bold text-amber-900">{recData.message_title}</AlertTitle>
-                        <AlertDescription className="mt-2 space-y-4">
-                          <p className="text-base font-medium text-amber-800">{recData.short_message}</p>
-                          
-                          <div className="bg-white/60 backdrop-blur-sm p-5 rounded-xl border border-amber-200 shadow-sm">
-                            <p className="text-xs font-bold uppercase tracking-widest text-amber-700 mb-3 flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Guidance for Farmer
-                            </p>
-                            <ul className="grid grid-cols-1 gap-2">
-                              {recData.tips?.map((tip: string, i: number) => (
-                                <li key={i} className="text-sm flex items-start gap-3 text-amber-900/80">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                                  {tip}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                          
-                          <div className="flex items-center gap-4 pt-2">
-                            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
-                              Severity: {recData.severity || 'HIGH'}
-                            </Badge>
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100">
-                              Issue: {recData.issue || 'Quality'}
-                            </Badge>
-                          </div>
-                        </AlertDescription>
-                      </div>
-                    </Alert>
-                  );
-                }
-
-                return (
-                  <Alert className={`${detailedPerf.status === 'Good' ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
-                    <Info className="h-4 w-4" />
-                    <AlertTitle>Automated Recommendation</AlertTitle>
-                    <AlertDescription className="text-sm font-medium">
-                      {detailedPerf.recommendation}
-                    </AlertDescription>
-                  </Alert>
-                );
-              })()}
+              {/* Recommendations */}
+              {recommendations.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <Lightbulb className="w-4 h-4 text-primary" />
+                      Recommendations
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {recommendations.map((tip, i) => (
+                        <li key={i} className="text-sm flex items-start gap-3 text-muted-foreground">
+                          <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+                            detailedPerf.status === 'Good' ? 'bg-emerald-500' :
+                            detailedPerf.status === 'Not Enough Data' ? 'bg-slate-400' :
+                            'bg-amber-500'
+                          }`} />
+                          {tip}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -271,24 +265,37 @@ const PerformanceDashboard: React.FC = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-[250px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart key={selectedId} data={detailedPerf.trends}>
-                          <defs>
-                            <linearGradient id="colorVol" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#0d47a1" stopOpacity={0.1}/>
-                              <stop offset="95%" stopColor="#0d47a1" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                          <Tooltip 
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                          />
-                          <Area type="monotone" dataKey="volume" stroke="#0d47a1" strokeWidth={2} fillOpacity={1} fill="url(#colorVol)" name="Quantity (L)" />
-                        </AreaChart>
-                      </ResponsiveContainer>
+                    <div className="h-[250px] relative">
+                      {!enoughTrendHistory ? (
+                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm text-center px-6">
+                          <BarChart3 className="w-8 h-8 mb-2 opacity-30" />
+                          <p>Not enough monthly history for trend.</p>
+                          {trendData.length === 1 && (
+                            <p className="text-xs mt-1">
+                              {trendData[0].month}: {trendData[0].volume} L supplied
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart key={`vol-${selectedId}`} data={trendData}>
+                            <defs>
+                              <linearGradient id="colorVol" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#0d47a1" stopOpacity={0.1}/>
+                                <stop offset="95%" stopColor="#0d47a1" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                              formatter={(value: number) => [`${value} L`, 'Quantity']}
+                            />
+                            <Area type="monotone" dataKey="volume" stroke="#0d47a1" strokeWidth={2} fillOpacity={1} fill="url(#colorVol)" name="Quantity (L)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -301,25 +308,43 @@ const PerformanceDashboard: React.FC = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-[250px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart key={selectedId} data={detailedPerf.trends}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} domain={[0, 100]} />
-                          <Tooltip 
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                          />
-                          <Bar 
-                            dataKey="passRate" 
-                            fill="#10b981"
-                            radius={[4, 4, 0, 0]} 
-                            name="Pass Rate %"
-                            minPointSize={5}
-                            label={{ position: 'top', fontSize: 8, fill: '#666', formatter: (v: number) => `${v}%` }}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
+                    <div className="h-[250px] relative">
+                      {qualityChartData.length < 2 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm text-center px-6">
+                          <CheckCircle2 className="w-8 h-8 mb-2 opacity-30" />
+                          <p>Not enough monthly history for trend.</p>
+                          {qualityChartData.length === 1 && (
+                            <p className="text-xs mt-1">
+                              {qualityChartData[0].month}: {formatTrendPassRate(qualityChartData[0].passRate)}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart key={`qual-${selectedId}`} data={qualityChartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} domain={[0, 100]} />
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                              formatter={(value: number) => [formatTrendPassRate(value), 'Pass Rate']}
+                            />
+                            <Bar 
+                              dataKey="passRate" 
+                              fill="#10b981"
+                              radius={[4, 4, 0, 0]} 
+                              name="Pass Rate %"
+                              minPointSize={5}
+                              label={{
+                                position: 'top',
+                                fontSize: 9,
+                                fill: '#666',
+                                formatter: (v: number) => formatTrendPassRate(v),
+                              }}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

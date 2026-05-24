@@ -5,6 +5,17 @@ import {
   sendNestleCollectionInspectionNotifications,
   sendCollectionDispatchResultNotification,
 } from './_lib/nestleQualityNotifications.js';
+import {
+  PASS_RATE_THRESHOLD,
+  calculateFarmerPassRate,
+  calculateCenterPassRate,
+  calculateSupplyFrequency,
+  calculateFarmerMonthlyTrends,
+  calculateCenterMonthlyTrends,
+  derivePerformanceStatus,
+  generateRecommendations,
+  listPerformanceStatus,
+} from './_lib/performanceAnalytics.js';
 
 function getBody(req) {
   if (!req.body) return {};
@@ -1091,42 +1102,37 @@ export default async function handler(req, res) {
         if (!farmerId) return res.status(400).json({ error: 'Farmer ID required' });
         const { data: farmer } = await supabase.from('farmers').select('name, performance_status, performance_recommendation').eq('id', farmerId).single();
 
-        const { data: fCols } = await supabase.from('milk_collections').select('id').eq('farmer_id', farmerId);
-        const fColIds = fCols?.map(c => c.id) || [];
+        const { data: allCollections } = await supabase
+          .from('milk_collections')
+          .select('date, quantity, quality_result, dispatch_status')
+          .eq('farmer_id', farmerId)
+          .order('date', { ascending: true });
 
-        const { data: tests } = await supabase.from('quality_tests').select('result, tested_at').in('collection_id', fColIds);
-        const total = tests?.length || 0;
-        const passed = tests?.filter(t => t.result === 'Pass').length || 0;
-        const passRateRaw = total > 0 ? (passed / total) * 100 : 100;
-        const passRate = Number(passRateRaw.toFixed(1));
-
-        // STRICT RULE: Directly determine status based on 75% threshold
-        const displayStatus =
-          farmer?.performance_status || 'Good';
-
-        const threeMonthsAgo = new Date(); threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        const { data: collections } = await supabase.from('milk_collections').select('date, quantity, quality_result').eq('farmer_id', farmerId).gte('date', threeMonthsAgo.toISOString().split('T')[0]).order('date', { ascending: true });
-        const trends = {};
-        collections?.forEach(c => {
-          const month = c.date.substring(0, 7);
-          if (!trends[month]) trends[month] = { month, volume: 0, passCount: 0, total: 0 };
-          trends[month].volume += parseFloat(c.quantity) || 0; trends[month].total++;
-          if (c.quality_result === 'Pass') trends[month].passCount++;
+        const collections = allCollections || [];
+        const { passRate, inspectedCount, passedCount } = calculateFarmerPassRate(collections);
+        const { frequency, frequencySubtext } = calculateSupplyFrequency(collections, inspectedCount);
+        const trendArray = calculateFarmerMonthlyTrends(collections);
+        const displayStatus = derivePerformanceStatus(passRate, trendArray, inspectedCount, frequency);
+        const recommendations = generateRecommendations({
+          passRate,
+          frequency,
+          trends: trendArray,
+          inspectedCount,
         });
-        const trendArray = Object.values(trends).map(t => ({ ...t, passRate: t.total > 0 ? (t.passCount / t.total) * 100 : 100 }));
-
-        const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        const recentTests = tests?.filter(t => t.tested_at && new Date(t.tested_at) >= oneMonthAgo).length || 0;
-        const frequency = recentTests > 0 ? 'Regular' : (total > 0 ? 'Inactive' : 'New');
-        const frequencySubtext = frequency === 'New' ? 'No supply history' : (frequency === 'Inactive' ? 'No supply in last 30 days' : 'Active supply patterns detected');
 
         const resData = {
           status: displayStatus,
           recommendation: displayStatus === 'Good' ? null : farmer?.performance_recommendation,
-          passRate,
+          recommendations,
+          passRate: passRate ?? 0,
+          passRateDisplay: passRate,
+          inspectedCount,
+          passedCount,
           frequency,
           frequencySubtext,
-          trends: trendArray
+          trends: trendArray,
+          hasEnoughTrendHistory: trendArray.length >= 2,
+          threshold: PASS_RATE_THRESHOLD,
         };
 
         // If needs improvement, attach full recommendation data from DB
@@ -1191,51 +1197,43 @@ export default async function handler(req, res) {
         const { data: center } = await supabase.from('chilling_centers').select('name, performance_status, performance_recommendation').eq('id', centerId).single();
         const { data: dispatches } = await supabase.from('dispatches').select('status, dispatch_date, quantity:dispatch_items(milk_collections(quantity))').eq('chilling_center_id', centerId);
 
-        const totalD = dispatches?.length || 0;
-        const rejectedD = dispatches?.filter(d => d.status === 'Rejected').length || 0;
-        const rejectionRate = totalD > 0 ? (rejectedD / totalD) * 100 : 0;
-        const passRateRaw = 100 - rejectionRate;
-        const passRate = Number(passRateRaw.toFixed(1));
+        const dispatchList = dispatches || [];
+        const { passRate, inspectedCount, rejectionRate } = calculateCenterPassRate(dispatchList);
+        const trendArray = calculateCenterMonthlyTrends(dispatchList);
 
-        // STRICT RULE: Directly determine status based on 75% threshold
-        const displayStatus = passRate >= 75 ? 'Good' : 'Needs Improvement';
+        const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        const recentDispatches = dispatchList.filter(d => d.dispatch_date && new Date(d.dispatch_date) >= oneMonthAgo).length;
+        const totalD = dispatchList.length;
+
+        let frequency;
+        let frequencySubtext;
+        if (!totalD) {
+          frequency = 'New';
+          frequencySubtext = 'No dispatch history';
+        } else if (!recentDispatches) {
+          frequency = 'Inactive';
+          frequencySubtext = 'No dispatches in last 30 days';
+        } else if (recentDispatches >= 4) {
+          frequency = 'Regular';
+          frequencySubtext = 'Frequent supply patterns detected';
+        } else {
+          frequency = 'Irregular';
+          frequencySubtext = 'Inconsistent dispatch schedule in recent period';
+        }
+
+        const displayStatus = derivePerformanceStatus(
+          passRate,
+          trendArray,
+          inspectedCount,
+          frequency === 'Inactive' ? 'Inactive' : frequency === 'New' ? 'New Farmer' : frequency
+        );
         const showAlert = displayStatus === 'Needs Improvement';
 
-        console.log(`[Nestle Performance Debug] CenterID: ${centerId}, PassRate: ${passRate}, Status: ${displayStatus}, ShowAlert: ${showAlert}`);
-
-        const trends = {};
-        dispatches?.forEach(d => {
-          if (!d.dispatch_date) return;
-          const month = d.dispatch_date.substring(0, 7);
-          if (!trends[month]) {
-            trends[month] = { month, volume: 0, passCount: 0, total: 0 };
-          }
-
-          trends[month].total++;
-          if (d.status === 'Approved' || d.status === 'Pending' || !d.status) {
-            trends[month].passCount++;
-          }
-
-          // Safer volume calculation
-          let vol = 0;
-          if (Array.isArray(d.quantity)) {
-            vol = d.quantity.reduce((sum, item) => {
-              const mc = item.milk_collections;
-              const q = (mc && !Array.isArray(mc)) ? mc.quantity : (Array.isArray(mc) ? mc[0]?.quantity : 0);
-              return sum + (parseFloat(q) || 0);
-            }, 0);
-          }
-          trends[month].volume += vol;
-        });
-
-        const trendArray = Object.keys(trends).sort().map(month => {
-          const t = trends[month];
-          const rate = t.total > 0 ? (t.passCount / t.total) * 100 : 100;
-          return {
-            month,
-            volume: Number(t.volume.toFixed(2)),
-            passRate: Number(rate.toFixed(1))
-          };
+        const recommendations = generateRecommendations({
+          passRate,
+          frequency: frequency === 'Regular' ? 'Regular' : frequency === 'Irregular' ? 'Irregular' : 'New Farmer',
+          trends: trendArray,
+          inspectedCount,
         });
 
         let recommendation = displayStatus === 'Good' ? null : center?.performance_recommendation;
@@ -1243,51 +1241,62 @@ export default async function handler(req, res) {
           recommendation = recommendation.replace('Please contact your chilling center.', '').trim();
         }
 
-        const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        const recentDispatches = dispatches?.filter(d => d.dispatch_date && new Date(d.dispatch_date) >= oneMonthAgo).length || 0;
-        const frequency = recentDispatches > 0 ? 'High' : (totalD > 0 ? 'Inactive' : 'New');
-        const frequencySubtext = frequency === 'New' ? 'No dispatch history' : (frequency === 'Inactive' ? 'No dispatches in last 30 days' : 'Frequent supply patterns detected');
-
         return res.status(200).json({
           status: displayStatus,
           performance_status: displayStatus,
-          recommendation: recommendation,
-          passRate,
+          recommendation,
+          recommendations,
+          passRate: passRate ?? 0,
+          passRateDisplay: passRate,
+          inspectedCount,
           frequency,
           frequencySubtext,
-          quality_pass_rate: passRate,
-          rejectionRate: Number(rejectionRate.toFixed(1)),
+          quality_pass_rate: passRate ?? 0,
+          rejectionRate: rejectionRate ?? 0,
           show_alert: showAlert,
-          trends: trendArray
+          trends: trendArray,
+          hasEnoughTrendHistory: trendArray.length >= 2,
+          threshold: PASS_RATE_THRESHOLD,
         });
       }
       if (['nestle', 'nestle_officer'].includes(user.role)) {
         const { data: farmers } = await supabase.from('farmers').select('id, name, performance_status');
         const { data: centers } = await supabase.from('chilling_centers').select('id, name, performance_status');
 
-        // Fetch all quality tests to calculate real-time stats
-        const { data: allDispatches } = await supabase.from('dispatches').select('chilling_center_id, status');
-        const { data: allTests } = await supabase.from('quality_tests').select('collection_id, result');
-        const { data: allCollections } = await supabase.from('milk_collections').select('id, farmer_id');
+        const { data: allDispatches } = await supabase.from('dispatches').select('chilling_center_id, status, dispatch_date');
+        const { data: allCollections } = await supabase
+          .from('milk_collections')
+          .select('farmer_id, date, quantity, dispatch_status');
 
         const farmerStats = (farmers || []).map(f => {
-          const fColIds = (allCollections || []).filter(c => c.farmer_id === f.id).map(c => c.id);
-          const fTests = (allTests || []).filter(t => fColIds.includes(t.collection_id));
-          const total = fTests.length;
-          const passed = fTests.filter(t => t.result === 'Pass').length;
-          const passRate = total > 0 ? (passed / total) * 100 : 100;
-          return { ...f, performance_status: passRate >= 75 ? 'Good' : 'Needs Improvement' };
+          const fCols = (allCollections || []).filter(c => c.farmer_id === f.id);
+          const { passRate, inspectedCount } = calculateFarmerPassRate(fCols);
+          const { frequency } = calculateSupplyFrequency(fCols, inspectedCount);
+          return {
+            ...f,
+            performance_status: listPerformanceStatus(passRate, inspectedCount, frequency),
+            passRate,
+          };
         });
 
         const centerStats = (centers || []).map(c => {
-          const cDispatches = allDispatches?.filter(d => d.chilling_center_id === c.id) || [];
-          const total = cDispatches.length;
-          const rejected = cDispatches.filter(d => d.status === 'Rejected').length;
-          const passRate = total > 0 ? ((total - rejected) / total) * 100 : 100;
-          return { ...c, performance_status: passRate >= 75 ? 'Good' : 'Needs Improvement' };
+          const cDispatches = (allDispatches || []).filter(d => d.chilling_center_id === c.id);
+          const { passRate, inspectedCount } = calculateCenterPassRate(cDispatches);
+          const recent = cDispatches.filter(d => {
+            if (!d.dispatch_date) return false;
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            return new Date(d.dispatch_date) >= oneMonthAgo;
+          }).length;
+          const frequency = !cDispatches.length ? 'New Farmer' : !recent ? 'Inactive' : 'Regular';
+          return {
+            ...c,
+            performance_status: listPerformanceStatus(passRate, inspectedCount, frequency),
+            passRate,
+          };
         });
 
-        return res.status(200).json({ farmers: farmerStats, centers: centerStats });
+        return res.status(200).json({ farmers: farmerStats, centers: centerStats, threshold: PASS_RATE_THRESHOLD });
       }
       return res.status(400).json({ error: 'Invalid type' });
     } catch (err) {
@@ -1367,120 +1376,47 @@ export default async function handler(req, res) {
   // ────────── SYNC FARMER PERFORMANCE ──────────
   if (action === 'sync-farmer-performance' && req.method === 'POST') {
     try {
-      const { data: farmers } = await supabase.from('farmers').select('id, name, performance_status, user_id');
-      if (!farmers) return res.status(200).json({ count: 0 });
+      const { data: farmers } = await supabase.from('farmers').select('id, name, performance_status, performance_recommendation, user_id');
+      if (!farmers) return res.status(200).json({ success: true, updatedCount: 0 });
 
       let updatedCount = 0;
       for (const farmer of farmers) {
-        const { data: farmerCols } = await supabase.from('milk_collections').select('id').eq('farmer_id', farmer.id);
-        const colIds = farmerCols?.map(c => c.id) || [];
+        const { data: collections } = await supabase
+          .from('milk_collections')
+          .select('date, quantity, dispatch_status')
+          .eq('farmer_id', farmer.id);
 
-        if (colIds.length === 0) continue;
+        const cols = collections || [];
+        const { passRate, inspectedCount } = calculateFarmerPassRate(cols);
+        const { frequency } = calculateSupplyFrequency(cols, inspectedCount);
+        const trends = calculateFarmerMonthlyTrends(cols);
+        const newStatus = derivePerformanceStatus(passRate, trends, inspectedCount, frequency);
 
-        const { data: lastTests } = await supabase
-          .from('quality_tests')
-          .select('result, fat, snf, water')
-          .in('collection_id', colIds)
-          .order('tested_at', { ascending: false })
-          .limit(10);
+        if (inspectedCount === 0) continue;
 
-        if (!lastTests || lastTests.length === 0) continue;
-
-        const failTests = lastTests.filter(t => t.result === 'Fail');
-        const totalFails = failTests.length;
-
-        if (totalFails >= 3) {
-          const newSeverity = totalFails >= 5 ? 'HIGH' : 'LOW';
-
-          let fatFails = 0, snfFails = 0, waterFails = 0;
-          failTests.forEach(t => {
-            if (t.fat < 3.5) fatFails++;
-            if (t.snf < 8.5) snfFails++;
-            if (t.water > 0.5) waterFails++;
-          });
-
-          const failedTypes = [];
-          if (waterFails > 0) failedTypes.push("WATER");
-          if (snfFails > 0) failedTypes.push("SNF");
-          if (fatFails > 0) failedTypes.push("FAT");
-
-          // Fetch full recommendations from performance_recommendations table
-          const { data: dynamicRecs } = await supabase
-          .from('performance_recommendations')
-          .select('*')
-          .in('issue_type', failedTypes);
-
-          let mergedGuidanceEn = [];
-          let mergedGuidanceSi = [];
-          let mergedGuidanceTa = [];
-
-          if (dynamicRecs && dynamicRecs.length > 0) {
-            mergedGuidanceEn = [
-              ...new Set(dynamicRecs.flatMap(r => r.guidance_en || []))
-            ];
-
-            mergedGuidanceSi = [
-              ...new Set(dynamicRecs.flatMap(r => r.guidance_si || []))
-            ];
-
-            mergedGuidanceTa = [
-              ...new Set(dynamicRecs.flatMap(r => r.guidance_ta || []))
-            ];
-          }
-
-          let recObj = {
-            message_title:
-              failedTypes.length > 1
-                ? "Overall Milk Quality Decline"
-                : dynamicRecs?.[0]?.title_en || "Milk Quality Alert",
-
-            message_title_ta:
-              failedTypes.length > 1
-                ? "ஒட்டுமொத்த பால் தர சரிவு"
-                : dynamicRecs?.[0]?.title_ta || "பால் தர எச்சரிக்கை",
-
-            message_title_si:
-              failedTypes.length > 1
-                ? "සමස්ත කිරි ගුණාත්මක භාවයේ අඩුවීමක්"
-                : dynamicRecs?.[0]?.title_si || "කිරි ගුණාත්මක අනතුරු ඇඟවීම",
-
-            short_message:
-              failedTypes.length > 1
-                ? "Multiple quality parameters are failing in your recent supplies"
-                : dynamicRecs?.[0]?.description_en || "Milk quality issue detected",
-
-            short_message_ta:
-              failedTypes.length > 1
-                ? "சமீபத்திய விநியோகங்களில் பல தர சிக்கல்கள் கண்டறியப்பட்டுள்ளன"
-                : dynamicRecs?.[0]?.description_ta || "பால் தர சிக்கல் கண்டறியப்பட்டது",
-
-            short_message_si:
-              failedTypes.length > 1
-                ? "මෑත සැපයුම්වල ගුණාත්මක ගැටලු කිහිපයක් හඳුනාගෙන ඇත"
-                : dynamicRecs?.[0]?.description_si || "කිරි ගුණාත්මක ගැටලුවක් හඳුනාගෙන ඇත",
-
-            issue:
-              failedTypes.length > 0
-                ? failedTypes.join(",")
-                : "GENERAL",
-
-            tips: mergedGuidanceEn,
-            tips_ta: mergedGuidanceTa,
-            tips_si: mergedGuidanceSi,
-
-            severity: newSeverity
+        if (passRate != null && passRate < PASS_RATE_THRESHOLD) {
+          const tips = generateRecommendations({ passRate, frequency, trends, inspectedCount });
+          const recObj = {
+            message_title: 'Performance Improvement Required',
+            short_message: tips[0] || 'Quality pass rate is below the required threshold.',
+            tips,
+            severity: passRate < 50 ? 'HIGH' : 'LOW',
+            issue: 'QUALITY',
           };
-
-          await supabase.from('farmers').update({
-            performance_status: 'Needs Improvement',
-            performance_recommendation: JSON.stringify(recObj)
-          }).eq('id', farmer.id);
-          updatedCount++;
-        } else if (lastTests[0].result === 'Pass' && totalFails === 0) {
-          if (farmer.performance_status !== 'Good') {
+          const statusToSave = newStatus === 'Improving' ? 'Improving' : 'Needs Improvement';
+          const recString = JSON.stringify(recObj);
+          if (farmer.performance_status !== statusToSave || farmer.performance_recommendation !== recString) {
+            await supabase.from('farmers').update({
+              performance_status: statusToSave,
+              performance_recommendation: recString,
+            }).eq('id', farmer.id);
+            updatedCount++;
+          }
+        } else if (passRate >= PASS_RATE_THRESHOLD) {
+          if (farmer.performance_status !== 'Good' || farmer.performance_recommendation) {
             await supabase.from('farmers').update({
               performance_status: 'Good',
-              performance_recommendation: null
+              performance_recommendation: null,
             }).eq('id', farmer.id);
             updatedCount++;
           }
