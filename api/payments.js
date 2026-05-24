@@ -7,6 +7,7 @@ import {
   getUnpaidApprovedCollections,
   processFarmerSettlement,
 } from './_lib/paymentSettlement.js';
+import { calculateCollectionsPayment } from './_lib/pricingRules.js';
 
 function getBody(req) {
   if (!req.body) return {};
@@ -94,31 +95,20 @@ export default async function handler(req, res) {
         return acc;
       }, {});
 
-      const { data: rule, error: ruleErr } = await supabase
+      const { data: rules, error: ruleErr } = await supabase
         .from('pricing_rules')
         .select('*')
-        .eq('is_active', true)
-        .order('effective_from', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('effective_from', { ascending: false });
 
       if (ruleErr) {
         console.error('[payments:cycle-summary] pricing rule lookup failed:', ruleErr.message);
         throw ruleErr;
       }
 
-      const basePrice = rule ? parseFloat(rule.base_price_per_liter) : 0;
+      const pricingRules = rules || [];
 
       const summary = Object.values(farmerGroups).map(f => {
-        let farmerTotal = 0;
-        f.collections.forEach(col => {
-          const fatRate = rule ? parseFloat(rule.fat_bonus || 0) : 0;
-          const snfRate = rule ? parseFloat(rule.snf_bonus || 0) : 0;
-          const fBonus = Math.max(0, (col.fat - 3.5) * fatRate);
-          const sBonus = Math.max(0, (col.snf - 8.5) * snfRate);
-          const finalRate = basePrice + fBonus + sBonus;
-          farmerTotal += col.quantity * finalRate;
-        });
+        const payment = calculateCollectionsPayment(f.collections, pricingRules);
 
         const earliestDate = f.collections
           .map(c => c.date)
@@ -130,8 +120,8 @@ export default async function handler(req, res) {
 
         return {
           ...f,
-          unitPrice: basePrice,
-          totalPayment: farmerTotal.toFixed(2),
+          unitPrice: Number(payment.unitPrice.toFixed(2)),
+          totalPayment: payment.totalPayment.toFixed(2),
           status: 'Pending',
           cycleKey,
           cycleStart,
