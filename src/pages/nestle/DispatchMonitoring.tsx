@@ -9,9 +9,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StatusBadge } from '@/components/StatusBadge';
 import { useToast } from '@/hooks/use-toast';
 import { getDispatches, updateDispatchStatus, getChillingCenters, submitQualityTest } from '@/services/api';
-import type { Dispatch, ChillingCenter } from '@/types';
+import type { Dispatch, ChillingCenter, DispatchItem } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatQuantity, parseNumber } from '@/lib/utils';
+
+const matchesCollectionId = (
+  a: number | string | undefined | null,
+  b: number | string | undefined | null
+): boolean => a != null && b != null && Number(a) === Number(b);
+
+const isDispatchItemVerified = (item: DispatchItem): boolean =>
+  item.dispatchStatus === 'Approved';
+
+const isDispatchItemRejected = (item: DispatchItem): boolean =>
+  item.dispatchStatus === 'Rejected';
+
+const updateDispatchCollectionItem = (
+  dispatches: Dispatch[],
+  dispatchId: number | string,
+  collectionId: number,
+  updates: Partial<DispatchItem>
+): Dispatch[] =>
+  dispatches.map(d => {
+    if (!matchesCollectionId(d.id, dispatchId)) return d;
+    return {
+      ...d,
+      items: (d.items || []).map(item =>
+        matchesCollectionId(item.collectionId, collectionId) ? { ...item, ...updates } : item
+      ),
+    };
+  });
 
 const DispatchMonitoring: React.FC = () => {
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
@@ -102,80 +129,57 @@ const DispatchMonitoring: React.FC = () => {
       if (res.result === 'Pass') {
         toast({ title: 'Quality Check Passed', description: 'Collection has been verified.' });
 
-        // Update local state and check if we should auto-approve the whole dispatch
         setDispatches(prevDispatches => {
-          return prevDispatches.map(d => {
-            if (d.id === dId) {
-              const updatedItems = (d.items || []).map(i =>
-                i.collectionId === cId ? { ...i, dispatchStatus: 'Approved', qualityResult: 'Pass' } : i
-              );
+          const withVerifiedItem = updateDispatchCollectionItem(prevDispatches, dId, cId, {
+            dispatchStatus: 'Approved',
+            qualityResult: 'Pass',
+          });
 
-              const allItemsApproved = updatedItems.every(i => i.dispatchStatus === 'Approved');
+          return withVerifiedItem.map(d => {
+            if (!matchesCollectionId(d.id, dId)) return d;
 
-              if (allItemsApproved) {
-                // Trigger backend approval in the background
-                updateDispatchStatus(Number(dId), 'Approved').then(() => {
-                  toast({ title: 'Dispatch Fully Approved', description: `All items for dispatch #${dId} are verified.` });
-                }).catch(err => console.error('Auto-approval failed:', err));
+            const allItemsApproved = (d.items || []).every(i => isDispatchItemVerified(i));
+            if (!allItemsApproved) return d;
 
-                return { ...d, items: updatedItems, status: 'Approved' };
-              }
+            updateDispatchStatus(Number(dId), 'Approved').then(() => {
+              toast({ title: 'Dispatch Fully Approved', description: `All items for dispatch #${dId} are verified.` });
+            }).catch(err => console.error('Auto-approval failed:', err));
 
-              return { ...d, items: updatedItems };
-            }
-            return d;
+            return { ...d, status: 'Approved' };
           });
         });
 
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
         setTestForm({ snf: '', fat: '', water: '' });
-
-        await fetchDispatches();
       } else {
-        // Update local state to show 'Fail'
-        setDispatches(ds => ds.map(d => {
-          if (d.id === dId) {
-            const updatedItems = (d.items || []).map(i =>
-              i.collectionId === cId
-                ? {
-                  ...i,
-                  dispatchStatus: 'Rejected',
-                  qualityResult: 'Fail'
-                }
-                : i
-            );
+        setDispatches(prevDispatches => {
+          const withRejectedItem = updateDispatchCollectionItem(prevDispatches, dId, cId, {
+            dispatchStatus: 'Rejected',
+            qualityResult: 'Fail',
+          });
 
-            const hasApproved = updatedItems.some(
-              i => i.dispatchStatus === 'Approved'
-            );
+          return withRejectedItem.map(d => {
+            if (!matchesCollectionId(d.id, dId)) return d;
 
-            const hasRejected = updatedItems.some(
-              i => i.dispatchStatus === 'Rejected'
-            );
+            const updatedItems = d.items || [];
+            const hasApproved = updatedItems.some(i => isDispatchItemVerified(i));
+            const hasRejected = updatedItems.some(i => isDispatchItemRejected(i));
 
             return {
               ...d,
-              items: updatedItems,
-              status:
-                hasApproved && hasRejected
-                  ? 'Mixed'
-                  : 'Rejected'
+              status: hasApproved && hasRejected ? 'Mixed' : 'Rejected',
             };
-          }
-          return d;
-        }));
+          });
+        });
 
-        // Find the farmer info for the failing collection
-        const dispatch = dispatches.find(d => d.id === dId);
-        const item = dispatch?.items.find(i => i.collectionId === cId);
+        const dispatch = dispatches.find(d => matchesCollectionId(d.id, dId));
+        const item = dispatch?.items.find(i => matchesCollectionId(i.collectionId, cId));
         const farmerInfo = item ? ` (ID: ${item.collectionId} - ${item.farmerName})` : '';
 
-        // Automatically route to rejection flow with pre-filled reason
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
         setRejectDialog({ open: true, id: dId });
         setRejectReason(`Quality Check Failed: ${res.reason}${farmerInfo}`);
         toast({ title: 'Quality Check Failed', description: `Routing to rejection for: ${res.reason}${farmerInfo}`, variant: 'destructive' });
-        await fetchDispatches();
       }
     } catch (error) {
       toast({ title: 'System Error', description: 'Failed to submit quality test.', variant: 'destructive' });
@@ -280,7 +284,7 @@ const DispatchMonitoring: React.FC = () => {
                             return isManualReject ? 'Rejected' : 'Rejected';
                           }
 
-                          const allApproved = dispatch.items?.every(i => i.dispatchStatus === 'Approved');
+                          const allApproved = dispatch.items?.every(i => isDispatchItemVerified(i));
                           const hasFail = dispatch.items?.some(i => i.qualityResult === 'Fail');
 
                           if (allApproved && dispatch.status === 'Dispatched') return 'Ready';
@@ -290,11 +294,11 @@ const DispatchMonitoring: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                       {dispatch.status === 'Dispatched' &&
-                        !dispatch.items?.some(i => i.dispatchStatus === 'Rejected') ? (
+                        !dispatch.items?.some(i => isDispatchItemRejected(i)) ? (
                         <div className="flex justify-end gap-2">
                           {(() => {
-                            const allVerified = dispatch.items?.every(i => i.dispatchStatus === 'Approved' || i.dispatchStatus === 'Rejected');
-                            const allApproved = dispatch.items?.every(i => i.dispatchStatus === 'Approved');
+                            const allVerified = dispatch.items?.every(i => isDispatchItemVerified(i) || isDispatchItemRejected(i));
+                            const allApproved = dispatch.items?.every(i => isDispatchItemVerified(i));
 
                             if (allVerified && allApproved) {
                               return (
@@ -399,9 +403,9 @@ const DispatchMonitoring: React.FC = () => {
                                             <StatusBadge status={item.qualityResult || 'N/A'} />
                                           </td>
                                           <td className="px-3 py-2 text-right">
-                                            {item.dispatchStatus === 'Approved' ? (
+                                            {isDispatchItemVerified(item) ? (
                                               <StatusBadge status="Verified" />
-                                            ) : item.dispatchStatus === 'Rejected' ? (
+                                            ) : isDispatchItemRejected(item) ? (
                                               <div className="flex flex-col items-end">
                                                 <StatusBadge status="Rejected" />
                                                 <div className="flex flex-col items-end gap-0.5 mt-1 border-r-2 border-destructive/20 pr-1.5 grayscale-[0.5]">

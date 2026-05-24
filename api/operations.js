@@ -47,6 +47,16 @@ export default async function handler(req, res) {
           .maybeSingle();
 
         if (existingTest) {
+          const isNestle = user.role === 'nestle' || user.role === 'nestle_officer';
+          if (isNestle) {
+            await supabase
+              .from('milk_collections')
+              .update({
+                dispatch_status: existingTest.result === 'Pass' ? 'Approved' : 'Rejected',
+              })
+              .eq('id', collectionId);
+          }
+
           return res.status(200).json({
             id: existingTest.id,
             collectionId,
