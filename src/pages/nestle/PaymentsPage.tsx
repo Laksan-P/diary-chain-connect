@@ -46,23 +46,39 @@ const PaymentsPage: React.FC = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('cycle');
 
-  const loadCycle = async (skip = false) => {
+  const loadCycle = async (skip = false, options: { silent?: boolean } = {}) => {
     setLoading(true);
     try {
       const data = await getPaymentCycleSummary(skip);
       setCycleData({ ...data, isForced: skip });
-      if (data.summary?.length > 0) {
-        toast({ title: 'Payment Cycle Active', description: 'Collections identified and summary generated.' });
+
+      if (!options.silent) {
+        if (data.summary?.length > 0) {
+          toast({
+            title: skip ? 'Summary Recalculated' : 'Payment Cycle Active',
+            description: data.cycleReached || skip
+              ? 'Collections identified and summary generated.'
+              : `Pending summaries ready. Disbursement opens in ${data.daysUntilCycle} day(s).`,
+          });
+          setActiveTab('review');
+        } else if (data.cycleReached && data.summary?.length === 0) {
+          toast({
+            title: 'No Pending Summaries',
+            description: data.message || 'No pending payment summaries for this cycle.',
+          });
+          setActiveTab('cycle');
+        } else if (!skip) {
+          toast({
+            title: 'Schedule Checked',
+            description: data.message || `Next payment scheduled in ${data.daysUntilCycle} days.`,
+            variant: 'default',
+          });
+          setActiveTab('cycle');
+        }
+      } else if (data.summary?.length > 0) {
         setActiveTab('review');
-      } else if (data.cycleReached && data.summary?.length === 0) {
-        toast({ title: 'No Data', description: 'No approved unpaid collections found in the system.' });
-        setActiveTab('cycle');
-      } else if (!skip) {
-        toast({ 
-          title: 'Schedule Checked', 
-          description: data.message || `Next payment scheduled in ${data.daysUntilCycle} days.`,
-          variant: 'default'
-        });
+      } else {
+        setCycleData(null);
         setActiveTab('cycle');
       }
     } catch (e: any) {
@@ -73,9 +89,7 @@ const PaymentsPage: React.FC = () => {
   };
 
   const handleRecalculate = () => {
-    setCycleData(null);
-    setActiveTab('cycle');
-    toast({ title: 'System Reset', description: 'Returning to initiation phase.' });
+    loadCycle(false, { silent: false });
   };
 
   const loadHistory = async () => {
@@ -93,18 +107,31 @@ const PaymentsPage: React.FC = () => {
   const handleProcessBatch = async () => {
     setLoading(true);
     try {
-      // Step 8: Process Payment
       await processPaymentBatch(cycleData.summary);
-      
-      // Step 9, 10, 11 happen on backend
-      toast({ 
-        title: 'Payments Processed (Steps 8-11)', 
-        description: 'Collections marked Paid, transactions recorded, and farmers notified.' 
+
+      toast({
+        title: 'Payments Processed (Steps 8-11)',
+        description: 'Collections marked Paid, transactions recorded, and farmers notified.',
       });
-      
-      setCycleData(null);
-      setActiveTab('history');
-      loadHistory();
+
+      await loadHistory();
+
+      const data = await getPaymentCycleSummary(false);
+      if (data.summary?.length > 0) {
+        setCycleData(data);
+        setActiveTab('review');
+        toast({
+          title: 'Next Cycle Ready',
+          description: `${data.summary.length} pending farmer summary(ies) remain for the active cycle.`,
+        });
+      } else {
+        setCycleData(null);
+        setActiveTab('history');
+        toast({
+          title: 'Cycle Complete',
+          description: data.message || 'No pending payment summaries for this cycle.',
+        });
+      }
     } catch (e: any) {
       toast({ title: 'Critical Error', description: e.message, variant: 'destructive' });
     } finally {
@@ -286,7 +313,11 @@ const PaymentsPage: React.FC = () => {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/20 p-6 rounded-3xl border border-border/50">
             <div>
               <h3 className="text-xl font-display font-black">Review & Approve Payment Summaries</h3>
-              <p className="text-muted-foreground text-sm">Please verify the calculated settlement amounts for all farmers.</p>
+              <p className="text-muted-foreground text-sm">
+                {cycleData?.summary?.length
+                  ? `Active cycle: ${cycleData.cycleStart ? formatDate(cycleData.cycleStart) : '—'} to ${cycleData.cycleEnd ? formatDate(cycleData.cycleEnd) : '—'}`
+                  : 'No pending payment summaries for this cycle.'}
+              </p>
             </div>
             <div className="flex gap-2">
               <Button size="lg" variant="outline" className="h-14 font-bold rounded-2xl border-2" onClick={handleRecalculate}>Recalculate Summary</Button>
