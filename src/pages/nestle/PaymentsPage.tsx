@@ -50,39 +50,49 @@ const PaymentsPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await getPaymentCycleSummary(skip);
-      setCycleData({ ...data, isForced: skip });
+      const summary = Array.isArray(data.summary) ? data.summary : [];
+      setCycleData({ ...data, summary, isForced: skip });
 
       if (!options.silent) {
-        if (data.summary?.length > 0) {
+        if (summary.length > 0) {
           toast({
             title: skip ? 'Summary Recalculated' : 'Payment Cycle Active',
             description: data.cycleReached || skip
               ? 'Collections identified and summary generated.'
-              : `Pending summaries ready. Disbursement opens in ${data.daysUntilCycle} day(s).`,
+              : `Pending summaries ready. Disbursement opens in ${data.daysUntilCycle ?? 0} day(s).`,
           });
           setActiveTab('review');
-        } else if (data.cycleReached && data.summary?.length === 0) {
+        } else if (skip) {
           toast({
-            title: 'No Pending Summaries',
-            description: data.message || 'No pending payment summaries for this cycle.',
+            title: 'No Eligible Collections',
+            description: data.message || 'No eligible approved collections found for settlement.',
           });
           setActiveTab('cycle');
-        } else if (!skip) {
+        } else {
           toast({
             title: 'Schedule Checked',
-            description: data.message || `Next payment scheduled in ${data.daysUntilCycle} days.`,
+            description:
+              data.message ||
+              (data.daysUntilCycle != null
+                ? `Next payment scheduled in ${data.daysUntilCycle} days.`
+                : 'Waiting for next formal payment date.'),
             variant: 'default',
           });
           setActiveTab('cycle');
         }
-      } else if (data.summary?.length > 0) {
+      } else if (summary.length > 0) {
         setActiveTab('review');
       } else {
-        setCycleData(null);
+        setCycleData({ ...data, summary: [], isForced: skip });
         setActiveTab('cycle');
       }
     } catch (e: any) {
-      toast({ title: 'Flow Error', description: e.message, variant: 'destructive' });
+      console.error('[PaymentsPage] cycle-summary failed:', e);
+      toast({
+        title: 'Flow Error',
+        description: e?.message || 'Failed to generate summary',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }

@@ -45,41 +45,65 @@ export async function sendPaymentDisbursedNotification(
 export async function getPaidCollectionIds(db) {
   const paidIds = new Set();
 
-  const { data: paidCollections, error: colErr } = await db
-    .from('milk_collections')
-    .select('id')
-    .eq('dispatch_status', 'Paid');
+  try {
+    const { data: paidCollections, error: colErr } = await db
+      .from('milk_collections')
+      .select('id')
+      .eq('dispatch_status', 'Paid');
 
-  if (colErr) throw colErr;
-  (paidCollections || []).forEach(row => paidIds.add(row.id));
+    if (colErr) {
+      console.warn('[payments] Paid dispatch_status lookup skipped:', colErr.message);
+    } else {
+      (paidCollections || []).forEach(row => {
+        if (row?.id != null) paidIds.add(row.id);
+      });
+    }
+  } catch (err) {
+    console.warn('[payments] Paid dispatch_status lookup failed:', err?.message || err);
+  }
 
-  const { data: paidPayments, error: payErr } = await db
-    .from('payments')
-    .select('collection_id')
-    .eq('status', 'Paid');
+  try {
+    const { data: paidPayments, error: payErr } = await db
+      .from('payments')
+      .select('collection_id')
+      .eq('status', 'Paid');
 
-  if (payErr) throw payErr;
-  (paidPayments || []).forEach(row => {
-    if (row.collection_id != null) paidIds.add(row.collection_id);
-  });
+    if (payErr) {
+      console.warn('[payments] Paid payments lookup skipped:', payErr.message);
+    } else {
+      (paidPayments || []).forEach(row => {
+        if (row?.collection_id != null) paidIds.add(row.collection_id);
+      });
+    }
+  } catch (err) {
+    console.warn('[payments] Paid payments lookup failed:', err?.message || err);
+  }
 
   return paidIds;
 }
 
 /** Approved milk collections that have not yet been settled/disbursement. */
 export async function getUnpaidApprovedCollections(db) {
-  const paidIds = await getPaidCollectionIds(db);
+  try {
+    const paidIds = await getPaidCollectionIds(db);
 
-  const { data: collections, error } = await db
-    .from('milk_collections')
-    .select(
-      'id, farmer_id, quantity, quality_result, dispatch_status, date, milk_type, created_at, fat, snf'
-    )
-    .eq('dispatch_status', 'Approved');
+    const { data: collections, error } = await db
+      .from('milk_collections')
+      .select(
+        'id, farmer_id, quantity, quality_result, dispatch_status, date, milk_type, created_at, fat, snf'
+      )
+      .eq('dispatch_status', 'Approved');
 
-  if (error) throw error;
+    if (error) {
+      console.error('[payments] Approved collections lookup failed:', error.message);
+      return [];
+    }
 
-  return (collections || []).filter(c => !paidIds.has(c.id));
+    return (collections || []).filter(c => c?.id != null && !paidIds.has(c.id));
+  } catch (err) {
+    console.error('[payments] getUnpaidApprovedCollections failed:', err?.message || err);
+    return [];
+  }
 }
 
 export function getCollectionIdsFromSummaryItem(item) {
@@ -130,6 +154,14 @@ export async function findExistingBatchPayment(db, farmerId, collectionIds) {
 }
 
 export function buildCycleSummaryMeta(unpaidCollections, now = new Date(), skipCycle = false) {
+  if (!unpaidCollections?.length) {
+    return {
+      cycleReached: false,
+      daysUntilCycle: 0,
+      payoutDate: null,
+    };
+  }
+
   const today = normalizeDate(now);
 
   const payoutDates = unpaidCollections.map(c => getCyclePayoutDate(c.date));

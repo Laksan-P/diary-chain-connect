@@ -1,5 +1,11 @@
 export function normalizeDate(dateInput) {
+  if (dateInput == null || dateInput === '') {
+    return normalizeDate(new Date());
+  }
   const d = dateInput instanceof Date ? new Date(dateInput) : new Date(dateInput);
+  if (Number.isNaN(d.getTime())) {
+    return normalizeDate(new Date());
+  }
   d.setHours(0, 0, 0, 0);
   return d;
 }

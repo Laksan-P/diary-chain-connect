@@ -31,20 +31,37 @@ export default async function handler(req, res) {
 
       if (!unpaid.length) {
         return res.status(200).json({
-          cycleReached: false,
+          cycleReached: skipCycle,
+          daysUntilCycle: 0,
           summary: [],
-          message: 'No pending payment summaries for this cycle.',
+          message: skipCycle
+            ? 'No eligible approved collections found for settlement.'
+            : 'No pending payment summaries for this cycle.',
         });
       }
 
       const cycleMeta = buildCycleSummaryMeta(unpaid, new Date(), skipCycle);
       const isCycleReached = cycleMeta.cycleReached;
 
-      const farmerIds = [...new Set(unpaid.map(c => c.farmer_id))];
-      const { data: farmers } = await supabase
+      const farmerIds = [...new Set(unpaid.map(c => c.farmer_id).filter(Boolean))];
+      if (!farmerIds.length) {
+        return res.status(200).json({
+          cycleReached: isCycleReached,
+          daysUntilCycle: cycleMeta.daysUntilCycle,
+          summary: [],
+          message: 'No pending payment summaries for this cycle.',
+        });
+      }
+
+      const { data: farmers, error: farmersErr } = await supabase
         .from('farmers')
         .select('id, name, farmer_id')
         .in('id', farmerIds);
+
+      if (farmersErr) {
+        console.error('[payments:cycle-summary] farmers lookup failed:', farmersErr.message);
+        throw farmersErr;
+      }
 
       const farmerMap = (farmers || []).reduce((acc, f) => {
         acc[f.id] = f;
@@ -85,7 +102,10 @@ export default async function handler(req, res) {
         .limit(1)
         .maybeSingle();
 
-      if (ruleErr) throw ruleErr;
+      if (ruleErr) {
+        console.error('[payments:cycle-summary] pricing rule lookup failed:', ruleErr.message);
+        throw ruleErr;
+      }
 
       const basePrice = rule ? parseFloat(rule.base_price_per_liter) : 0;
 
@@ -102,7 +122,8 @@ export default async function handler(req, res) {
 
         const earliestDate = f.collections
           .map(c => c.date)
-          .sort()[0];
+          .filter(Boolean)
+          .sort()[0] || new Date().toISOString().slice(0, 10);
         const period = getCyclePeriod(getCyclePayoutDate(earliestDate));
         const cycleKey = `${period.start.toISOString().slice(0, 10)}_${period.end.toISOString().slice(0, 10)}`;
         const { cycleStart, cycleEnd } = getCycleDisplayRange(period);
@@ -132,8 +153,12 @@ export default async function handler(req, res) {
         summary,
       });
     } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Failed to generate summary' });
+      console.error('[payments:cycle-summary] Failed to generate summary:', err?.message || err);
+      if (err?.stack) console.error(err.stack);
+      return res.status(500).json({
+        error: 'Failed to generate summary',
+        details: err?.message || 'Unknown error',
+      });
     }
   }
 
@@ -178,8 +203,7 @@ export default async function handler(req, res) {
           id, farmer_id, collection_id, quantity, base_pay, amount, status, paid_at, created_at,
           farmers (name, farmer_id)
         `)
-        .eq('status', 'Paid')
-        .gt('amount', 0);
+        .eq('status', 'Paid');
 
       if (req.query.farmerId) {
         query = query.eq('farmer_id', req.query.farmerId);
@@ -195,7 +219,9 @@ export default async function handler(req, res) {
       const { data: payments, error } = await query.order('paid_at', { ascending: false });
       if (error) throw error;
 
-      const flattened = (payments || []).map(p => ({
+      const flattened = (payments || [])
+        .filter(p => parseFloat(p.amount || 0) > 0)
+        .map(p => ({
         id: p.id,
         collectionId: p.collection_id,
         farmerName: p.farmers?.name,
