@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, Dispatch } from '@/types';
 import { savePendingAction, isOnline, saveCache, getCache, getPendingByType, syncActions, removePendingAction } from '@/services/offlineSync';
+import { mergeDispatchHistory } from '@/services/dispatchDisplayHelpers';
 import { formatDate } from '@/lib/utils';
 import {
   Dialog,
@@ -109,8 +110,8 @@ const DispatchPage: React.FC = () => {
 
       const allQuality = getPendingByType('quality');
       const allDispatches = getPendingByType('dispatch');
+      const idMappings = getCache('sync_id_mappings') || { collections: {}, farmers: {} };
 
-      // Update server collections with local quality/dispatch tests first
       // Update server collections with local quality/dispatch tests first
       const updatedC = c.map((col: any) => {
         if (!col) return null;
@@ -127,79 +128,37 @@ const DispatchPage: React.FC = () => {
         };
       }).filter(Boolean) as MilkCollection[];
 
+      const mergedDispatches = mergeDispatchHistory(d, allDispatches, idMappings);
+      setDispatches(mergedDispatches);
+
+      const dispatchedCollectionIds = new Set<string>();
+      mergedDispatches.forEach(dispatch => {
+        dispatch.items?.forEach(item => {
+          if (item.collectionId != null) dispatchedCollectionIds.add(String(item.collectionId));
+          if (item.offlineCollectionId) dispatchedCollectionIds.add(String(item.offlineCollectionId));
+        });
+      });
+
+      allDispatches.forEach(action => {
+        action.data?.items?.forEach((item: { collectionId?: number | string; offlineCollectionId?: string }) => {
+          if (item.collectionId != null) dispatchedCollectionIds.add(String(item.collectionId));
+          if (item.offlineCollectionId) dispatchedCollectionIds.add(String(item.offlineCollectionId));
+          const mapped = idMappings.collections?.[String(item.offlineCollectionId ?? item.collectionId)];
+          if (mapped != null) dispatchedCollectionIds.add(String(mapped));
+        });
+      });
+
       const filteredCols = updatedC.filter(col => {
-        const dispatchedLocally = allDispatches.some(act =>
-          act.data?.items?.some((i: any) =>
-            String(i.collectionId) === String(col.id) ||
-            String(i.offlineCollectionId) === String(col.id)
-          )
-        );
-
-        const dispatchedOnServer = d.some(disp =>
-          disp.items?.some((i: any) => {
-            const itemCollectionId =
-              i.collectionId ??
-              i.collection_id ??
-              i.offlineCollectionId;
-
-            return String(itemCollectionId) === String(col.id);
-          })
-        );
+        const colId = String(col.id);
+        const mappedColId = String(idMappings.collections?.[colId] ?? colId);
 
         const isDispatched =
-          dispatchedLocally ||
-          dispatchedOnServer ||
+          dispatchedCollectionIds.has(colId) ||
+          dispatchedCollectionIds.has(mappedColId) ||
           col.dispatchStatus === 'Dispatched';
 
-        return (
-          col.qualityResult === 'Pass' &&
-          !isDispatched
-        );
+        return col.qualityResult === 'Pass' && !isDispatched;
       });
-
-      const maxId = d.reduce((max: number, curr: any) => (typeof curr?.id === 'number' && curr.id > max ? curr.id : max), 0);
-
-      const offlinePendingDispatches = allDispatches
-        .map((a, index) => {
-          if (!a.data) return null;
-
-          // Check if this exact dispatch (same items) already exists in server history 'd'
-          const itemIds = a.data.items?.map((i: any) => i.collectionId).filter(Boolean) || [];
-          const isAlreadyOnServer = d.some(sd => {
-            const serverItemIds = sd.items?.map((si: any) =>
-              String(
-                si.collectionId ??
-                si.collection_id ??
-                si.offlineCollectionId
-              )
-            ) || [];
-            const offlineItemIds = itemIds.map(id => String(id));
-
-            const sameVehicle = sd.vehicleNumber === a.data.vehicleNumber;
-
-            const sameItems =
-              offlineItemIds.length > 0 &&
-              offlineItemIds.every(id => serverItemIds.includes(id));
-
-            return sameVehicle && sameItems;
-          });
-
-          if (isAlreadyOnServer) return null;
-
-          return {
-            ...a.data,
-            id: maxId + index + 1,
-            realOfflineId: a.id,
-            status: 'Pending Sync',
-            isOffline: true
-          };
-        }).filter(Boolean) as Dispatch[];
-      const mergedDispatches = [...offlinePendingDispatches, ...d].sort((a, b) => {
-        const dateA = new Date(a.dispatchDate || a.createdAt || 0).getTime();
-        const dateB = new Date(b.dispatchDate || b.createdAt || 0).getTime();
-        return dateB - dateA; // Newest first
-      });
-      setDispatches(mergedDispatches);
 
       // Always merge offline collections that passed quality testing
       const cachedFarmers = getCache('farmers') || [];
@@ -272,11 +231,13 @@ const DispatchPage: React.FC = () => {
       }, 1000);
     };
     window.addEventListener('offline-action-saved', handleUpdate);
+    window.addEventListener('offline-sync-started', handleUpdate);
     window.addEventListener('offline-sync-complete', handleUpdate);
     window.addEventListener('online', handleUpdate);
 
     return () => {
       window.removeEventListener('offline-action-saved', handleUpdate);
+      window.removeEventListener('offline-sync-started', handleUpdate);
       window.removeEventListener('offline-sync-complete', handleUpdate);
       window.removeEventListener('online', handleUpdate);
     };
