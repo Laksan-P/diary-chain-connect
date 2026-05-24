@@ -214,6 +214,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return 'dispatch_rejected_title'; // Already a key
     }
     if (raw == 'Payment Received') return 'payment_received_title';
+    if (raw == 'payment_received_title') return 'payment_received_title';
+
+    // Raw translation keys stored without params (legacy / partial inserts)
+    if (raw == 'payment_disbursed_cycle_msg' || raw == 'payment_disbursed_msg') {
+      return raw;
+    }
 
     final disbursedCycleMatch = RegExp(
       r'^Your payment of Rs\. (\S+) for (\S+) to (\S+) has been disbursed\.$',
@@ -240,31 +246,82 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return raw; // No match — return original
   }
 
+  String _formatNotificationDate(String raw) {
+    if (raw.isEmpty) return raw;
+    try {
+      final date = DateTime.parse(raw);
+      return DateFormat('MMM d, yyyy').format(date);
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  String _paymentFallback(String key, Map<String, String> params) {
+    final amount = params['amount'] ?? '';
+    if (key == 'payment_disbursed_cycle_msg' &&
+        params.containsKey('cycleStart') &&
+        params.containsKey('cycleEnd')) {
+      return 'Your payment of Rs. $amount for ${params['cycleStart']} to ${params['cycleEnd']} has been disbursed.';
+    }
+    if (key == 'payment_disbursed_msg' || key == 'payment_disbursed_cycle_msg') {
+      return 'Your payment of Rs. $amount has been disbursed.';
+    }
+    if (key == 'payment_received_title') {
+      return 'Payment Received';
+    }
+    return key;
+  }
+
+  Map<String, String> _parseMessageParams(String paramStr) {
+    final Map<String, String> params = {};
+    for (var p in paramStr.split(',')) {
+      final colonIdx = p.indexOf(':');
+      if (colonIdx > 0) {
+        params[p.substring(0, colonIdx).trim()] = p.substring(colonIdx + 1).trim();
+      }
+    }
+    return params;
+  }
+
   String _translate(String? raw) {
-    if (raw == null) return '';
-    // First convert any legacy English strings to key format
+    if (raw == null || raw.isEmpty) return '';
     final migrated = _migrateLegacy(raw);
+
     if (migrated.contains('|')) {
-      final parts = migrated.split('|');
-      final key = parts[0];
-      // Split params on ',' but only on the first colon per segment
-      final paramStr = parts[1];
-      final Map<String, String> params = {};
-      final paramParts = paramStr.split(',');
-      for (var p in paramParts) {
-        final colonIdx = p.indexOf(':');
-        if (colonIdx > 0) {
-          params[p.substring(0, colonIdx)] = p.substring(colonIdx + 1);
+      final pipeIdx = migrated.indexOf('|');
+      var key = migrated.substring(0, pipeIdx);
+      final paramStr = migrated.substring(pipeIdx + 1);
+      final Map<String, String> params = _parseMessageParams(paramStr);
+
+      for (final dateKey in ['date', 'cycleStart', 'cycleEnd']) {
+        if (params.containsKey(dateKey)) {
+          params[dateKey] = _formatNotificationDate(params[dateKey]!);
         }
       }
+
+      if (key == 'payment_disbursed_cycle_msg' &&
+          (!params.containsKey('cycleStart') || !params.containsKey('cycleEnd'))) {
+        key = 'payment_disbursed_msg';
+      }
+
       String resolved = Translations.get(key, widget.locale, params: params);
-      // Strip any unresolved placeholders like {date} that weren't passed as params
+      if (resolved == key) {
+        resolved = _paymentFallback(key, params);
+      }
       resolved = resolved.replaceAll(RegExp(r'\s?\(on \{date\}\)'), '');
       resolved = resolved.replaceAll(RegExp(r'\{\w+\}'), '');
       return resolved.trim();
     }
-    // If it doesn't have |, it might still be a key (like the title)
-    return Translations.get(migrated, widget.locale);
+
+    String resolved = Translations.get(migrated, widget.locale);
+    if (resolved == migrated && migrated.startsWith('payment_')) {
+      resolved = _paymentFallback(migrated, {});
+    }
+    if (resolved.contains('{')) {
+      resolved = resolved.replaceAll(RegExp(r'\{\w+\}'), '');
+      resolved = resolved.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+    }
+    return resolved;
   }
 
   @override

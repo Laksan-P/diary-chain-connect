@@ -1,4 +1,4 @@
-import { getCyclePayoutDate, normalizeDate, getCyclePeriod, getCycleDisplayRange } from './paymentCycle.js';
+import { getCyclePayoutDate, normalizeDate, getCyclePeriod, getCycleDisplayRange, resolveSummaryCycleRange } from './paymentCycle.js';
 
 export async function sendPaymentDisbursedNotification(
   db,
@@ -289,15 +289,11 @@ export async function processFarmerSettlement(db, item) {
     .maybeSingle();
 
   if (farmerData?.user_id) {
-    let cycleStart = item.cycleStart;
-    let cycleEnd = item.cycleEnd;
-
-    if ((!cycleStart || !cycleEnd) && item.collections?.length) {
-      const earliestDate = item.collections.map(c => c.date).sort()[0];
-      const range = getCycleDisplayRange(getCyclePeriod(getCyclePayoutDate(earliestDate)));
-      cycleStart = range.cycleStart;
-      cycleEnd = range.cycleEnd;
-    }
+    const { cycleStart, cycleEnd } = resolveSummaryCycleRange(
+      item.collections || [],
+      item.cycleStart,
+      item.cycleEnd
+    );
 
     await sendPaymentDisbursedNotification(db, {
       userId: farmerData.user_id,

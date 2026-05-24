@@ -78,11 +78,39 @@ export function resolveActivePaymentCycle(unpaidCollections, now = new Date()) {
   };
 }
 
+/** Format a date as YYYY-MM-DD in local time (avoids UTC shift in notifications). */
+export function formatDateOnly(dateInput) {
+  const d = normalizeDate(dateInput);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 /** Inclusive cycle dates for farmer-facing payment messages. */
 export function getCycleDisplayRange(period) {
-  const cycleStart = period.start.toISOString().slice(0, 10);
-  const endInclusive = new Date(period.end);
-  endInclusive.setDate(endInclusive.getDate() - 1);
-  const cycleEnd = endInclusive.toISOString().slice(0, 10);
+  const cycleStart = formatDateOnly(period.start);
+  const cycleEnd = formatDateOnly(period.payoutDate);
   return { cycleStart, cycleEnd };
+}
+
+/** Cycle range for a farmer summary from its collection dates. */
+export function resolveSummaryCycleRange(collections = [], itemCycleStart, itemCycleEnd) {
+  if (itemCycleStart && itemCycleEnd) {
+    return {
+      cycleStart: formatDateOnly(itemCycleStart),
+      cycleEnd: formatDateOnly(itemCycleEnd),
+    };
+  }
+
+  const dates = collections.map(c => c?.date).filter(Boolean).sort();
+  if (!dates.length) return { cycleStart: null, cycleEnd: null };
+
+  const firstPeriod = getCyclePeriod(getCyclePayoutDate(dates[0]));
+  const lastPeriod = getCyclePeriod(getCyclePayoutDate(dates[dates.length - 1]));
+
+  return {
+    cycleStart: formatDateOnly(firstPeriod.start),
+    cycleEnd: formatDateOnly(lastPeriod.payoutDate),
+  };
 }

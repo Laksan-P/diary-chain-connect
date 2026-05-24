@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   DollarSign, FileText, CheckCircle2, AlertCircle, RefreshCw, 
   Calculator, ShieldCheck, CreditCard, ChevronRight, Search,
-  ArrowRight, Landmark, Receipt, BellRing
+  ArrowRight, Landmark, Receipt, BellRing, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DataTable from '@/components/DataTable';
@@ -39,6 +39,9 @@ import {
 
 const PaymentsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [disburseState, setDisburseState] = useState<'idle' | 'processing' | 'success'>('idle');
+  const [disburseSummary, setDisburseSummary] = useState<{ count: number; totalAmount: number } | null>(null);
+  const disburseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [cycleData, setCycleData] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [selectedFarmer, setSelectedFarmer] = useState<any>(null);
@@ -114,53 +117,70 @@ const PaymentsPage: React.FC = () => {
     loadHistory(); 
   }, []);
 
-  const handleProcessBatch = async () => {
-    if (!cycleData?.summary?.length) return;
+  useEffect(() => {
+    return () => {
+      if (disburseTimerRef.current) clearTimeout(disburseTimerRef.current);
+    };
+  }, []);
 
-    setLoading(true);
+  const refreshAfterDisburse = useCallback(async () => {
+    await loadHistory();
+
+    const refreshed = await getPaymentCycleSummary(false);
+    if (refreshed.summary?.length > 0) {
+      setCycleData(refreshed);
+      setActiveTab('review');
+    } else {
+      setCycleData(null);
+      setActiveTab('history');
+    }
+  }, []);
+
+  const closeDisburseSuccess = useCallback(async () => {
+    if (disburseTimerRef.current) {
+      clearTimeout(disburseTimerRef.current);
+      disburseTimerRef.current = null;
+    }
+    setDisburseState('idle');
+    setDisburseSummary(null);
+    await refreshAfterDisburse();
+  }, [refreshAfterDisburse]);
+
+  const handleProcessBatch = async () => {
+    if (!cycleData?.summary?.length || disburseState !== 'idle') return;
+
+    setDisburseState('processing');
     try {
       const result = await processPaymentBatch(cycleData.summary);
 
       if (result.processedCount > 0) {
-        toast({
-          title: 'Payments Processed',
-          description: `${result.processedCount} farmer settlement(s) disbursed and marked paid.`,
-        });
+        const totalAmount = cycleData.summary.reduce(
+          (sum: number, row: any) => sum + parseFloat(row.totalPayment || 0),
+          0
+        );
+        setDisburseSummary({ count: result.processedCount, totalAmount });
+        setDisburseState('success');
+        disburseTimerRef.current = setTimeout(() => {
+          closeDisburseSuccess();
+        }, 2500);
       } else if (result.skippedCount > 0) {
         toast({
           title: 'Already Disbursed',
           description: result.message || 'These summaries were already paid.',
         });
-      }
-
-      await loadHistory();
-
-      const refreshed = await getPaymentCycleSummary(false);
-      if (refreshed.summary?.length > 0) {
-        setCycleData(refreshed);
-        setActiveTab('review');
-        if (result.processedCount > 0) {
-          toast({
-            title: 'Remaining Pending Summaries',
-            description: `${refreshed.summary.length} unpaid farmer summary(ies) still await disbursement.`,
-          });
-        }
+        setDisburseState('idle');
+        await refreshAfterDisburse();
       } else {
-        setCycleData(null);
-        setActiveTab('history');
-        if (result.processedCount > 0) {
-          toast({
-            title: 'Cycle Complete',
-            description: refreshed.message || 'No pending payment summaries for this cycle.',
-          });
-        }
+        setDisburseState('idle');
+        await refreshAfterDisburse();
       }
     } catch (e: any) {
-      toast({ title: 'Critical Error', description: e.message, variant: 'destructive' });
-    } finally {
-      setLoading(false);
+      toast({ title: 'Payment Failed', description: e.message, variant: 'destructive' });
+      setDisburseState('idle');
     }
   };
+
+  const isDisbursing = disburseState === 'processing' || disburseState === 'success';
 
   const summaryColumns = [
     { 
@@ -348,9 +368,9 @@ const PaymentsPage: React.FC = () => {
                 size="lg" 
                 className={`h-14 font-black rounded-2xl shadow-lg px-8 btn-press ${cycleData?.cycleReached || cycleData?.isForced ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100' : 'bg-muted text-muted-foreground shadow-none pointer-events-none'}`}
                 onClick={handleProcessBatch} 
-                disabled={loading || !cycleData?.summary?.length || (!cycleData?.cycleReached && !cycleData?.isForced)}
+                disabled={isDisbursing || loading || !cycleData?.summary?.length || (!cycleData?.cycleReached && !cycleData?.isForced)}
               >
-                {loading ? 'Processing...' : (cycleData?.cycleReached || cycleData?.isForced ? 'Verify & Disburse Payments' : 'Period Not Reached')}
+                {disburseState === 'processing' ? 'Processing...' : (cycleData?.cycleReached || cycleData?.isForced ? 'Verify & Disburse Payments' : 'Period Not Reached')}
               </Button>
             </div>
           </motion.div>
@@ -467,6 +487,74 @@ const PaymentsPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Disbursement loading / success overlay */}
+      <AnimatePresence>
+        {disburseState !== 'idle' && (
+          <motion.div
+            key="disburse-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/20 p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 12 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-border/50 p-10 max-w-md w-full text-center space-y-6"
+            >
+              {disburseState === 'processing' ? (
+                <>
+                  <div className="flex justify-center">
+                    <Loader2 className="w-14 h-14 text-primary animate-spin" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-display font-black text-foreground">Processing Payments</h3>
+                    <p className="text-muted-foreground text-sm">Processing payments...</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-center">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+                      className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center"
+                    >
+                      <motion.div
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 1 }}
+                        transition={{ delay: 0.15, duration: 0.4 }}
+                      >
+                        <CheckCircle2 className="w-12 h-12 text-emerald-600" />
+                      </motion.div>
+                    </motion.div>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-display font-black text-foreground">Payment Disbursed Successfully</h3>
+                    <p className="text-muted-foreground text-sm">
+                      All selected farmer payments have been settled.
+                    </p>
+                    {disburseSummary && (
+                      <p className="text-sm font-semibold text-emerald-700 pt-1">
+                        {disburseSummary.count} farmer{disburseSummary.count !== 1 ? 's' : ''} · Rs. {disburseSummary.totalAmount.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    className="w-full h-12 font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={closeDisburseSuccess}
+                  >
+                    Done
+                  </Button>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

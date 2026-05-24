@@ -1,7 +1,7 @@
 import supabase from './_lib/supabase.js';
 import { authenticate } from './_lib/auth.js';
 import { cors } from './_lib/cors.js';
-import { getCyclePayoutDate, getCyclePeriod, getCycleDisplayRange } from './_lib/paymentCycle.js';
+import { getCyclePayoutDate, getCyclePeriod, getCycleDisplayRange, formatDateOnly } from './_lib/paymentCycle.js';
 import {
   buildCycleSummaryMeta,
   getUnpaidApprovedCollections,
@@ -125,7 +125,7 @@ export default async function handler(req, res) {
           .filter(Boolean)
           .sort()[0] || new Date().toISOString().slice(0, 10);
         const period = getCyclePeriod(getCyclePayoutDate(earliestDate));
-        const cycleKey = `${period.start.toISOString().slice(0, 10)}_${period.end.toISOString().slice(0, 10)}`;
+        const cycleKey = `${formatDateOnly(period.start)}_${formatDateOnly(period.end)}`;
         const { cycleStart, cycleEnd } = getCycleDisplayRange(period);
 
         return {
@@ -143,13 +143,14 @@ export default async function handler(req, res) {
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
       )[0];
       const activePeriod = getCyclePeriod(getCyclePayoutDate(earliestUnpaid.date));
+      const activeCycleRange = getCycleDisplayRange(activePeriod);
 
       return res.status(200).json({
         cycleReached: isCycleReached,
         daysUntilCycle: cycleMeta.daysUntilCycle,
         payoutDate: cycleMeta.payoutDate || activePeriod.payoutDate.toISOString(),
-        cycleStart: activePeriod.start.toISOString(),
-        cycleEnd: activePeriod.end.toISOString(),
+        cycleStart: activeCycleRange.cycleStart,
+        cycleEnd: activeCycleRange.cycleEnd,
         summary,
       });
     } catch (err) {
