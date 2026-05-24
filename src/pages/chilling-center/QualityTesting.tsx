@@ -11,85 +11,59 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, QualityTest } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { savePendingAction, isOnline, saveCache, getCache, getPendingByType } from '@/services/offlineSync';
+import {
+  getCachedCollections,
+  getQualityEligibleCollections,
+  mergeQualityEligibleCollections,
+  OFFLINE_EMPTY_MESSAGE,
+} from '@/services/offlinePreload';
+import OfflineEmptyState from '@/components/OfflineEmptyState';
+
+const OFFLINE_RELOAD_EVENTS = ['offline-action-saved', 'offline-sync-complete', 'offline-sync-started', 'online', 'offline'] as const;
 
 const QualityTestingPage: React.FC = () => {
   const { user } = useAuth();
   const [collections, setCollections] = useState<MilkCollection[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showEmptyCacheMessage, setShowEmptyCacheMessage] = useState(false);
   const [result, setResult] = useState<QualityTest | null>(null);
   const { toast } = useToast();
   const [form, setForm] = useState({ collectionId: '', snf: '', fat: '', water: '' });
 
-  useEffect(() => { 
+  useEffect(() => {
     const loadCollections = async () => {
-      if (user?.chillingCenterId) {
-        // 1. Load from cache and offline actions immediately for instant UI
-        const allPendingQuality = getPendingByType('quality');
-        const alreadyTestedOnlineIds = allPendingQuality.map(q => String(q.data.collectionId));
-        const alreadyTestedOfflineIds = allPendingQuality.map(q => q.data.offlineCollectionId).filter(Boolean);
-        const cachedFarmers = getCache('farmers') || [];
+      if (!user?.chillingCenterId) return;
 
-        const getLocalCollections = (sCols: MilkCollection[]) => {
-          const pendingQuality = sCols.filter(c => 
-            !c.qualityResult && 
-            !alreadyTestedOnlineIds.includes(String(c.id))
-          );
+      const cachedCols =
+        getCache('quality_eligible_collections') ||
+        getQualityEligibleCollections(getCachedCollections());
 
-          const offlinePending = getPendingByType('collection')
-            .filter(a => {
-              // Be lenient with chillingCenterId filter for offline records
-              const centerMatch = !user.chillingCenterId || !a.data.chillingCenterId || String(a.data.chillingCenterId) === String(user.chillingCenterId);
-              const alreadyTested = alreadyTestedOfflineIds.includes(a.id);
-              return centerMatch && !alreadyTested;
-            })
-            .map(a => {
-              const farmer = cachedFarmers.find((f: any) => String(f.id) === String(a.data.farmerId));
-              const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
-              return {
-                ...a.data,
-                id: a.id,
-                displayId: `OFF-${a.id.substring(0, 4).toUpperCase()}`,
-                isOffline: true,
-                farmerName: finalFarmerName,
-                qualityResult: undefined,
-              } as unknown as MilkCollection;
-            });
+      const merged = mergeQualityEligibleCollections(cachedCols);
+      setCollections(merged);
+      setShowEmptyCacheMessage(!isOnline() && merged.length === 0);
 
-          // De-duplicate: if a record is in both offlinePending and sCols (via cache), prefer offlinePending version
-          const offlineIds = new Set<string | number>(offlinePending.map(o => o.id));
-          const uniquePendingQuality = pendingQuality.filter(c => !offlineIds.has(c.id) && !offlineIds.has(String(c.id)));
+      if (isOnline()) {
+        try {
+          const freshCols = await getCollections(user.chillingCenterId);
+          saveCache('collection_history', freshCols);
+          saveCache('collections', freshCols);
+          saveCache('quality_eligible_collections', getQualityEligibleCollections(freshCols));
+          saveCache('dispatch_all_collections', freshCols);
 
-          return [...offlinePending, ...uniquePendingQuality];
-        };
-
-    // Show cached version first
-    const initialCols = getCache('pending_quality_collections') || [];
-    setCollections(getLocalCollections(initialCols));
-
-        // 2. Then try to fetch fresh data if online
-        if (isOnline()) {
-          try {
-            const freshCols = await getCollections(user.chillingCenterId);
-            saveCache('pending_quality_collections', freshCols);
-            setCollections(getLocalCollections(freshCols));
-          } catch (err) {
-            console.error("Failed to fetch fresh collections:", err);
-          }
+          const nextMerged = mergeQualityEligibleCollections(freshCols);
+          setCollections(nextMerged);
+          setShowEmptyCacheMessage(false);
+        } catch (err) {
+          console.error('Failed to fetch fresh collections:', err);
         }
       }
     };
+
     loadCollections();
 
     const handleUpdate = () => loadCollections();
-    window.addEventListener('offline-action-saved', handleUpdate);
-    window.addEventListener('offline-sync-complete', handleUpdate);
-    window.addEventListener('online', handleUpdate);
-
-    return () => {
-      window.removeEventListener('offline-action-saved', handleUpdate);
-      window.removeEventListener('offline-sync-complete', handleUpdate);
-      window.removeEventListener('online', handleUpdate);
-    };
+    OFFLINE_RELOAD_EVENTS.forEach(event => window.addEventListener(event, handleUpdate));
+    return () => OFFLINE_RELOAD_EVENTS.forEach(event => window.removeEventListener(event, handleUpdate));
   }, [user]);
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
@@ -191,11 +165,15 @@ const QualityTestingPage: React.FC = () => {
         </div>
       </div>
 
+      {showEmptyCacheMessage && (
+        <OfflineEmptyState message={OFFLINE_EMPTY_MESSAGE} className="mb-6" />
+      )}
+
       <motion.form onSubmit={handleSubmit} className="glass-card p-6 space-y-5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="space-y-2">
           <Label>Milk Collection</Label>
-          <Select value={form.collectionId} onValueChange={v => update('collectionId', v)}>
-            <SelectTrigger><SelectValue placeholder="Select collection" /></SelectTrigger>
+          <Select value={form.collectionId} onValueChange={v => update('collectionId', v)} disabled={collections.length === 0}>
+            <SelectTrigger><SelectValue placeholder={collections.length === 0 ? 'No collections available' : 'Select collection'} /></SelectTrigger>
             <SelectContent>
               {collections.map(c => (
                 <SelectItem key={c.id} value={String(c.id)}>
@@ -210,7 +188,7 @@ const QualityTestingPage: React.FC = () => {
           <div className="space-y-2"><Label>FAT %</Label><Input type="number" step="0.01" min="0" max="100" placeholder="e.g. 3.5" value={form.fat} onChange={e => { if (e.target.value.length <= 5) update('fat', e.target.value) }} required /></div>
           <div className="space-y-2"><Label>Water %</Label><Input type="number" step="0.01" min="0" max="100" placeholder="e.g. 0.3" value={form.water} onChange={e => { if (e.target.value.length <= 5) update('water', e.target.value) }} required /></div>
         </div>
-        <Button type="submit" className="w-full btn-press" disabled={loading}>
+        <Button type="submit" className="w-full btn-press" disabled={loading || collections.length === 0}>
           {loading ? 'Testing...' : 'Submit Quality Test'}
         </Button>
       </motion.form>

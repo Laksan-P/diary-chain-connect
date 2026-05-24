@@ -11,8 +11,16 @@ import DataTable from '@/components/DataTable';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MilkCollection, Dispatch } from '@/types';
-import { savePendingAction, isOnline, saveCache, getCache, getPendingByType, syncActions, removePendingAction } from '@/services/offlineSync';
+import { savePendingAction, isOnline, saveCache, getCache, getPendingByType, getPendingActions, syncActions, removePendingAction } from '@/services/offlineSync';
 import { mergeDispatchHistory } from '@/services/dispatchDisplayHelpers';
+import {
+  getCachedCollections,
+  getDispatchEligibleCollections,
+  getCachedDispatches,
+  mergeDispatchEligibleCollections,
+  OFFLINE_EMPTY_MESSAGE,
+} from '@/services/offlinePreload';
+import OfflineEmptyState from '@/components/OfflineEmptyState';
 import { formatDate } from '@/lib/utils';
 import {
   Dialog,
@@ -30,6 +38,7 @@ const DispatchPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewingDispatch, setViewingDispatch] = useState<Dispatch | null>(null);
+  const [showEmptyCacheMessage, setShowEmptyCacheMessage] = useState(false);
   const { toast } = useToast();
   const getLocalDateTime = () => {
     const now = new Date();
@@ -83,11 +92,9 @@ const DispatchPage: React.FC = () => {
     }
 
     try {
-      // 1. Load from cache immediately for instant UI
-      let c = getCache('dispatch_all_collections') || getCache('dispatch_pending_collections') || [];
-      let d = getCache('dispatch_history') || [];
+      let c = getCachedCollections();
+      let d = getCachedDispatches();
 
-      // 2. Only attempt network fetch if online — parallel for speed
       if (navigator.onLine) {
         try {
           const [colsResult, dispResult] = await Promise.allSettled([
@@ -96,8 +103,10 @@ const DispatchPage: React.FC = () => {
           ]);
           if (colsResult.status === 'fulfilled') {
             c = colsResult.value;
-            saveCache('dispatch_pending_collections', c.filter((col: any) => col.qualityResult === 'Pass' && col.dispatchStatus === 'Pending'));
+            saveCache('collection_history', c);
+            saveCache('collections', c);
             saveCache('dispatch_all_collections', c);
+            saveCache('dispatch_eligible_collections', getDispatchEligibleCollections(c));
           }
           if (dispResult.status === 'fulfilled') {
             d = dispResult.value;
@@ -108,110 +117,15 @@ const DispatchPage: React.FC = () => {
         }
       }
 
-      const allQuality = getPendingByType('quality');
       const allDispatches = getPendingByType('dispatch');
       const idMappings = getCache('sync_id_mappings') || { collections: {}, farmers: {} };
-
-      // Update server collections with local quality/dispatch tests first
-      const updatedC = c.map((col: any) => {
-        if (!col) return null;
-        const qualityTest = allQuality.find(q => q.data && String(q.data.collectionId) === String(col.id));
-
-        // Safety check: is this collection in any pending dispatch OR any synced dispatch record?
-        const dispatchedLocally = allDispatches.some(act => act.data?.items?.some((i: any) => String(i.collectionId) === String(col.id)));
-        const dispatchedOnServer = d.some(disp => disp.items?.some((i: any) => String(i.collectionId) === String(col.id)));
-
-        return {
-          ...col,
-          qualityResult: qualityTest ? qualityTest.data.result : col.qualityResult,
-          dispatchStatus: (dispatchedLocally || dispatchedOnServer) ? 'Dispatched' : col.dispatchStatus
-        };
-      }).filter(Boolean) as MilkCollection[];
 
       const mergedDispatches = mergeDispatchHistory(d, allDispatches, idMappings);
       setDispatches(mergedDispatches);
 
-      const dispatchedCollectionIds = new Set<string>();
-      mergedDispatches.forEach(dispatch => {
-        dispatch.items?.forEach(item => {
-          if (item.collectionId != null) dispatchedCollectionIds.add(String(item.collectionId));
-          if (item.offlineCollectionId) dispatchedCollectionIds.add(String(item.offlineCollectionId));
-        });
-      });
-
-      allDispatches.forEach(action => {
-        action.data?.items?.forEach((item: { collectionId?: number | string; offlineCollectionId?: string }) => {
-          if (item.collectionId != null) dispatchedCollectionIds.add(String(item.collectionId));
-          if (item.offlineCollectionId) dispatchedCollectionIds.add(String(item.offlineCollectionId));
-          const mapped = idMappings.collections?.[String(item.offlineCollectionId ?? item.collectionId)];
-          if (mapped != null) dispatchedCollectionIds.add(String(mapped));
-        });
-      });
-
-      const filteredCols = updatedC.filter(col => {
-        const colId = String(col.id);
-        const mappedColId = String(idMappings.collections?.[colId] ?? colId);
-
-        const isDispatched =
-          dispatchedCollectionIds.has(colId) ||
-          dispatchedCollectionIds.has(mappedColId) ||
-          col.dispatchStatus === 'Dispatched';
-
-        return col.qualityResult === 'Pass' && !isDispatched;
-      });
-
-      // Always merge offline collections that passed quality testing
-      const cachedFarmers = getCache('farmers') || [];
-
-      // IDs already dispatched offline
-      const alreadyDispatchedIds = allDispatches.flatMap(d =>
-        d.data?.items?.flatMap((i: any) => [
-          i.offlineCollectionId,
-          i.collectionId
-        ]).filter(Boolean) || []
-      );
-
-      const offlineCollections = getPendingByType('collection')
-        .filter(a =>
-          a &&
-          !alreadyDispatchedIds.some(id =>
-            String(id) === String(a.id)
-          )
-        ) // skip already dispatched
-        .map(a => {
-          if (!a.data) return null;
-          const qualityTest = allQuality.find(q => q.data && String(q.data.offlineCollectionId) === String(a.id));
-          if (!qualityTest || qualityTest.data.result !== 'Pass') return null; // Only passed
-          const farmer = cachedFarmers.find((f: any) => f && String(f.id) === String(a.data.farmerId));
-          const finalFarmerName = a.data.farmerName?.trim() || farmer?.name?.trim() || 'Offline Farmer';
-          return {
-            ...a.data,
-            id: a.id,
-            displayId: `OFF-${String(a.id).substring(0, 4).toUpperCase()}`,
-            isOffline: true,
-            farmerName: finalFarmerName,
-            qualityResult: 'Pass',
-            dispatchStatus: 'Pending'
-          };
-        })
-        .filter(Boolean) as MilkCollection[];
-      const mergedCollections = [
-        ...offlineCollections,
-        ...filteredCols.filter(serverCol =>
-          !offlineCollections.some(offlineCol =>
-            String(offlineCol.farmerName).trim().toLowerCase() ===
-            String(serverCol.farmerName).trim().toLowerCase() &&
-            Number(offlineCol.quantity) === Number(serverCol.quantity) &&
-            formatDate(offlineCol.date) === formatDate(serverCol.date)
-          )
-        )
-      ];
-
-      setCollections(
-        mergedCollections.filter(
-          col => col.dispatchStatus !== 'Dispatched'
-        )
-      );
+      const mergedCollections = mergeDispatchEligibleCollections(c, getPendingActions(), idMappings);
+      setCollections(mergedCollections);
+      setShowEmptyCacheMessage(!navigator.onLine && mergedCollections.length === 0);
 
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (err) {
@@ -234,12 +148,14 @@ const DispatchPage: React.FC = () => {
     window.addEventListener('offline-sync-started', handleUpdate);
     window.addEventListener('offline-sync-complete', handleUpdate);
     window.addEventListener('online', handleUpdate);
+    window.addEventListener('offline', handleUpdate);
 
     return () => {
       window.removeEventListener('offline-action-saved', handleUpdate);
       window.removeEventListener('offline-sync-started', handleUpdate);
       window.removeEventListener('offline-sync-complete', handleUpdate);
       window.removeEventListener('online', handleUpdate);
+      window.removeEventListener('offline', handleUpdate);
     };
   }, [centerId]);
 
@@ -389,6 +305,10 @@ const DispatchPage: React.FC = () => {
             <p className="text-sm text-muted-foreground">Create and track dispatches</p>
           </div>
         </div>
+
+        {showEmptyCacheMessage && (
+          <OfflineEmptyState message={OFFLINE_EMPTY_MESSAGE} className="mb-4" />
+        )}
 
         <motion.form onSubmit={handleSubmit} className="glass-card p-6 space-y-5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">

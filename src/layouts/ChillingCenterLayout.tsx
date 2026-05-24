@@ -1,14 +1,14 @@
-import React from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Milk, Users, Beaker, Truck, History, LogOut, Menu, UserPlus, BookOpen } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
 import NotificationBell from '@/components/NotificationBell';
 import FloatingFaqButton from '@/components/FloatingFaqButton';
 import OfflineSyncStatus from '@/components/OfflineSyncStatus';
+import { preloadOfflineData } from '@/services/offlinePreload';
 
 const navItems = [
   { title: 'Dashboard', path: '/chilling-center', icon: Milk },
@@ -25,6 +25,21 @@ const ChillingCenterLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    const centerId = user?.chillingCenterId;
+    if (!centerId) return;
+
+    const runPreload = () => {
+      if (navigator.onLine) {
+        preloadOfflineData(centerId).catch(err => console.error('[OfflinePreload] Failed:', err));
+      }
+    };
+
+    runPreload();
+    window.addEventListener('online', runPreload);
+    return () => window.removeEventListener('online', runPreload);
+  }, [user?.chillingCenterId]);
 
   const handleLogout = () => { logout(); navigate('/login'); };
 

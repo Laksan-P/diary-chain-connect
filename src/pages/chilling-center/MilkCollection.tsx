@@ -18,14 +18,18 @@ import {
   cleanOfflineFarmerCache,
   checkDuplicateCollection,
 } from '@/services/offlineSync';
+import { OFFLINE_FARMERS_EMPTY_MESSAGE } from '@/services/offlinePreload';
+import OfflineEmptyState from '@/components/OfflineEmptyState';
+
+const OFFLINE_RELOAD_EVENTS = ['offline-action-saved', 'offline-sync-complete', 'offline-sync-started', 'online', 'offline'] as const;
 
 const MilkCollectionPage: React.FC = () => {
   const { user } = useAuth();
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showEmptyCacheMessage, setShowEmptyCacheMessage] = useState(false);
   const { toast } = useToast();
 
-  // Get local date in YYYY-MM-DD format
   const getLocalDate = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -44,7 +48,9 @@ const MilkCollectionPage: React.FC = () => {
     const loadFarmers = async () => {
       cleanOfflineFarmerCache();
       const cached = getCache('farmers') || [];
-      setFarmers(mergeFarmersWithPending(cached) as unknown as Farmer[]);
+      const merged = mergeFarmersWithPending(cached) as unknown as Farmer[];
+      setFarmers(merged);
+      setShowEmptyCacheMessage(!isOnline() && merged.length === 0);
 
       if (isOnline()) {
         try {
@@ -52,25 +58,21 @@ const MilkCollectionPage: React.FC = () => {
             ? await getFarmers(user.chillingCenterId)
             : await getFarmers();
 
-          setFarmers(mergeFarmersWithPending(serverData) as unknown as Farmer[]);
+          const nextMerged = mergeFarmersWithPending(serverData) as unknown as Farmer[];
+          setFarmers(nextMerged);
+          setShowEmptyCacheMessage(false);
           saveCache('farmers', serverData);
         } catch (err) {
           console.error('Failed to fetch fresh farmers:', err);
         }
       }
     };
+
     loadFarmers();
 
     const handleUpdate = () => loadFarmers();
-    window.addEventListener('offline-action-saved', handleUpdate);
-    window.addEventListener('offline-sync-complete', handleUpdate);
-    window.addEventListener('online', handleUpdate);
-
-    return () => {
-      window.removeEventListener('offline-action-saved', handleUpdate);
-      window.removeEventListener('offline-sync-complete', handleUpdate);
-      window.removeEventListener('online', handleUpdate);
-    };
+    OFFLINE_RELOAD_EVENTS.forEach(event => window.addEventListener(event, handleUpdate));
+    return () => OFFLINE_RELOAD_EVENTS.forEach(event => window.removeEventListener(event, handleUpdate));
   }, [user]);
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
@@ -118,7 +120,6 @@ const MilkCollectionPage: React.FC = () => {
       toast({ title: 'Collection Recorded', description: 'Milk collection saved successfully' });
       setForm({ farmerId: '', date: form.date, time: new Date().toTimeString().slice(0, 5), temperature: '', quantity: '', milkType: 'Cow' });
     } catch {
-      // API failed — save offline as fallback
       savePendingAction('collection', collectionData);
       toast({
         title: 'Saved Offline',
@@ -142,12 +143,16 @@ const MilkCollectionPage: React.FC = () => {
         </div>
       </div>
 
+      {showEmptyCacheMessage && (
+        <OfflineEmptyState message={OFFLINE_FARMERS_EMPTY_MESSAGE} className="mb-6" />
+      )}
+
       <motion.form onSubmit={handleSubmit} className="glass-card p-6 space-y-5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Farmer</Label>
-            <Select value={form.farmerId} onValueChange={v => update('farmerId', v)}>
-              <SelectTrigger><SelectValue placeholder="Select farmer" /></SelectTrigger>
+            <Select value={form.farmerId} onValueChange={v => update('farmerId', v)} disabled={farmers.length === 0}>
+              <SelectTrigger><SelectValue placeholder={farmers.length === 0 ? 'No farmers available' : 'Select farmer'} /></SelectTrigger>
               <SelectContent>{farmers.map(f => <SelectItem key={f.id} value={String(f.id)}>{f.farmerId} — {f.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -171,7 +176,7 @@ const MilkCollectionPage: React.FC = () => {
           <div className="space-y-2"><Label>Temperature (°C)</Label><Input type="number" step="0.1" value={form.temperature} onChange={e => update('temperature', e.target.value)} placeholder="e.g. 4.0" required /></div>
           <div className="space-y-2"><Label>Quantity (Liters)</Label><Input type="number" step="0.1" value={form.quantity} onChange={e => update('quantity', e.target.value)} placeholder="e.g. 120.5" required /></div>
         </div>
-        <Button type="submit" className="w-full btn-press" disabled={loading}>
+        <Button type="submit" className="w-full btn-press" disabled={loading || farmers.length === 0}>
           {loading ? 'Saving...' : 'Record Collection'}
         </Button>
       </motion.form>

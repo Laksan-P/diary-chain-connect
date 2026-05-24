@@ -16,6 +16,7 @@ import {
   mergeFarmersWithPending,
 } from '@/services/offlineSync';
 import { mergeCollectionHistory, type HistoryCollection } from '@/services/collectionDisplayHelpers';
+import { getCachedCollections } from '@/services/offlinePreload';
 
 const CollectionHistory: React.FC = () => {
   const { user } = useAuth();
@@ -32,7 +33,7 @@ const CollectionHistory: React.FC = () => {
     setLoading(true);
 
     try {
-      let serverCols: HistoryCollection[] = getCache('collection_history') || [];
+      let serverCols: HistoryCollection[] = getCache('collection_history') || getCachedCollections();
 
       if (navigator.onLine) {
         try {

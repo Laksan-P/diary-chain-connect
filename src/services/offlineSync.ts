@@ -368,6 +368,8 @@ export const getPendingByType = (type: PendingAction['type']) =>
 export const shouldShowOfflineRecord = (_offlineId: string, _serverIds: number[]) =>
   !navigator.onLine;
 
+export { preloadOfflineData, OFFLINE_EMPTY_MESSAGE, OFFLINE_FARMERS_EMPTY_MESSAGE } from './offlinePreload';
+
 if (typeof window !== 'undefined') {
   window.addEventListener('offline-action-saved', () => requestSync());
 
