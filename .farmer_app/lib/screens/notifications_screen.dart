@@ -130,10 +130,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (raw == 'Quality Test Passed') return 'quality_test_passed_title';
     if (raw == 'Quality Test Failed') return 'quality_test_failed_title';
     if (raw == 'Nestle Quality Pass' || raw == 'Milk Quality Verified by Nestlé') {
-      return 'nestle_quality_test_passed_title';
+      return 'nestle_quality_pass_title';
     }
-    if (raw == 'Nestle Quality Fail' || raw == 'Milk Quality Rejected by Nestlé') {
-      return 'nestle_quality_test_failed_title';
+    if (raw == 'Nestle Quality Fail' ||
+        raw == 'Nestle Quality Rejected' ||
+        raw == 'Milk Quality Rejected by Nestlé') {
+      return 'nestle_quality_rejected_title';
+    }
+    if (raw == 'nestle_quality_test_passed_title' ||
+        raw == 'nestle_quality_pass_title') {
+      return 'nestle_quality_pass_title';
+    }
+    if (raw == 'nestle_quality_test_failed_title' ||
+        raw == 'nestle_quality_rejected_title') {
+      return 'nestle_quality_rejected_title';
     }
     if (raw == 'Milk Dispatched') return 'milk_dispatched_title';
     if (raw == 'Dispatch Approved') return 'dispatch_approved_title';
@@ -144,7 +154,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       r'^Your milk collection on (\S+) has passed Nestlé quality verification\.$',
     ).firstMatch(raw);
     if (nestlePassMatch != null) {
-      return 'nestle_quality_test_passed_msg|date:${nestlePassMatch.group(1)}';
+      return 'nestle_quality_pass_msg|date:${nestlePassMatch.group(1)}';
     }
 
     // Nestlé verification fail
@@ -152,7 +162,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       r'^Your milk collection on (\S+) did not pass Nestlé quality verification\. Reason: (.+)$',
     ).firstMatch(raw);
     if (nestleFailMatch != null) {
-      return 'nestle_quality_test_failed_msg|date:${nestleFailMatch.group(1)},reason:${nestleFailMatch.group(2)}';
+      return 'nestle_quality_rejected_msg|date:${nestleFailMatch.group(1)},reason:${nestleFailMatch.group(2)}';
     }
 
     // Legacy Nestlé messages
@@ -160,14 +170,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       r'^Final verification by Nestlé for your collection on (\S+) was successful\.$',
     ).firstMatch(raw);
     if (legacyNestlePassMatch != null) {
-      return 'nestle_quality_test_passed_msg|date:${legacyNestlePassMatch.group(1)}';
+      return 'nestle_quality_pass_msg|date:${legacyNestlePassMatch.group(1)}';
     }
 
     final legacyNestleFailMatch = RegExp(
-      r'^Final verification by Nestlé for your collection on (\S+) failed\. Reason: (.+)$',
+      r'^Final verification by Nestlé for your collection on (\S+) did not meet the required quality standard\.$',
     ).firstMatch(raw);
     if (legacyNestleFailMatch != null) {
-      return 'nestle_quality_test_failed_msg|date:${legacyNestleFailMatch.group(1)},reason:${legacyNestleFailMatch.group(2)}';
+      return 'nestle_quality_rejected_msg|date:${legacyNestleFailMatch.group(1)}';
+    }
+
+    final legacyNestleFailWithReasonMatch = RegExp(
+      r'^Final verification by Nestlé for your collection on (\S+) failed\. Reason: (.+)$',
+    ).firstMatch(raw);
+    if (legacyNestleFailWithReasonMatch != null) {
+      return 'nestle_quality_rejected_msg|date:${legacyNestleFailWithReasonMatch.group(1)},reason:${legacyNestleFailWithReasonMatch.group(2)}';
     }
 
     // Message: "Your milk collection on YYYY-MM-DD passed quality testing."
@@ -293,6 +310,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final paramStr = migrated.substring(pipeIdx + 1);
       final Map<String, String> params = _parseMessageParams(paramStr);
 
+      // Map legacy Nestlé keys to current keys
+      if (key == 'nestle_quality_test_passed_msg') key = 'nestle_quality_pass_msg';
+      if (key == 'nestle_quality_test_failed_msg') key = 'nestle_quality_rejected_msg';
+
       for (final dateKey in ['date', 'cycleStart', 'cycleEnd']) {
         if (params.containsKey(dateKey)) {
           params[dateKey] = _formatNotificationDate(params[dateKey]!);
@@ -314,8 +335,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     String resolved = Translations.get(migrated, widget.locale);
-    if (resolved == migrated && migrated.startsWith('payment_')) {
-      resolved = _paymentFallback(migrated, {});
+    if (resolved == migrated) {
+      if (migrated == 'nestle_quality_test_passed_title') {
+        resolved = Translations.get('nestle_quality_pass_title', widget.locale);
+      } else if (migrated == 'nestle_quality_test_failed_title') {
+        resolved = Translations.get('nestle_quality_rejected_title', widget.locale);
+      } else if (migrated.startsWith('payment_')) {
+        resolved = _paymentFallback(migrated, {});
+      }
     }
     if (resolved.contains('{')) {
       resolved = resolved.replaceAll(RegExp(r'\{\w+\}'), '');

@@ -24,6 +24,26 @@ const isDispatchItemVerified = (item: DispatchItem): boolean =>
 const isDispatchItemRejected = (item: DispatchItem): boolean =>
   item.dispatchStatus === 'Rejected';
 
+const isItemPendingInspection = (item: DispatchItem): boolean =>
+  !isDispatchItemVerified(item) && !isDispatchItemRejected(item);
+
+const deriveDispatchStatus = (items: DispatchItem[], currentStatus: Dispatch['status']): Dispatch['status'] => {
+  if (!items.length) return currentStatus;
+
+  const hasPending = items.some(isItemPendingInspection);
+  const hasApproved = items.some(isDispatchItemVerified);
+  const hasRejected = items.some(isDispatchItemRejected);
+
+  if (hasApproved && hasRejected) return 'Mixed';
+  if (hasPending && (hasApproved || hasRejected)) return 'Mixed';
+  if (hasRejected && !hasApproved && !hasPending) return 'Rejected';
+  if (hasApproved && !hasRejected && !hasPending) return currentStatus === 'Approved' ? 'Approved' : 'Dispatched';
+  return 'Dispatched';
+};
+
+const canManageDispatch = (dispatch: Dispatch): boolean =>
+  dispatch.status === 'Dispatched' || dispatch.status === 'Mixed';
+
 const updateDispatchCollectionItem = (
   dispatches: Dispatch[],
   dispatchId: number | string,
@@ -152,34 +172,31 @@ const DispatchMonitoring: React.FC = () => {
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
         setTestForm({ snf: '', fat: '', water: '' });
       } else {
+        toast({
+          title: 'Quality Check Failed',
+          description: `Collection #${cId} did not pass Nestlé verification.${res.reason ? ` Reason: ${res.reason}` : ''}`,
+          variant: 'destructive',
+        });
+
         setDispatches(prevDispatches => {
           const withRejectedItem = updateDispatchCollectionItem(prevDispatches, dId, cId, {
             dispatchStatus: 'Rejected',
             qualityResult: 'Fail',
+            failureReason: res.reason || 'Quality standards not met',
           });
 
           return withRejectedItem.map(d => {
             if (!matchesCollectionId(d.id, dId)) return d;
-
-            const updatedItems = d.items || [];
-            const hasApproved = updatedItems.some(i => isDispatchItemVerified(i));
-            const hasRejected = updatedItems.some(i => isDispatchItemRejected(i));
-
+            const items = d.items || [];
             return {
               ...d,
-              status: hasApproved && hasRejected ? 'Mixed' : 'Rejected',
+              status: deriveDispatchStatus(items, d.status),
             };
           });
         });
 
-        const dispatch = dispatches.find(d => matchesCollectionId(d.id, dId));
-        const item = dispatch?.items.find(i => matchesCollectionId(i.collectionId, cId));
-        const farmerInfo = item ? ` (ID: ${item.collectionId} - ${item.farmerName})` : '';
-
         setTestDialog({ open: false, collectionId: null, dispatchId: null });
-        setRejectDialog({ open: true, id: dId });
-        setRejectReason(`Quality Check Failed: ${res.reason}${farmerInfo}`);
-        toast({ title: 'Quality Check Failed', description: `Routing to rejection for: ${res.reason}${farmerInfo}`, variant: 'destructive' });
+        setTestForm({ snf: '', fat: '', water: '' });
       }
     } catch (error) {
       toast({ title: 'System Error', description: 'Failed to submit quality test.', variant: 'destructive' });
@@ -293,14 +310,15 @@ const DispatchMonitoring: React.FC = () => {
                       />
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      {dispatch.status === 'Dispatched' &&
-                        !dispatch.items?.some(i => isDispatchItemRejected(i)) ? (
+                      {canManageDispatch(dispatch) ? (
                         <div className="flex justify-end gap-2">
                           {(() => {
-                            const allVerified = dispatch.items?.every(i => isDispatchItemVerified(i) || isDispatchItemRejected(i));
-                            const allApproved = dispatch.items?.every(i => isDispatchItemVerified(i));
+                            const items = dispatch.items || [];
+                            const hasPending = items.some(isItemPendingInspection);
+                            const allApproved = items.length > 0 && items.every(isDispatchItemVerified);
+                            const allResolved = items.every(i => isDispatchItemVerified(i) || isDispatchItemRejected(i));
 
-                            if (allVerified && allApproved) {
+                            if (allResolved && allApproved) {
                               return (
                                 <Button
                                   size="sm"
@@ -312,25 +330,31 @@ const DispatchMonitoring: React.FC = () => {
                               );
                             }
 
-                            return (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-primary border-primary/20 hover:bg-primary/5 h-8 px-3"
-                                onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
-                              >
-                                <Beaker className="w-3.5 h-3.5 mr-1" /> Inspect Quality
-                              </Button>
-                            );
+                            if (hasPending) {
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-primary border-primary/20 hover:bg-primary/5 h-8 px-3"
+                                  onClick={() => setExpandedRow(expandedRow === dispatch.id ? null : dispatch.id)}
+                                >
+                                  <Beaker className="w-3.5 h-3.5 mr-1" /> Inspect Quality
+                                </Button>
+                              );
+                            }
+
+                            return null;
                           })()}
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="h-8 px-3 group"
-                            onClick={() => setRejectDialog({ open: true, id: dispatch.id })}
-                          >
-                            <X className="w-3.5 h-3.5 mr-1 group-hover:rotate-90 transition-transform" /> Reject
-                          </Button>
+                          {!dispatch.items?.some(isDispatchItemRejected) && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="h-8 px-3 group"
+                              onClick={() => setRejectDialog({ open: true, id: dispatch.id })}
+                            >
+                              <X className="w-3.5 h-3.5 mr-1 group-hover:rotate-90 transition-transform" /> Reject
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <Button

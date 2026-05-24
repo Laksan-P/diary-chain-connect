@@ -291,31 +291,6 @@ export default async function handler(req, res) {
               reasonValue,
             });
 
-            const dispatchParams = resultValue === 'Pass'
-              ? `date:${date},collectionId:${collectionId}`
-              : `date:${date},collectionId:${collectionId},reason:${reasonValue || 'N/A'}`;
-
-            const dispatchTitle = resultValue === 'Pass' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
-            const dispatchMsg = resultValue === 'Pass' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
-
-            const { data: existingDispatchNote } = await supabase
-              .from('notifications')
-              .select('id')
-              .eq('user_id', userId)
-              .eq('type', 'dispatch')
-              .eq('title', dispatchTitle)
-              .like('message', `%collectionId:${collectionId}%`)
-              .maybeSingle();
-
-            if (!existingDispatchNote) {
-              await supabase.from('notifications').insert({
-                user_id: userId,
-                title: dispatchTitle,
-                message: `${dispatchMsg}|${dispatchParams}`,
-                type: 'dispatch',
-              });
-            }
-
             if (ccUserId) {
               const ccTitle = resultValue === 'Pass' ? 'cc_collection_passed_nestle_title' : 'cc_collection_rejected_nestle_title';
               const ccMsg = resultValue === 'Pass' ? 'cc_collection_passed_nestle_msg' : 'cc_collection_rejected_nestle_msg';
@@ -928,29 +903,41 @@ export default async function handler(req, res) {
             if (userId) {
               const itemStatus = col.dispatch_status;
 
-              // If it's a quality-led rejection (!isGlobalRejection), we ONLY notify the culprit (done in quality-test).
-              // Bystanders (still 'Dispatched') should NOT be notified in quality-led rejections.
-              const shouldNotify = (status === 'Approved' && itemStatus === 'Dispatched') ||
-                (isGlobalRejection && itemStatus === 'Dispatched');
+              // Quality-led rejections notify only the affected farmer in quality-test.
+              // Global transport rejection notifies farmers whose collections were not individually tested.
+              const shouldNotify =
+                (status === 'Approved' && (itemStatus === 'Approved' || itemStatus === 'Dispatched')) ||
+                (status === 'Rejected' && isGlobalRejection && itemStatus === 'Dispatched');
 
               if (shouldNotify) {
-                const titleKey = (status === 'Approved') ? 'dispatch_approved_title' : 'dispatch_rejected_title';
-                const msgKey = (status === 'Approved') ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
+                const titleKey = status === 'Approved' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
+                const msgKey = status === 'Approved' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
 
-                // For bystanders, we use the global reason if it's a global rejection, otherwise generic
                 const displayReason = isGlobalRejection ? reason : 'Batch quality standards not met';
 
-                const params = (status === 'Approved')
-                  ? `date:${col.date}`
-                  : `date:${col.date},reason:${displayReason}`;
+                const params =
+                  status === 'Approved'
+                    ? `date:${col.date},collectionId:${col.id}`
+                    : `date:${col.date},collectionId:${col.id},reason:${displayReason}`;
 
-                await supabase.from('notifications').insert({
-                  user_id: userId,
-                  title: titleKey,
-                  message: `${msgKey}|${params}`,
-                  type: 'quality_result',
-                  is_read: false
-                });
+                const { data: existingNote } = await supabase
+                  .from('notifications')
+                  .select('id')
+                  .eq('user_id', userId)
+                  .eq('type', 'quality_result')
+                  .eq('title', titleKey)
+                  .like('message', `%collectionId:${col.id}%`)
+                  .maybeSingle();
+
+                if (!existingNote) {
+                  await supabase.from('notifications').insert({
+                    user_id: userId,
+                    title: titleKey,
+                    message: `${msgKey}|${params}`,
+                    type: 'quality_result',
+                    is_read: false,
+                  });
+                }
               }
             }
           }

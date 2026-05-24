@@ -1,6 +1,23 @@
+const NESTLE_PASS_TITLES = [
+  'nestle_quality_pass_title',
+  'nestle_quality_test_passed_title',
+];
+
+const NESTLE_FAIL_TITLES = [
+  'nestle_quality_rejected_title',
+  'nestle_quality_test_failed_title',
+];
+
+const ALL_NESTLE_TITLES = [...NESTLE_PASS_TITLES, ...NESTLE_FAIL_TITLES];
+
+function isNestleQualityTitle(title) {
+  return ALL_NESTLE_TITLES.includes(title);
+}
+
 /**
  * Send idempotent Nestlé quality verification notification to the farmer.
  * One notification per farmer + collection (+ dispatch when available).
+ * Updates the existing notification if pass/reject result changes.
  */
 export async function sendNestleQualityVerificationNotification(
   db,
@@ -24,31 +41,40 @@ export async function sendNestleQualityVerificationNotification(
     .maybeSingle();
 
   const dispatchId = itemLink?.dispatch_id;
-  const titleKey =
-    resultValue === 'Pass'
-      ? 'nestle_quality_test_passed_title'
-      : 'nestle_quality_test_failed_title';
-  const msgKey =
-    resultValue === 'Pass'
-      ? 'nestle_quality_test_passed_msg'
-      : 'nestle_quality_test_failed_msg';
+  const isPass = resultValue === 'Pass';
+  const titleKey = isPass ? 'nestle_quality_pass_title' : 'nestle_quality_rejected_title';
+  const msgKey = isPass ? 'nestle_quality_pass_msg' : 'nestle_quality_rejected_msg';
 
   let params = `date:${date},collectionId:${collectionId}`;
   if (dispatchId) params += `,dispatchId:${dispatchId}`;
-  if (resultValue !== 'Pass') params += `,reason:${reasonValue || 'N/A'}`;
+  if (!isPass && reasonValue) params += `,reason:${reasonValue}`;
 
   const message = `${msgKey}|${params}`;
 
-  const { data: existing } = await db
+  const { data: existingRows, error: lookupErr } = await db
     .from('notifications')
-    .select('id')
+    .select('id, title')
     .eq('user_id', userId)
     .eq('type', 'quality_result')
-    .eq('title', titleKey)
-    .like('message', `%collectionId:${collectionId}%`)
-    .maybeSingle();
+    .like('message', `%collectionId:${collectionId}%`);
 
-  if (existing) return { sent: false, reason: 'already_exists', id: existing.id };
+  if (lookupErr) throw lookupErr;
+
+  const existing = (existingRows || []).find(n => isNestleQualityTitle(n.title));
+
+  if (existing) {
+    if (existing.title === titleKey) {
+      return { sent: false, reason: 'already_exists', id: existing.id };
+    }
+
+    const { error: updateErr } = await db
+      .from('notifications')
+      .update({ title: titleKey, message, is_read: false })
+      .eq('id', existing.id);
+
+    if (updateErr) throw updateErr;
+    return { sent: true, updated: true, id: existing.id };
+  }
 
   const { data: inserted, error } = await db
     .from('notifications')

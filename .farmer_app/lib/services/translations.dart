@@ -114,6 +114,12 @@ class Translations {
       'nestle_quality_test_failed_title': 'Milk Quality Rejected by Nestlé',
       'nestle_quality_test_failed_msg':
           'Your milk collection on {date} did not pass Nestlé quality verification. Reason: {reason}',
+      'nestle_quality_pass_title': 'Nestlé Quality Pass',
+      'nestle_quality_pass_msg':
+          'Final verification by Nestlé for your collection on {date} was successful.',
+      'nestle_quality_rejected_title': 'Nestlé Quality Rejected',
+      'nestle_quality_rejected_msg':
+          'Final verification by Nestlé for your collection on {date} did not meet the required quality standard.',
       'new_dispatch_alert_title': 'New Dispatch Incoming',
       'new_dispatch_alert_msg':
           'Tanker {vehicle} from {cc} is on its way to HQ.',
@@ -342,6 +348,12 @@ class Translations {
       'nestle_quality_test_failed_title': 'නෙස්ලේ තත්ත්ව පරීක්ෂාව අසාර්ථකයි',
       'nestle_quality_test_failed_msg':
           '{date} දින ඔබේ එකතු කිරීම නෙස්ලේ පරීක්ෂාවෙන් අසමත් විය. හේතුව: {reason}',
+      'nestle_quality_pass_title': 'නෙස්ලේ තත්ත්ව සහතිකය',
+      'nestle_quality_pass_msg':
+          '{date} දින ඔබේ එකතුව සඳහා නෙස්ලේගේ අවසාන සත්‍යාපනය සාර්ථක විය.',
+      'nestle_quality_rejected_title': 'නෙස්ලේ තත්ත්වය ප්‍රතික්ෂේපයි',
+      'nestle_quality_rejected_msg':
+          '{date} දින ඔබේ එකතුව සඳහා නෙස්ලේගේ අවසාන සත්‍යාපනය අවශ්‍ය තත්ත්ව ප්‍රමිතීන් සපුරා නොමැත.',
       'new_dispatch_alert_title': 'නව ප්‍රවාහනයක් පැමිණේ',
       'new_dispatch_alert_msg':
           '{cc} මධ්‍යස්ථානයේ සිට {vehicle} රථය HQ වෙත ගමන් අරඹා ඇත.',
@@ -576,6 +588,12 @@ class Translations {
       'nestle_quality_test_failed_title': 'நெஸ்லே தர சோதனை தோல்வி',
       'nestle_quality_test_failed_msg':
           '{date} அன்று உங்கள் சேகரிப்பு நெஸ்லே சரிபார்ப்பில் தோல்வியடைந்தது. காரணம்: {reason}',
+      'nestle_quality_pass_title': 'நெஸ்லே தர சோதனை வெற்றி',
+      'nestle_quality_pass_msg':
+          '{date} அன்றைய உங்கள் சேகரிப்புக்கான நெஸ்லே இறுதி சரிபார்ப்பு வெற்றிகரமாக முடிந்தது.',
+      'nestle_quality_rejected_title': 'நெஸ்லே தரம் நிராகரிக்கப்பட்டது',
+      'nestle_quality_rejected_msg':
+          '{date} அன்றைய உங்கள் சேகரிப்புக்கான நெஸ்லே இறுதி சரிபார்ப்பு தேவையான தர தரநிலையை பூர்த்தி செய்யவில்லை.',
       'new_dispatch_alert_title': 'புதிய அனுப்புதல் வருகிறது',
       'new_dispatch_alert_msg':
           '{cc} இல் இருந்து {vehicle} வண்டி தலைமையகத்திற்கு வருகிறது.',

@@ -225,6 +225,9 @@ class _HomeScreenState extends State<HomeScreen> {
         if (title.contains('nestle_quality') || msg.contains('nestle_quality')) {
           return false;
         }
+        if (title.contains('nestle_quality_test') || msg.contains('nestle_quality_test')) {
+          return false;
+        }
         return true;
       });
 
