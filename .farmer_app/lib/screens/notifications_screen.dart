@@ -273,7 +273,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (raw.isEmpty) return raw;
     try {
       final date = DateTime.parse(raw);
-      return DateFormat('MMM d, yyyy').format(date);
+      return Translations.formatNotificationDate(date, _locale);
     } catch (_) {
       return raw;
     }
@@ -800,8 +800,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   const SizedBox(height: 6),
                   Text(
                     _translateNotificationField(note, isTitle: false),
-                    maxLines: 4,
-                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: isDark
                           ? (isRead ? Colors.white24 : Colors.white60)
@@ -814,9 +812,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    DateFormat(
-                      'MMM dd, yyyy • hh:mm a',
-                    ).format(DateTime.parse(note['createdAt']).toLocal()),
+                    () {
+                      final created = DateTime.parse(note['createdAt']).toLocal();
+                      final datePart = Translations.formatNotificationDate(
+                        created,
+                        _locale,
+                      );
+                      final timePart = DateFormat('hh:mm a').format(created);
+                      return '$datePart • $timePart';
+                    }(),
                     style: TextStyle(
                       color: isDark ? Colors.white12 : Colors.grey.shade400,
                       fontSize: 10,

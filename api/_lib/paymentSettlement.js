@@ -92,14 +92,17 @@ export async function getUnpaidApprovedCollections(db) {
       .select(
         'id, farmer_id, quantity, quality_result, dispatch_status, date, milk_type, created_at, fat, snf'
       )
-      .eq('dispatch_status', 'Approved');
+      .eq('dispatch_status', 'Approved')
+      .eq('quality_result', 'Pass');
 
     if (error) {
       console.error('[payments] Approved collections lookup failed:', error.message);
       return [];
     }
 
-    return (collections || []).filter(c => c?.id != null && !paidIds.has(c.id));
+    return (collections || []).filter(
+      c => c?.id != null && !paidIds.has(c.id) && c.dispatch_status === 'Approved'
+    );
   } catch (err) {
     console.error('[payments] getUnpaidApprovedCollections failed:', err?.message || err);
     return [];

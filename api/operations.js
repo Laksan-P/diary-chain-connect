@@ -1,7 +1,10 @@
 import supabase from './_lib/supabase.js';
 import { authenticate } from './_lib/auth.js';
 import { cors } from './_lib/cors.js';
-import { sendNestleQualityVerificationNotification } from './_lib/nestleQualityNotifications.js';
+import {
+  sendNestleCollectionInspectionNotifications,
+  sendCollectionDispatchResultNotification,
+} from './_lib/nestleQualityNotifications.js';
 
 function getBody(req) {
   if (!req.body) return {};
@@ -57,7 +60,7 @@ export default async function handler(req, res) {
               })
               .eq('id', collectionId);
 
-            await sendNestleQualityVerificationNotification(supabase, {
+            await sendNestleCollectionInspectionNotifications(supabase, {
               collectionId,
               resultValue: existingTest.result,
               reasonValue: existingTest.reason,
@@ -285,7 +288,7 @@ export default async function handler(req, res) {
 
         if (userId) {
           if (user.role === 'nestle_officer' || user.role === 'nestle') {
-            await sendNestleQualityVerificationNotification(supabase, {
+            await sendNestleCollectionInspectionNotifications(supabase, {
               collectionId,
               resultValue,
               reasonValue,
@@ -910,34 +913,12 @@ export default async function handler(req, res) {
                 (status === 'Rejected' && isGlobalRejection && itemStatus === 'Dispatched');
 
               if (shouldNotify) {
-                const titleKey = status === 'Approved' ? 'dispatch_approved_title' : 'dispatch_rejected_title';
-                const msgKey = status === 'Approved' ? 'dispatch_approved_msg' : 'dispatch_rejected_msg';
-
                 const displayReason = isGlobalRejection ? reason : 'Batch quality standards not met';
-
-                const params =
-                  status === 'Approved'
-                    ? `date:${col.date},collectionId:${col.id}`
-                    : `date:${col.date},collectionId:${col.id},reason:${displayReason}`;
-
-                const { data: existingNote } = await supabase
-                  .from('notifications')
-                  .select('id')
-                  .eq('user_id', userId)
-                  .eq('type', 'quality_result')
-                  .eq('title', titleKey)
-                  .like('message', `%collectionId:${col.id}%`)
-                  .maybeSingle();
-
-                if (!existingNote) {
-                  await supabase.from('notifications').insert({
-                    user_id: userId,
-                    title: titleKey,
-                    message: `${msgKey}|${params}`,
-                    type: 'quality_result',
-                    is_read: false,
-                  });
-                }
+                await sendCollectionDispatchResultNotification(supabase, {
+                  collectionId: col.id,
+                  resultValue: status === 'Approved' ? 'Pass' : 'Fail',
+                  reasonValue: status === 'Approved' ? null : displayReason,
+                });
               }
             }
           }

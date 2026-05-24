@@ -727,6 +727,26 @@ class Translations {
     return text;
   }
 
+  static String formatNotificationDate(DateTime date, String locale) {
+    final normalized = locale.split('_').first.split('-').first.toLowerCase();
+    const monthKeys = [
+      'jan',
+      'feb',
+      'mar',
+      'apr',
+      'may',
+      'jun',
+      'jul',
+      'aug',
+      'sep',
+      'oct',
+      'nov',
+      'dec',
+    ];
+    final month = get(monthKeys[date.month - 1], normalized);
+    return '$month ${date.day}, ${date.year}';
+  }
+
   static String formatDate(DateTime date, String locale) {
     // English is the fallback logic, but for si/ta we map manually
     final dayNames = [
