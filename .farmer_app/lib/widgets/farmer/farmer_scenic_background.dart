@@ -70,7 +70,7 @@ class _FarmerScenicBackgroundState extends State<FarmerScenicBackground>
     if (nextPath != _resolvedPath ||
         oldWidget.weatherCondition != widget.weatherCondition ||
         oldWidget.assetPath != widget.assetPath) {
-      _resolvedPath = nextPath;
+      setState(() => _resolvedPath = nextPath);
       if (widget.animate) {
         _fadeController.forward(from: 0);
       }

@@ -16,7 +16,9 @@ import '../widgets/profile_avatar.dart';
 import 'app_theme.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({super.key});
+  final String? weatherCondition;
+
+  const EditProfileScreen({super.key, this.weatherCondition});
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -114,7 +116,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          FarmerScenicBackground(height: 220),
+          FarmerScenicBackground(
+            height: 220,
+            weatherCondition: widget.weatherCondition,
+          ),
           SafeArea(
             child: Column(
               children: [

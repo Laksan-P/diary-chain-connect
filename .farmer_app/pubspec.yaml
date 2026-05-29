@@ -99,7 +99,15 @@ flutter:
   assets:
     - assets/images/farmer/logo.png
     - assets/images/farmer/logo_dark.png
-    - assets/images/farmer/
+    - assets/images/farmer/welcome_farm.jpg
+    - assets/images/farmer/sunny_farm.jpg
+    - assets/images/farmer/sunset_farm.jpg
+    - assets/images/farmer/rainy_farm.jpg
+    - assets/images/farmer/stormy_farm.jpg
+    - assets/images/farmer/foggy_farm.jpg
+    - assets/images/farmer/windy_farm.jpg
+    - assets/images/farmer/cloudy_farm.jpg
+    - assets/images/farmer/night_farm.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

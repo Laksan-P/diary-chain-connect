@@ -70,7 +70,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _openEditProfile() {
     HapticFeedback.mediumImpact();
-    Navigator.of(context).push(premiumPageRoute(const EditProfileScreen()));
+    Navigator.of(context).push(
+      premiumPageRoute(EditProfileScreen(weatherCondition: widget.weatherCondition)),
+    );
   }
 
   void _openBankDetails() {

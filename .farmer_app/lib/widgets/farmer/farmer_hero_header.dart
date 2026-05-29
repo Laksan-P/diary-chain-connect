@@ -9,6 +9,7 @@ import '../../theme/design_tokens.dart';
 import '../../widgets/profile_avatar.dart';
 import '../bouncing_button.dart';
 import 'farmer_scenic_background.dart';
+import 'time_based_greeting.dart';
 
 enum FarmerHeroLayout { embedded, scrollOverlay }
 
@@ -45,19 +46,6 @@ class FarmerHeroContent extends StatelessWidget {
     this.layout = FarmerHeroLayout.scrollOverlay,
     this.bottomContentInset = 88,
   });
-
-  String _greetingKey() {
-    switch (HeroBackgroundService.greetingPeriodForTime()) {
-      case AmbientPeriod.morning:
-        return 'good_morning';
-      case AmbientPeriod.afternoon:
-        return 'good_afternoon';
-      case AmbientPeriod.evening:
-        return 'good_evening';
-      case AmbientPeriod.night:
-        return 'good_night';
-    }
-  }
 
   bool get _hasRealWeather => weatherCelsius != null;
 
@@ -150,8 +138,8 @@ class FarmerHeroContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          Translations.get(_greetingKey(), locale),
+        TimeBasedGreeting(
+          locale: locale,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.88),
             fontSize: 14,

@@ -28,7 +28,7 @@ class HeroBackgroundService {
 
   static String assetFallback(String path) {
     if (path == welcome) return welcome;
-    if (path == cloudy) return sunny;
+    if (path == cloudy) return foggy;
     return fallback;
   }
 
@@ -53,6 +53,33 @@ class HeroBackgroundService {
     if (hour >= 12 && hour < 17) return AmbientPeriod.afternoon;
     if (hour >= 17 && hour < 21) return AmbientPeriod.evening;
     return AmbientPeriod.night;
+  }
+
+  /// Translation key for the time-of-day greeting shown on hero headers.
+  static String greetingKeyForTime([DateTime? now]) {
+    switch (greetingPeriodForTime(now)) {
+      case AmbientPeriod.morning:
+        return 'good_morning';
+      case AmbientPeriod.afternoon:
+        return 'good_afternoon';
+      case AmbientPeriod.evening:
+        return 'good_evening';
+      case AmbientPeriod.night:
+        return 'good_night';
+    }
+  }
+
+  /// When the greeting period next changes (5:00, 12:00, 17:00, 21:00 local).
+  static DateTime nextGreetingPeriodBoundary([DateTime? now]) {
+    final n = now ?? DateTime.now();
+    const boundaryHours = [5, 12, 17, 21];
+
+    for (final hour in boundaryHours) {
+      final candidate = DateTime(n.year, n.month, n.day, hour);
+      if (candidate.isAfter(n)) return candidate;
+    }
+
+    return DateTime(n.year, n.month, n.day + 1, boundaryHours.first);
   }
 
   static String timeFallbackAsset([DateTime? now]) {

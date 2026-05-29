@@ -636,14 +636,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String _greetingKey() {
-    final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 12) return 'good_morning';
-    if (hour >= 12 && hour < 17) return 'good_afternoon';
-    if (hour >= 17 && hour < 21) return 'good_evening';
-    return 'good_night';
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
