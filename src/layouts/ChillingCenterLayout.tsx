@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Milk, Users, Beaker, Truck, History, LogOut, Menu, UserPlus, BookOpen } from 'lucide-react';
+import { Milk, Users, Beaker, Truck, History, LogOut, Menu, UserPlus, BookOpen, TrendingUp } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ const navItems = [
   { title: 'Quality Testing', path: '/chilling-center/quality', icon: Beaker },
   { title: 'Collection History', path: '/chilling-center/history', icon: History },
   { title: 'Milk Dispatch', path: '/chilling-center/dispatch', icon: Truck },
+  { title: 'Farmer Performance', path: '/chilling-center/farmer-performance', icon: TrendingUp },
   { title: 'Nestlé Recommendations', path: '/chilling-center/recommendations', icon: BookOpen },
   { title: 'Support & FAQ', path: '/chilling-center/support', icon: Users },
 ];

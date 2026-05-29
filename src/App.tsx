@@ -16,6 +16,7 @@ import CollectionHistory from "./pages/chilling-center/CollectionHistory";
 import DispatchPage from "./pages/chilling-center/DispatchPage";
 import CCSupport from "./pages/chilling-center/CCSupport";
 import NestleRecommendations from "@/pages/chilling-center/NestleRecommendations";
+import CCFarmerPerformance from "@/pages/chilling-center/CCFarmerPerformance";
 import NestleLayout from "./layouts/NestleLayout";
 import NestleDashboard from "./pages/nestle/NestleDashboard";
 import FarmersView from "./pages/nestle/FarmersView";
@@ -57,6 +58,7 @@ const App = () => (
                 <Route path="history" element={<CollectionHistory />} />
                 <Route path="dispatch" element={<DispatchPage />} />
                 <Route path="recommendations" element={<NestleRecommendations />} />
+                <Route path="farmer-performance" element={<CCFarmerPerformance />} />
                 <Route path="support" element={<CCSupport />} />
               </Route>
 

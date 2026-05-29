@@ -3,8 +3,12 @@ import {
   formatPassRate,
   formatTrendPassRate,
   formatVolumeLiters,
+  getFarmerAttentionReasons,
+  getLatestQualityStatus,
   getQualityTone,
   hasEnoughTrendMonths,
+  hasRepeatedQualityFailures,
+  isDecliningVolumeTrend,
   PASS_RATE_THRESHOLD,
 } from './performanceAnalytics';
 
@@ -40,5 +44,54 @@ describe('performanceAnalytics', () => {
     expect(hasEnoughTrendMonths([])).toBe(false);
     expect(hasEnoughTrendMonths([{ month: '2025-03' }])).toBe(false);
     expect(hasEnoughTrendMonths([{ month: '2025-03' }, { month: '2025-04' }])).toBe(true);
+  });
+
+  it('detects declining volume when last month drops below 85% of previous', () => {
+    expect(
+      isDecliningVolumeTrend([
+        { month: '2025-01', volume: 400 },
+        { month: '2025-02', volume: 320 },
+      ]),
+    ).toBe(true);
+    expect(
+      isDecliningVolumeTrend([
+        { month: '2025-01', volume: 400 },
+        { month: '2025-02', volume: 380 },
+      ]),
+    ).toBe(false);
+  });
+
+  it('flags repeated quality failures in active streak', () => {
+    const cols = [
+      { qualityResult: 'Fail', date: '2025-03-03', time: '10:00:00' },
+      { qualityResult: 'Fail', date: '2025-03-02', time: '10:00:00' },
+      { qualityResult: 'Fail', date: '2025-03-01', time: '10:00:00' },
+    ];
+    expect(hasRepeatedQualityFailures(cols)).toBe(true);
+  });
+
+  it('resolves latest quality status from collections', () => {
+    expect(
+      getLatestQualityStatus([
+        { qualityResult: 'Pass', date: '2025-03-05', time: '08:00:00' },
+        { qualityResult: 'Fail', date: '2025-03-01', time: '08:00:00' },
+      ]),
+    ).toBe('Pass');
+  });
+
+  it('builds attention reasons from pass rate, volume, and failures', () => {
+    const reasons = getFarmerAttentionReasons(
+      {
+        passRateDisplay: 55,
+        inspectedCount: 10,
+        trends: [
+          { month: '2025-01', volume: 400 },
+          { month: '2025-02', volume: 300 },
+        ],
+      },
+      [{ qualityResult: 'Fail', date: '2025-03-01' }],
+    );
+    expect(reasons).toContain('low_pass_rate');
+    expect(reasons).toContain('declining_volume');
   });
 });
