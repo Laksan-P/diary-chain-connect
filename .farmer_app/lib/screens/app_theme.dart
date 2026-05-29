@@ -1,68 +1,136 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../theme/ambient_theme.dart';
+import '../theme/design_tokens.dart';
+
+class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
+  final Color success;
+  final Color warning;
+  final Color error;
+  final Color unread;
+
+  const AppThemeExtension({
+    required this.success,
+    required this.warning,
+    required this.error,
+    required this.unread,
+  });
+
+  @override
+  AppThemeExtension copyWith({
+    Color? success,
+    Color? warning,
+    Color? error,
+    Color? unread,
+  }) {
+    return AppThemeExtension(
+      success: success ?? this.success,
+      warning: warning ?? this.warning,
+      error: error ?? this.error,
+      unread: unread ?? this.unread,
+    );
+  }
+
+  @override
+  AppThemeExtension lerp(ThemeExtension<AppThemeExtension>? other, double t) {
+    if (other is! AppThemeExtension) return this;
+    return AppThemeExtension(
+      success: Color.lerp(success, other.success, t)!,
+      warning: Color.lerp(warning, other.warning, t)!,
+      error: Color.lerp(error, other.error, t)!,
+      unread: Color.lerp(unread, other.unread, t)!,
+    );
+  }
+}
 
 class AppTheme {
-  // Professional Navy Blue Palette
-  static const Color primary = Color(0xFF1B264F); // Rich Navy
-  static const Color primaryLight = Color(
-    0xFF3B82F6,
-  ); // Vibrant Royal Blue (better for dark visibility)
-  static const Color accent = Color(0xFF576CA8); // Steel Blue
-
-  static const Color backgroundLight = Color(0xFFF8FAFC);
-  static const Color backgroundDark = Color(0xFF020617); // Deepest Midnight
-  static const Color surfaceDark = Color(0xFF0F172A); // Elevated Surface
+  // Backward-compatible aliases
+  static const Color primary = AppColors.deepForest;
+  static const Color primaryLight = AppColors.darkAccent;
+  static const Color accent = AppColors.nestleBlue;
+  static const Color backgroundLight = AppColors.warmCream;
+  static const Color backgroundDark = AppColors.darkBackground;
+  static const Color surfaceDark = AppColors.darkSurface;
 
   static List<BoxShadow> premiumShadow = [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.04),
-      blurRadius: 24,
+      color: AppColors.deepForest.withValues(alpha: 0.06),
+      blurRadius: 20,
       offset: const Offset(0, 8),
     ),
   ];
 
   static LinearGradient getHeaderGradient(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (isDark) {
-      return const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-      );
-    }
-    return const LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [Color(0xFF1B264F), Color(0xFF274690)],
+    return AmbientTheme.headerGradient(context);
+  }
+
+  static TextTheme _textTheme(Brightness brightness) {
+    final base = brightness == Brightness.dark
+        ? ThemeData.dark().textTheme
+        : ThemeData.light().textTheme;
+    return GoogleFonts.interTextTheme(base).copyWith(
+      displaySmall: GoogleFonts.inter(
+        fontSize: 32,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.5,
+      ),
+      titleLarge: GoogleFonts.inter(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+      ),
+      titleMedium: GoogleFonts.inter(
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
+      ),
+      bodyLarge: GoogleFonts.inter(fontSize: 16, height: 1.45),
+      bodyMedium: GoogleFonts.inter(fontSize: 15, height: 1.45),
+      labelLarge: GoogleFonts.inter(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    primaryColor: primary,
-    scaffoldBackgroundColor: backgroundLight,
+    primaryColor: AppColors.primaryGreen,
+    scaffoldBackgroundColor: AppColors.warmCream,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: primary,
-      primary: primary,
+      seedColor: AppColors.primaryGreen,
+      primary: AppColors.primaryGreen,
       onPrimary: Colors.white,
+      secondary: AppColors.nestleBlue,
       surface: Colors.white,
-      onSurface: primary,
+      onSurface: AppColors.deepForest,
+      error: AppColors.error,
     ),
-    textTheme: GoogleFonts.interTextTheme(),
+    textTheme: _textTheme(Brightness.light),
     cardTheme: CardThemeData(
       color: Colors.white,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
     ),
+    extensions: const [
+      AppThemeExtension(
+        success: AppColors.success,
+        warning: AppColors.warning,
+        error: AppColors.error,
+        unread: AppColors.unreadLight,
+      ),
+    ],
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: primary,
+      backgroundColor: AppColors.deepForest,
       contentTextStyle: const TextStyle(
         color: Colors.white,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w600,
       ),
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
       elevation: 8,
     ),
   );
@@ -70,30 +138,44 @@ class AppTheme {
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    primaryColor: primary,
-    scaffoldBackgroundColor: backgroundDark,
+    primaryColor: AppColors.darkAccent,
+    scaffoldBackgroundColor: AppColors.darkBackground,
     colorScheme: ColorScheme.fromSeed(
       brightness: Brightness.dark,
-      seedColor: primary,
-      primary: primaryLight,
-      onPrimary: Colors.white,
-      surface: surfaceDark,
+      seedColor: AppColors.darkAccent,
+      primary: AppColors.darkAccent,
+      onPrimary: AppColors.darkBackground,
+      secondary: AppColors.nestleBlue,
+      surface: AppColors.darkSurface,
       onSurface: Colors.white,
+      error: AppColors.error,
     ),
-    textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+    textTheme: _textTheme(Brightness.dark),
     cardTheme: CardThemeData(
-      color: surfaceDark,
+      color: AppColors.darkCard,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
     ),
+    extensions: const [
+      AppThemeExtension(
+        success: AppColors.darkAccent,
+        warning: AppColors.warning,
+        error: AppColors.error,
+        unread: AppColors.unreadDark,
+      ),
+    ],
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: primaryLight,
+      backgroundColor: AppColors.darkCard,
       contentTextStyle: const TextStyle(
         color: Colors.white,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w600,
       ),
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
       elevation: 8,
     ),
   );
@@ -106,7 +188,7 @@ class AppTheme {
   }) {
     final isDark =
         context != null && Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = isDark ? primaryLight : primary;
+    final primaryColor = isDark ? AppColors.darkAccent : AppColors.primaryGreen;
 
     return InputDecoration(
       labelText: label,
@@ -118,7 +200,7 @@ class AppTheme {
       filled: true,
       fillColor: isDark
           ? Colors.white.withValues(alpha: 0.05)
-          : Colors.grey.shade50,
+          : Colors.white,
       labelStyle: TextStyle(
         color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
         fontSize: 14,
@@ -129,42 +211,41 @@ class AppTheme {
         fontSize: 14,
       ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         borderSide: BorderSide(
           color: isDark ? Colors.white10 : Colors.grey.shade200,
-          width: 1,
         ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         borderSide: BorderSide(
           color: isDark ? Colors.white10 : Colors.grey.shade200,
-          width: 1,
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         borderSide: BorderSide(color: primaryColor, width: 2),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        borderSide: const BorderSide(color: AppColors.error),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     );
   }
 
   static ButtonStyle primaryButton(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ElevatedButton.styleFrom(
-      backgroundColor: isDark ? primaryLight : primary,
-      foregroundColor: Colors.white,
-      minimumSize: const Size(double.infinity, 64),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: isDark ? AppColors.darkAccent : AppColors.primaryGreen,
+      foregroundColor: isDark ? AppColors.darkBackground : Colors.white,
+      minimumSize: const Size(double.infinity, AppSpacing.minTap + 20),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
       textStyle: const TextStyle(
         fontSize: 16,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 0.5,
+        fontWeight: FontWeight.w700,
       ),
       elevation: 0,
     );

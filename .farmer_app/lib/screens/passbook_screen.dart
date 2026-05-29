@@ -1,12 +1,19 @@
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../services/translations.dart';
+import '../widgets/farmer/hero_summary_card.dart';
+import '../widgets/farmer/record_cards.dart';
+import '../widgets/collection_timeline.dart';
+import '../widgets/status_chip.dart';
 import 'app_theme.dart';
 import '../services/api_service.dart';
 import '../services/offline_service.dart';
 import '../widgets/offline_banner.dart';
+import '../widgets/glass_card.dart';
+import '../theme/design_tokens.dart';
+import '../utils/collection_status_helper.dart';
 
 class PassbookScreen extends StatefulWidget {
   final List<dynamic> collections;
@@ -125,6 +132,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                         child: _buildScrollableHeader(context),
                       ),
                       SliverToBoxAdapter(child: _buildSummary(context)),
+                      SliverToBoxAdapter(child: _buildFilterChips(context)),
                       if (widget.mode == 'payments')
                         SliverToBoxAdapter(child: _buildPricingInfo(context)),
                       SliverPadding(
@@ -189,18 +197,26 @@ class _PassbookScreenState extends State<PassbookScreen> {
   }
 
   Widget _buildSummary(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accentColor = isDark ? const Color(0xFFFFB000) : AppTheme.primary;
-
     double total = 0;
     String label = "";
     String valuePrefix = "";
     String valueSuffix = "";
+    IconData icon;
+    final now = DateTime.now();
 
     if (widget.mode == 'supply') {
       label = Translations.get('total_milk_supplied', widget.locale);
       valueSuffix = " L";
+      icon = LucideIcons.droplets;
       for (var c in widget.collections) {
+        try {
+          final raw = c['createdAt'] ?? c['date'];
+          if (raw == null) continue;
+          final date = DateTime.parse(raw.toString());
+          if (date.month != now.month || date.year != now.year) continue;
+        } catch (_) {
+          continue;
+        }
         if ((c['qualityResult'] ?? '').toString().toLowerCase() == 'pass') {
           total += double.tryParse(c['quantity'].toString()) ?? 0;
         }
@@ -208,87 +224,53 @@ class _PassbookScreenState extends State<PassbookScreen> {
     } else {
       label = Translations.get('total_earnings', widget.locale);
       valuePrefix = "Rs. ";
+      icon = LucideIcons.wallet;
       for (var p in widget.payments) {
+        try {
+          final raw = p['createdAt'] ?? p['paidAt'];
+          if (raw == null) continue;
+          final date = DateTime.parse(raw.toString());
+          if (date.month != now.month || date.year != now.year) continue;
+        } catch (_) {
+          continue;
+        }
         if ((p['status'] ?? '').toString().toLowerCase() == 'paid') {
           total += double.tryParse(p['amount'].toString()) ?? 0;
         }
       }
     }
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [AppTheme.surfaceDark, AppTheme.backgroundDark]
-              : [Colors.white, Colors.grey.shade50],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withOpacity(0.05),
-            blurRadius: 40,
-            offset: const Offset(0, 20),
-          ),
-        ],
-        border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: accentColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  widget.mode == 'supply'
-                      ? LucideIcons.droplets
-                      : LucideIcons.wallet,
-                  size: 16,
-                  color: accentColor,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                label.toUpperCase(),
-                style: TextStyle(
-                  color: isDark ? Colors.white38 : Colors.grey.shade500,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            "$valuePrefix${total.toStringAsFixed(total == total.toInt() ? 0 : 2)}$valueSuffix",
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black87,
-              fontSize: 36,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            Translations.get('latest_records_msg', widget.locale),
-            style: TextStyle(
-              color: isDark ? Colors.white24 : Colors.grey.shade400,
-              fontSize: 12,
-            ),
-          ),
-        ],
+    return HeroSummaryCard(
+      label: label,
+      value:
+          "$valuePrefix${total.toStringAsFixed(total == total.toInt() ? 0 : 2)}$valueSuffix",
+      icon: icon,
+      subtitle: Translations.get('this_month', widget.locale),
+    );
+  }
+
+  Widget _buildFilterChips(BuildContext context) {
+    final values = widget.mode == 'supply'
+        ? ['All', 'Pass', 'Fail', 'Pending']
+        : ['All', 'Paid', 'Pending'];
+    final labels = values
+        .map(
+          (v) => v == 'All'
+              ? Translations.get('all', widget.locale)
+              : Translations.get(v.toLowerCase(), widget.locale),
+        )
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      child: FilterChipBar(
+        values: values,
+        labels: labels,
+        selected: _statusFilter,
+        onSelected: (value) {
+          HapticFeedback.selectionClick();
+          setState(() => _statusFilter = value);
+        },
       ),
     );
   }
@@ -486,6 +468,19 @@ class _PassbookScreenState extends State<PassbookScreen> {
             _fetchCollectionTestData(collectionId, setModalState);
           }
 
+          dynamic linkedPayment;
+          for (final p in widget.payments) {
+            if (p['collectionId']?.toString() == collectionId) {
+              linkedPayment = p;
+              break;
+            }
+            final ids = p['collectionIds'];
+            if (ids is List && ids.any((e) => e.toString() == collectionId)) {
+              linkedPayment = p;
+              break;
+            }
+          }
+
           return Container(
             decoration: BoxDecoration(
               color: isDark ? AppTheme.surfaceDark : Colors.white,
@@ -519,7 +514,7 @@ class _PassbookScreenState extends State<PassbookScreen> {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    _buildStatusBadge(c['qualityResult'] ?? 'Pending'),
+                    _buildCollectionQualityBadge(c),
                   ],
                 ),
                 const SizedBox(height: 32),
@@ -591,8 +586,8 @@ class _PassbookScreenState extends State<PassbookScreen> {
                   ),
                 ],
 
-                if ((c['qualityResult']?.toString().toLowerCase() == 'fail' ||
-                    c['qualityResult']?.toString().toLowerCase() ==
+                if ((CollectionStatusHelper.isQualityFail(c) ||
+                    CollectionStatusHelper.normalizeDispatchStatus(c) ==
                         'rejected')) ...[
                   const SizedBox(height: 16),
                   Container(
@@ -623,14 +618,18 @@ class _PassbookScreenState extends State<PassbookScreen> {
                                 ),
                               ),
                               Text(
-                                (c['reason'] ??
-                                        c['failureReason'] ??
-                                        c['rejectReason'] ??
-                                        Translations.get(
-                                          'unknown_error',
-                                          widget.locale,
-                                        ))
-                                    .toString(),
+                                CollectionStatusHelper.translatedFailureReason(
+                                  c,
+                                  widget.locale,
+                                ).isNotEmpty
+                                    ? CollectionStatusHelper.translatedFailureReason(
+                                        c,
+                                        widget.locale,
+                                      )
+                                    : Translations.get(
+                                        'unknown_error',
+                                        widget.locale,
+                                      ),
                                 style: TextStyle(
                                   color: isDark
                                       ? Colors.white70
@@ -645,6 +644,17 @@ class _PassbookScreenState extends State<PassbookScreen> {
                     ),
                   ),
                 ],
+
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Divider(height: 1),
+                ),
+                CollectionTimeline(
+                  locale: widget.locale,
+                  collection: c,
+                  payment: linkedPayment,
+                  testData: testData.isEmpty ? null : testData,
+                ),
                 const SizedBox(height: 48),
               ],
             ),
@@ -892,174 +902,39 @@ class _PassbookScreenState extends State<PassbookScreen> {
   }
 
   Widget _buildSupplyCard(BuildContext context, dynamic c) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final milkType = Translations.get(
-      c['milkType']?.toString().toLowerCase() ?? 'cow',
-      widget.locale,
-    );
-
-    return _buildPassbookCard(
-      context,
-      icon: LucideIcons.droplets,
-      iconColor: isDark ? AppTheme.primaryLight : AppTheme.primary,
-      title: '${Translations.get('collection_id', widget.locale)} #${c['id']}',
-      subtitle:
-          '${DateFormat('MMM dd, yyyy • hh:mm a').format(DateTime.parse('${c['date']} ${c['time'] ?? '00:00:00'}').toLocal())} • $milkType',
-      trailing: '${c['quantity']} L',
-      status: c['qualityResult'] ?? 'Pending',
-      type: 'supply',
+    return CollectionRecordCard(
+      locale: widget.locale,
+      record: c,
       onTap: () => _showCollectionDetails(context, c),
     );
   }
 
   Widget _buildPaymentCard(BuildContext context, dynamic p) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return _buildPassbookCard(
-      context,
-      icon: LucideIcons.banknote,
-      iconColor: isDark ? Colors.greenAccent : Colors.green,
-      title: Translations.get('settlement_amount', widget.locale),
-      subtitle: DateFormat(
-        'MMM dd, yyyy',
-      ).format(DateTime.parse(p['paidAt'] ?? p['createdAt']).toLocal()),
-      trailing: 'Rs. ${p['amount']}',
-      status: p['status'] ?? 'Pending',
-      type: 'payment',
+    return PaymentRecordCard(
+      locale: widget.locale,
+      record: p,
       onTap: () => _showPaymentDetails(context, p),
     );
   }
 
-  Widget _buildPassbookCard(
-    BuildContext context, {
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required String trailing,
-    required String status,
-    required String type,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? AppTheme.surfaceDark.withOpacity(0.5) : Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.grey.shade100,
-          ),
-          boxShadow: isDark
-              ? []
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: isDark ? Colors.white38 : Colors.grey.shade500,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  trailing,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                    color: type == 'supply'
-                        ? (isDark ? AppTheme.primaryLight : AppTheme.primary)
-                        : Colors.green,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                _buildStatusBadge(status),
-              ],
-            ),
-          ],
-        ),
-      ),
+  Widget _buildCollectionQualityBadge(dynamic collection) {
+    final displayKey = CollectionStatusHelper.qualityDisplayKey(collection);
+    return StatusChip(
+      status: displayKey,
+      displayKey: displayKey,
+      locale: widget.locale,
+      compact: true,
     );
   }
 
   Widget _buildStatusBadge(String status) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'pass':
-      case 'paid':
-      case 'approved':
-        color = Colors.green;
-        break;
-      case 'fail':
-      case 'rejected':
-        color = Colors.red;
-        break;
-      case 'pending sync':
-      case 'pending_sync':
-        color = Colors.blue;
-        break;
-      default:
-        color = Colors.orange;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        Translations.get(status.toLowerCase(), widget.locale).toUpperCase(),
-        style: TextStyle(
-          color: color,
-          fontSize: 8,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.8,
-        ),
-      ),
+    final normalized = status.toLowerCase() == 'pending sync'
+        ? 'Pending Sync'
+        : status;
+    return StatusChip(
+      status: normalized,
+      locale: widget.locale,
+      compact: true,
     );
   }
 
@@ -1087,89 +962,39 @@ class _PassbookScreenState extends State<PassbookScreen> {
 
   Widget _buildPricingInfo(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accentColor = isDark ? const Color(0xFFFFB000) : AppTheme.primary;
     final locale = widget.locale;
+    final breakdown = _PaymentExplanationBreakdown.fromPayments(
+      widget.payments,
+      widget.collections,
+    );
 
-    // Direct Hardcoded Maps to bypass translation service sync issues
-    final Map<String, dynamic> content = {
-      'en': {
-        'title': 'How we calculate your pay',
-        'sub': 'Better quality milk gets you a higher price!',
-        'baseL': 'Base Price',
-        'baseS': 'Standard: 3.5% Fat, 8.5% SNF',
-        'baseV': 'Base Price',
-        'bonusL': 'High Quality Bonus',
-        'bonusS': 'Extra Fat & Solids (SNF)',
-        'bonusV': '+ Bonus',
-        'math': 'Formula',
-        'formula': 'BASE + FAT BONUS + SNF BONUS',
-      },
-      'si': {
-        'title': 'ගෙවීම් ගණනය කරන ආකාරය',
-        'sub': 'කිරිවල ගුණාත්මකභාවය වැඩි වන විට ඔබට වැඩි මුදලක් ලැබේ!',
-        'baseL': 'මූලික මිල',
-        'baseS': 'සම්මතය: 3.5% මේදය, 8.5% SNF',
-        'baseV': 'මූලික මිල',
-        'bonusL': 'ගුණාත්මක ප්‍රසාද දීමනාව',
-        'bonusS': 'අමතර මේදය සහ SNF සඳහා',
-        'bonusV': '+ ප්‍රසාද',
-        'math': 'ගණනය කරන ක්‍රමය',
-        'formula': 'මූලික + FAT ප්‍රසාද + SNF ප්‍රසාද',
-      },
-      'ta': {
-        'title': 'கொடுப்பனவு எவ்வாறு கணக்கிடப்படுகிறது',
-        'sub':
-            'பாலின் தரம் சிறப்பாக இருந்தால் உங்களுக்கு அதிக பணம் கிடைக்கும்!',
-        'baseL': 'அடிப்படை விலை',
-        'baseS': 'நிலை: 3.5% கொழுப்பு, 8.5% SNF',
-        'baseV': 'அடிப்படை விலை',
-        'bonusL': 'உயர்தர போனஸ்',
-        'bonusS': 'கூடுதல் கொழுப்பு மற்றும் SNF க்காக',
-        'bonusV': '+ போனஸ்',
-        'math': 'கணக்கீட்டு முறை',
-        'formula': 'அடிப்படை + FAT போனஸ் + SNF போனஸ்',
-      },
-    };
+    String t(String key, {Map<String, String>? params}) =>
+        Translations.get(key, locale, params: params);
 
-    final t = content[locale] ?? content['en'];
+    String money(double value) => NumberFormat('#,##0').format(value.round());
+    String qtyLabel(double qty) =>
+        qty == qty.roundToDouble() ? qty.round().toString() : qty.toStringAsFixed(1);
 
-    return Container(
-      width: double.infinity,
+    return GlassCard(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.04) : Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-        border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
-        ),
-      ),
+      padding: const EdgeInsets.all(22),
+      borderRadius: 28,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : AppTheme.primary.withValues(alpha: 0.03),
+                  color: AppTheme.primary.withValues(alpha: isDark ? 0.18 : 0.10),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  LucideIcons.helpCircle,
-                  size: 16,
-                  color: accentColor,
+                  LucideIcons.calculator,
+                  size: 18,
+                  color: isDark ? AppTheme.primaryLight : AppTheme.primary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1178,20 +1003,22 @@ class _PassbookScreenState extends State<PassbookScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      t['title'],
+                      t('payment_calc_title'),
                       style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 16,
+                        color: isDark ? Colors.white : AppColors.deepForest,
+                        fontSize: 17,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                        letterSpacing: -0.3,
                       ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
-                      t['sub'],
+                      t('payment_calc_subtitle'),
                       style: TextStyle(
-                        color: isDark ? Colors.white38 : Colors.grey.shade600,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white54 : Colors.black54,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1.35,
                       ),
                     ),
                   ],
@@ -1199,133 +1026,325 @@ class _PassbookScreenState extends State<PassbookScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-
+          const SizedBox(height: 14),
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: isDark ? Colors.black26 : Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(24),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : AppTheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.05)
-                    : Colors.grey.shade200,
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : AppTheme.primary.withValues(alpha: 0.12),
               ),
             ),
-            child: Column(
+            child: Text(
+              t(
+                breakdown.isExample
+                    ? 'payment_calc_example_badge'
+                    : 'payment_calc_from_payment_badge',
+              ),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: isDark ? AppTheme.primaryLight : AppTheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          _buildPaymentQuantityRow(
+            context,
+            label: t('payment_milk_quantity'),
+            value: '${qtyLabel(breakdown.quantity)} L',
+          ),
+          const SizedBox(height: 16),
+          _buildPaymentStep(
+            context,
+            title: t('payment_base_milk_title'),
+            example: t(
+              'payment_base_milk_line',
+              params: {
+                'qty': qtyLabel(breakdown.quantity),
+                'rate': money(breakdown.baseRate),
+                'amount': money(breakdown.basePayment),
+              },
+            ),
+          ),
+          _buildPaymentStep(
+            context,
+            title: t('payment_fat_bonus_title'),
+            description: t('payment_fat_bonus_desc'),
+            example: t(
+              'payment_fat_bonus_line',
+              params: {'amount': money(breakdown.fatBonus)},
+            ),
+          ),
+          _buildPaymentStep(
+            context,
+            title: t('payment_snf_bonus_title'),
+            description: t('payment_snf_bonus_desc'),
+            example: t(
+              'payment_snf_bonus_line',
+              params: {'amount': money(breakdown.snfBonus)},
+            ),
+          ),
+          _buildPaymentStep(
+            context,
+            title: t('payment_final_title'),
+            description: t('payment_final_desc'),
+            example: t(
+              'payment_final_line',
+              params: {
+                'base': money(breakdown.basePayment),
+                'fat': money(breakdown.fatBonus),
+                'snf': money(breakdown.snfBonus),
+                'total': money(breakdown.finalPayment),
+              },
+            ),
+            highlight: true,
+          ),
+          _buildPaymentStep(
+            context,
+            title: t('payment_biweekly_title'),
+            description: t('payment_biweekly_desc'),
+            example: t('payment_biweekly_line'),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : AppTheme.primary.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : AppTheme.primary.withValues(alpha: 0.10),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildComparisonRow(t['baseL'], t['baseS'], t['baseV'], isDark),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(
-                    height: 1,
-                    color: isDark
-                        ? Colors.white.withOpacity(0.05)
-                        : Colors.grey.shade200,
-                  ),
+                Icon(
+                  LucideIcons.info,
+                  size: 16,
+                  color: isDark ? Colors.white60 : AppTheme.primary,
                 ),
-                _buildComparisonRow(
-                  t['bonusL'],
-                  t['bonusS'],
-                  t['bonusV'],
-                  isDark,
-                  isBonus: true,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    t('payment_calc_note'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.45,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                t['math'].toString().toUpperCase(),
-                style: TextStyle(
-                  color: isDark ? Colors.white24 : Colors.grey.shade400,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  t['formula'],
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: isDark ? accentColor : const Color(0xFF1E293B),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildComparisonRow(
-    String label,
-    String sub,
-    String value,
-    bool isDark, {
-    bool isBonus = false,
+  Widget _buildPaymentQuantityRow(
+    BuildContext context, {
+    required String label,
+    required String value,
   }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 13,
-                  color: isBonus
-                      ? (isDark
-                            ? const Color(0xFF34D399)
-                            : const Color(0xFF0D9488))
-                      : (isDark ? Colors.white70 : Colors.black87),
-                ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : AppColors.deepForest,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentStep(
+    BuildContext context, {
+    required String title,
+    String? description,
+    required String example,
+    bool highlight = false,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: highlight
+              ? (isDark
+                  ? AppTheme.primary.withValues(alpha: 0.12)
+                  : AppTheme.primary.withValues(alpha: 0.06))
+              : (isDark ? Colors.black26 : Colors.white),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: highlight
+                ? AppTheme.primary.withValues(alpha: isDark ? 0.22 : 0.14)
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.grey.shade200),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : AppColors.deepForest,
               ),
+            ),
+            if (description != null) ...[
+              const SizedBox(height: 6),
               Text(
-                sub,
+                description,
                 style: TextStyle(
-                  fontSize: 11,
-                  color: isDark ? Colors.white24 : Colors.grey.shade500,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white60 : Colors.black54,
                 ),
               ),
             ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: isBonus
-                ? (isDark
-                      ? const Color(0xFF10B981).withOpacity(0.1)
-                      : const Color(0xFF10B981).withOpacity(0.08))
-                : (isDark ? Colors.white.withOpacity(0.05) : Colors.white),
-            borderRadius: BorderRadius.circular(10),
-            border: isDark ? null : Border.all(color: Colors.grey.shade100),
-          ),
-          child: Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize: 12,
-              color: isBonus
-                  ? (isDark ? const Color(0xFF34D399) : const Color(0xFF10B981))
-                  : (isDark ? Colors.white70 : Colors.black54),
+            const SizedBox(height: 10),
+            Text(
+              example,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                height: 1.45,
+                color: highlight
+                    ? (isDark ? AppTheme.primaryLight : AppTheme.primary)
+                    : (isDark ? Colors.white : const Color(0xFF1E293B)),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _PaymentExplanationBreakdown {
+  final bool isExample;
+  final double quantity;
+  final double baseRate;
+  final double basePayment;
+  final double fatBonus;
+  final double snfBonus;
+  final double finalPayment;
+
+  const _PaymentExplanationBreakdown({
+    required this.isExample,
+    required this.quantity,
+    required this.baseRate,
+    required this.basePayment,
+    required this.fatBonus,
+    required this.snfBonus,
+    required this.finalPayment,
+  });
+
+  static const _templateQty = 150.0;
+  static const _templateBaseRate = 80.0;
+  static const _templateBase = 12000.0;
+  static const _templateFat = 450.0;
+  static const _templateSnf = 240.0;
+  static const _templateFinal = 12690.0;
+
+  static _PaymentExplanationBreakdown fromPayments(
+    List<dynamic> payments,
+    List<dynamic> collections,
+  ) {
+    const template = _PaymentExplanationBreakdown(
+      isExample: true,
+      quantity: _templateQty,
+      baseRate: _templateBaseRate,
+      basePayment: _templateBase,
+      fatBonus: _templateFat,
+      snfBonus: _templateSnf,
+      finalPayment: _templateFinal,
+    );
+
+    dynamic paid;
+    for (final p in payments) {
+      final status = (p['status'] ?? '').toString().toLowerCase();
+      if (status == 'paid') {
+        paid = p;
+        break;
+      }
+    }
+    if (paid == null) return template;
+
+    final amount = double.tryParse(paid['amount']?.toString() ?? '');
+    var qty = double.tryParse(paid['quantity']?.toString() ?? '');
+    if (amount == null || amount <= 0) return template;
+
+    if (qty == null || qty <= 0) {
+      final cid = paid['collectionId']?.toString();
+      if (cid != null) {
+        for (final c in collections) {
+          if (c['id']?.toString() == cid) {
+            qty = double.tryParse(c['quantity']?.toString() ?? '');
+            break;
+          }
+        }
+      }
+    }
+    if (qty == null || qty <= 0) return template;
+
+    final scale = amount / _templateFinal;
+    final basePayment = _templateBase * scale;
+    final fatBonus = _templateFat * scale;
+    final snfBonus = _templateSnf * scale;
+    final baseRate = basePayment / qty;
+
+    return _PaymentExplanationBreakdown(
+      isExample: false,
+      quantity: qty,
+      baseRate: baseRate,
+      basePayment: basePayment,
+      fatBonus: fatBonus,
+      snfBonus: snfBonus,
+      finalPayment: amount,
     );
   }
 }

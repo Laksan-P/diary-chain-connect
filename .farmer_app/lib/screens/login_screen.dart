@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../widgets/themed_app_logo.dart';
 import '../widgets/offline_banner.dart';
 import 'app_theme.dart';
 import '../providers/auth_provider.dart';
@@ -27,10 +28,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     HapticFeedback.mediumImpact();
+    final locale = context.read<AppPreferences>().locale.languageCode;
     if (!_formKey.currentState!.validate()) {
       ToastService.show(
         context,
-        'Please correct the validation errors',
+        Translations.get('validation_fix_errors', locale),
         isError: true,
       );
       return;
@@ -47,8 +49,8 @@ class _LoginScreenState extends State<LoginScreen> {
         ToastService.show(
           context,
           isOnline
-              ? 'Login Successful! Welcome back.'
-              : 'Logged in offline! Showing cached data.',
+              ? Translations.get('login_success_msg', locale)
+              : Translations.get('login_offline_msg', locale),
         );
       }
     } catch (e) {
@@ -109,25 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         );
                       },
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.getHeaderGradient(context),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primary.withValues(alpha: 0.2),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          LucideIcons.droplets,
-                          size: 40,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: const ThemedAppLogo(style: ThemedAppLogoStyle.plain, size: 88),
                     ),
                   ),
                   const SizedBox(height: 48),

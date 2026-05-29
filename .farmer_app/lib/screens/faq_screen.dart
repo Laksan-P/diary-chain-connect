@@ -125,13 +125,33 @@ class _FaqScreenState extends State<FaqScreen> {
     }
   }
 
-  Future<void> _makePhoneCall(String phoneNumber) async {
-    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(launchUri)) {
-      await launchUrl(launchUri);
-    } else {
+  Future<void> _makePhoneCall(String phoneNumber, String locale) async {
+    final cleaned = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+    if (cleaned.isEmpty) {
       if (mounted) {
-        ToastService.show(context, 'Could not launch dialer', isError: true);
+        ToastService.show(
+          context,
+          Translations.get('phone_not_available', locale),
+        );
+      }
+      return;
+    }
+
+    final uri = Uri(scheme: 'tel', path: cleaned);
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) {
+        ToastService.show(
+          context,
+          Translations.get('calling_not_supported', locale),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ToastService.show(
+          context,
+          Translations.get('calling_not_supported', locale),
+        );
       }
     }
   }
@@ -451,10 +471,18 @@ class _FaqScreenState extends State<FaqScreen> {
           if (role == 'farmer' && _ccPhone != null && _ccPhone!.isNotEmpty) ...[
             _buildCallButton(
               title: Translations.get('call_cc', locale),
-              subtitle: _ccName ?? 'Your Chilling Center',
+              subtitle: _ccName ?? Translations.get('chilling_center', locale),
               phone: _ccPhone!,
+              locale: locale,
               isDark: isDark,
               isPrimary: true,
+            ),
+            const SizedBox(height: 16),
+          ] else if (role == 'farmer') ...[
+            _buildUnavailableCallCard(
+              Translations.get('call_cc', locale),
+              Translations.get('phone_not_available', locale),
+              isDark,
             ),
             const SizedBox(height: 16),
           ],
@@ -462,10 +490,9 @@ class _FaqScreenState extends State<FaqScreen> {
           if (_nestlePhone != null && _nestlePhone!.isNotEmpty)
             _buildCallButton(
               title: _nestleName ?? Translations.get('call_nestle', locale),
-              subtitle: _nestleName != null
-                  ? 'Nestlé Support'
-                  : 'Nestlé HQ Support',
+              subtitle: Translations.get('nestle_support', locale),
               phone: _nestlePhone!,
+              locale: locale,
               isDark: isDark,
               isPrimary: false,
             ),
@@ -478,6 +505,7 @@ class _FaqScreenState extends State<FaqScreen> {
     required String title,
     required String subtitle,
     required String phone,
+    required String locale,
     required bool isDark,
     required bool isPrimary,
   }) {
@@ -485,7 +513,7 @@ class _FaqScreenState extends State<FaqScreen> {
       onTap: () {
         HapticFeedback.mediumImpact();
         _logFeedback(null, 'Called: $title ($phone)');
-        _makePhoneCall(phone);
+        _makePhoneCall(phone, locale);
       },
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -551,6 +579,42 @@ class _FaqScreenState extends State<FaqScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildUnavailableCallCard(String title, String message, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(LucideIcons.phoneOff, color: Colors.grey.shade500, size: 22),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

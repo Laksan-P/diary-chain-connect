@@ -68,7 +68,7 @@ class OfflineBanner extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          "Syncing will resume when online",
+                          Translations.get('offline_sync_resume', locale),
                           style: TextStyle(
                             color:
                                 (isDark ? Colors.white : Colors.blue.shade700)

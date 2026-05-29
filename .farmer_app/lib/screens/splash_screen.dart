@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
-import 'app_theme.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../providers/preferences_provider.dart';
+import '../services/translations.dart';
+import '../services/hero_background_service.dart';
+import '../theme/design_tokens.dart';
+import '../widgets/themed_app_logo.dart';
+import '../widgets/bouncing_button.dart';
+import '../widgets/farmer/farmer_scenic_background.dart';
+import 'app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
@@ -13,43 +22,33 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
-  late Animation<double> _opacityAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3000),
+      duration: const Duration(milliseconds: 1400),
     );
 
-    _scaleAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 0.8,
-          end: 1.1,
-        ).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 70,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 1.1,
-          end: 1.0,
-        ).chain(CurveTween(curve: Curves.easeIn)),
-        weight: 30,
-      ),
-    ]).animate(_controller);
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0, 0.7, curve: Curves.easeOut),
+    );
 
-    _opacityAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 40),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 40),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
-    ]).animate(_controller);
+    _scaleAnimation = Tween<double>(begin: 0.92, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
 
-    _controller.forward().then((_) {
-      widget.onComplete();
-    });
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    _controller.forward();
   }
 
   @override
@@ -58,147 +57,148 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
+  void _continue() {
+    HapticFeedback.mediumImpact();
+    widget.onComplete();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final locale = context.watch<AppPreferences>().locale.languageCode;
+
     return Scaffold(
-      backgroundColor: Colors.black,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          // Cinematic Background Glow
-          Center(
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryLight.withValues(
-                          alpha: 0.2 * _opacityAnimation.value,
-                        ),
-                        blurRadius: 100,
-                        spreadRadius: 50,
-                      ),
-                    ],
-                  ),
-                );
-              },
+          Positioned.fill(
+            child: FarmerScenicBackground(
+              assetPath: HeroBackgroundService.welcome,
+              showBottomFade: false,
+              roundedBottom: false,
+              welcomeScreen: true,
+              headerReadable: true,
+              fullScreen: true,
+              animate: false,
             ),
           ),
-
-          Center(
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: _opacityAnimation.value,
-                  child: Transform.scale(
-                    scale: _scaleAnimation.value,
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                    blurRadius: 20,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                LucideIcons.droplets,
-                                size: 48,
-                                color: Colors.black,
-                              ),
-                            ),
-                            const SizedBox(width: 24),
-                            Container(
-                              width: 2,
-                              height: 48,
-                              color: Colors.white24,
-                            ),
-                            const SizedBox(width: 24),
-                            const Icon(
-                              LucideIcons.milk,
-                              size: 56,
-                              color: Colors.blue,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 48),
-                        ShaderMask(
-                          shaderCallback: (bounds) => LinearGradient(
-                            colors: [
-                              Colors.white,
-                              Colors.blue.shade400,
-                              Colors.white,
-                            ],
-                            stops: const [0.0, 0.5, 1.0],
-                          ).createShader(bounds),
-                          child: const Text(
-                            'FARM X NESTLÉ',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 4,
-                            ),
+                        const Spacer(flex: 2),
+                        const ThemedAppLogo(style: ThemedAppLogoStyle.welcome),
+                        const SizedBox(height: 28),
+                        Text(
+                          Translations.get('app_name', locale),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 34,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                            height: 1.1,
                           ),
                         ),
                         const SizedBox(height: 12),
-                        const Text(
-                          'DAIRY SUPPLY CHAIN EVOLUTION',
+                        Text(
+                          Translations.get('better_farming_better_future', locale),
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white38,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 6,
+                            color: Colors.white.withValues(alpha: 0.88),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+                        const SizedBox(height: 10),
+                        Text(
+                          Translations.get('smart_solutions_for_modern_farmers', locale),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.65),
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                        const Spacer(flex: 3),
+                        BouncingButton(
+                          onTap: _continue,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColors.primaryGreen,
+                                  AppTheme.primaryLight,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(28),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primaryGreen.withValues(alpha: 0.4),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  Translations.get('get_started', locale),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  LucideIcons.arrowRight,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              Translations.get('already_have_account', locale),
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.72),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _continue,
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 6),
+                              ),
+                              child: Text(
+                                Translations.get('sign_in', locale),
+                                style: const TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
                       ],
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-
-          // Cinematic Lens Flare
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                double slidePos = _controller.value * 2 - 1; // -1 to 1
-                return Transform.translate(
-                  offset: Offset(
-                    slidePos * MediaQuery.of(context).size.width,
-                    0,
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.blue.withValues(
-                            alpha: 0.1 * _opacityAnimation.value,
-                          ),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],

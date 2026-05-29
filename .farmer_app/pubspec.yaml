@@ -43,6 +43,7 @@ dependencies:
   uuid: ^4.5.3
   path_provider: ^2.1.5
   url_launcher: ^6.3.2
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -55,18 +56,34 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.6
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/logo.png"
-  image_path_ios: "assets/logo.png"
-  # Support modern dark and tinted home screens
-  image_path_ios_dark: "assets/logo_dark.png"
-  image_path_ios_tinted: "assets/logo_dark.png"
-  adaptive_icon_background: "#003087"
-  adaptive_icon_foreground: "assets/logo.png"
-  monochrome_android: "assets/logo.png"
+  image_path: "assets/images/farmer/logo.png"
+  image_path_ios: "assets/images/farmer/logo.png"
+  image_path_ios_dark: "assets/images/farmer/logo_dark.png"
+  image_path_ios_tinted: "assets/images/farmer/logo_dark.png"
+  adaptive_icon_background: "#1B4332"
+  adaptive_icon_foreground: "assets/images/farmer/logo.png"
+  monochrome_android: "assets/images/farmer/logo.png"
+
+flutter_native_splash:
+  color: "#FAF7F2"
+  image: assets/images/farmer/logo.png
+  color_dark: "#0A0F0D"
+  image_dark: assets/images/farmer/logo_dark.png
+  android_12:
+    color: "#FAF7F2"
+    image: assets/images/farmer/logo.png
+    icon_background_color: "#FAF7F2"
+    color_dark: "#0A0F0D"
+    image_dark: assets/images/farmer/logo_dark.png
+    icon_background_color_dark: "#0A0F0D"
+  android: true
+  ios: true
+  web: false
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -79,10 +96,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/images/farmer/logo.png
+    - assets/images/farmer/logo_dark.png
+    - assets/images/farmer/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

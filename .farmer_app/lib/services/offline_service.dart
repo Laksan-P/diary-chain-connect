@@ -71,6 +71,13 @@ class OfflineService {
     return box.get(key);
   }
 
+  Future<void> clearUserScopedCache() async {
+    final box = Hive.box(cachedDataBoxName);
+    await box.delete('collections');
+    await box.delete('payments');
+    await box.delete('notifications');
+  }
+
   // --- Local Notification State ---
   Future<void> markLocalNotificationAsRead(String id) async {
     final box = Hive.box(cachedDataBoxName);

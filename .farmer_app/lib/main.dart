@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/preferences_provider.dart';
+import 'services/profile_photo_service.dart';
+import 'theme/design_tokens.dart';
+import 'widgets/themed_app_logo.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/app_theme.dart';
@@ -9,6 +12,7 @@ import 'screens/splash_screen.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
 import 'services/offline_service.dart';
+import 'app_keys.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +26,13 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AppPreferences()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final s = ProfilePhotoService();
+            s.init();
+            return s;
+          },
+        ),
       ],
       child: const NestleDairyApp(),
     ),
@@ -41,6 +52,7 @@ class NestleDairyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Nestlé Dairy Connect',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       scaffoldMessengerKey: scaffoldMessengerKey,
       locale: prefs.locale,
       themeMode: prefs.themeMode,
@@ -76,8 +88,23 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final authProvider = context.watch<AuthProvider>();
 
     if (authProvider.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Scaffold(
+        backgroundColor:
+            isDark ? AppColors.darkBackground : AppColors.warmCream,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ThemedAppLogo(
+                style: ThemedAppLogoStyle.compact,
+                size: 72,
+              ),
+              const SizedBox(height: 28),
+              const CircularProgressIndicator(color: AppTheme.primary),
+            ],
+          ),
+        ),
       );
     }
 

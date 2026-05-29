@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../services/api_service.dart';
 import '../services/translations.dart';
+import '../theme/design_tokens.dart';
 import 'app_theme.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -536,6 +537,50 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return _stripUnresolvedPlaceholders(resolved);
   }
 
+  Future<void> _markAllAsRead() async {
+    HapticFeedback.lightImpact();
+    setState(() {
+      for (final note in _localNotifications) {
+        note['isRead'] = true;
+        final id = note['id']?.toString() ?? '';
+        if (id.isNotEmpty) widget.onRead?.call(id);
+      }
+      _onSearch(_searchQuery);
+    });
+  }
+
+  List<({String? section, dynamic note})> _groupedNotifications() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final items = <({String? section, dynamic note})>[];
+    String? lastSection;
+
+    for (final note in _filteredNotifications) {
+      String? section;
+      try {
+        final created = DateTime.parse(note['createdAt']).toLocal();
+        final day = DateTime(created.year, created.month, created.day);
+        if (day == today) {
+          section = Translations.get('today_section', _locale);
+        } else if (day == yesterday) {
+          section = Translations.get('yesterday_section', _locale);
+        } else {
+          section = Translations.get('earlier_section', _locale);
+        }
+      } catch (_) {
+        section = Translations.get('earlier_section', _locale);
+      }
+
+      if (section != lastSection) {
+        items.add((section: section, note: null));
+        lastSection = section;
+      }
+      items.add((section: null, note: note));
+    }
+    return items;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -561,15 +606,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       hasScrollBody: false,
                       child: _buildEmptyState(),
                     )
-                  : SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildNotificationCard(
-                          _filteredNotifications[index],
-                          isDark,
+                  : () {
+                      final grouped = _groupedNotifications();
+                      return SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final item = grouped[index];
+                            if (item.section != null) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8, bottom: 8),
+                                child: Text(
+                                  item.section!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                    color: isDark ? Colors.white54 : Colors.black54,
+                                  ),
+                                ),
+                              );
+                            }
+                            return _buildNotificationCard(item.note, isDark);
+                          },
+                          childCount: grouped.length,
                         ),
-                        childCount: _filteredNotifications.length,
-                      ),
-                    ),
+                      );
+                    }(),
             ),
           ],
         ),
@@ -601,7 +663,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               onChanged: _onSearch,
               style: TextStyle(color: isDark ? Colors.white : Colors.black87),
               decoration: InputDecoration(
-                hintText: 'Search Archive...',
+                hintText: Translations.get('search_notifications', widget.locale),
                 hintStyle: TextStyle(
                   color: isDark ? Colors.white24 : Colors.grey,
                 ),
@@ -635,7 +697,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'LOCAL ARCHIVE',
+                  Translations.get('local_archive', widget.locale).toUpperCase(),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
@@ -652,26 +714,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildScrollableHeader(BuildContext context, bool isDark) {
+    final hasUnread = _localNotifications.any((n) => n['isRead'] != true);
     return Container(
-      padding: const EdgeInsets.only(top: 45, bottom: 12),
+      padding: const EdgeInsets.only(top: 45, bottom: 12, left: 8, right: 8),
       child: Row(
         children: [
-          const SizedBox(width: 16),
           _buildCircleBackButton(isDark),
           Expanded(
             child: Text(
               Translations.get('notifications', widget.locale),
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w900,
-                fontSize: 24,
+                color: isDark ? Colors.white : AppColors.deepForest,
+                fontWeight: FontWeight.w800,
+                fontSize: 22,
                 letterSpacing: -0.5,
               ),
             ),
           ),
-          const SizedBox(width: 48), // Balance for back button
-          const SizedBox(width: 16),
+          if (hasUnread)
+            TextButton(
+              onPressed: _markAllAsRead,
+              child: Text(
+                Translations.get('mark_all_read', widget.locale),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppColors.darkAccent : AppColors.nestleBlue,
+                ),
+              ),
+            )
+          else
+            const SizedBox(width: 48),
         ],
       ),
     );
@@ -792,8 +866,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       Expanded(
                         child: Text(
                           _translateNotificationField(note, isTitle: true),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontWeight: isRead
                                 ? FontWeight.bold
@@ -883,7 +955,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            Translations.get('no_notifications', widget.locale),
+            Translations.get('all_caught_up', widget.locale),
             style: TextStyle(
               color: Colors.grey.withValues(alpha: 0.5),
               fontWeight: FontWeight.bold,
