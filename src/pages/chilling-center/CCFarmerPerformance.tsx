@@ -225,7 +225,7 @@ const CCFarmerPerformance: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Farmer list */}
-        <Card className="lg:col-span-1 h-[calc(100vh-280px)] min-h-[400px] flex flex-col">
+        <Card className="lg:col-span-1 h-[calc(100vh-180px)] min-h-[640px] flex flex-col">
           <CardHeader className="py-4">
             <CardTitle className="text-sm flex items-center gap-2">
               <Users className="w-4 h-4" />
@@ -251,7 +251,7 @@ const CCFarmerPerformance: React.FC = () => {
                       key={f.id}
                       type="button"
                       onClick={() => setSelectedId(f.id)}
-                      className={`w-full text-left p-4 hover:bg-muted/50 transition-colors flex items-center justify-between gap-2 ${
+                      className={`w-full text-left py-5 px-4 hover:bg-muted/50 transition-colors flex items-center justify-between gap-2 ${
                         selectedId === f.id ? 'bg-primary/5 border-r-4 border-primary' : ''
                       }`}
                     >
@@ -282,7 +282,7 @@ const CCFarmerPerformance: React.FC = () => {
         {/* Detail panel */}
         <div className="lg:col-span-3 space-y-6">
           {!selectedId || !selectedFarmer ? (
-            <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-muted-foreground p-12 border-2 border-dashed rounded-xl">
+            <div className="h-full min-h-[640px] flex flex-col items-center justify-center text-muted-foreground p-12 border-2 border-dashed rounded-xl">
               <BarChart3 className="w-12 h-12 mb-4 opacity-20" />
               <p>Select a farmer to view performance analytics.</p>
             </div>
