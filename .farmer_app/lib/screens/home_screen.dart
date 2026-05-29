@@ -716,6 +716,12 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: _showNotifications,
               onDismiss: () => setState(() => _bannerNotification = null),
             ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: OfflineBanner(locale: locale, overlay: true),
+          ),
         ],
       ),
       bottomNavigationBar: PremiumBottomNav(
@@ -1008,10 +1014,6 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-            child: OfflineBanner(locale: locale),
-          ),
           SizedBox(
             height: heroHeight,
             width: double.infinity,

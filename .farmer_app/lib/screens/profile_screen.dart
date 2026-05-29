@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../widgets/offline_banner.dart';
 import 'app_theme.dart';
 import '../services/api_service.dart';
 import '../providers/auth_provider.dart';
@@ -112,7 +111,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  OfflineBanner(locale: locale),
                   Row(
                     children: [
                       if (widget.onBack != null)

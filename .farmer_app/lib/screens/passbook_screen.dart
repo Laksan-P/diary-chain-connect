@@ -10,7 +10,6 @@ import '../widgets/status_chip.dart';
 import 'app_theme.dart';
 import '../services/api_service.dart';
 import '../services/offline_service.dart';
-import '../widgets/offline_banner.dart';
 import '../widgets/glass_card.dart';
 import '../theme/design_tokens.dart';
 import '../utils/collection_status_helper.dart';
@@ -122,12 +121,6 @@ class _PassbookScreenState extends State<PassbookScreen> {
                 : CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
-                      SliverToBoxAdapter(
-                        child: SafeArea(
-                          bottom: false,
-                          child: OfflineBanner(locale: widget.locale),
-                        ),
-                      ),
                       SliverToBoxAdapter(
                         child: _buildScrollableHeader(context),
                       ),
