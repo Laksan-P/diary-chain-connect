@@ -1,8 +1,6 @@
-const CACHE_NAME = 'dairy-chain-v13';
+const CACHE_NAME = 'dairy-chain-v14';
 
 const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/favicon.png',
   '/favicon.ico',
@@ -32,6 +30,14 @@ const isNavigationRequest = (request) =>
 
 const isApiRequest = (url) => url.pathname.startsWith('/api');
 
+const isHashedAsset = (url) => url.pathname.startsWith('/assets/');
+
+const isValidAssetResponse = (response) => {
+  if (!response || !response.ok) return false;
+  const type = response.headers.get('content-type') || '';
+  return !type.includes('text/html');
+};
+
 const getCachedIndexHtml = async () => {
   const cached =
     (await caches.match('/index.html')) ||
@@ -43,6 +49,8 @@ const handleNavigation = async (request) => {
   try {
     const networkResponse = await fetch(request);
     if (networkResponse && networkResponse.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put('/index.html', networkResponse.clone());
       return networkResponse;
     }
     const cached = await getCachedIndexHtml();
@@ -65,30 +73,28 @@ const handleApi = async (request) => {
 
 const handleStatic = async (request, cache) => {
   try {
+    const networkResponse = await fetch(request);
+    if (networkResponse && networkResponse.ok && isValidAssetResponse(networkResponse)) {
+      await cache.put(request, networkResponse.clone());
+      return networkResponse;
+    }
+
     const cachedResponse = await cache.match(request);
-    if (cachedResponse) {
-      fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.ok) {
-            cache.put(request, networkResponse.clone());
-          }
-        })
-        .catch(() => {});
+    if (cachedResponse && isValidAssetResponse(cachedResponse)) {
       return cachedResponse;
     }
 
-    const networkResponse = await fetch(request);
-    if (networkResponse && networkResponse.ok) {
-      await cache.put(request, networkResponse.clone());
+    if (isNavigationRequest(request)) {
+      return getCachedIndexHtml();
     }
-    return networkResponse;
+
+    return networkResponse || offlineAssetResponse();
   } catch {
     const cachedResponse = await cache.match(request);
-    if (cachedResponse) {
+    if (cachedResponse && isValidAssetResponse(cachedResponse)) {
       return cachedResponse;
     }
 
-    // SPA route requests (e.g. /login) that are not mode=navigate still need index.html
     if (isNavigationRequest(request)) {
       return getCachedIndexHtml();
     }
@@ -145,7 +151,11 @@ self.addEventListener('fetch', (event) => {
         }
 
         const cache = await caches.open(CACHE_NAME);
-        return await handleStatic(request, cache);
+        if (isHashedAsset(url)) {
+          return await handleStatic(request, cache);
+        }
+
+        return await fetch(request);
       } catch (err) {
         console.error('[SW] fetch handler error:', err);
 
