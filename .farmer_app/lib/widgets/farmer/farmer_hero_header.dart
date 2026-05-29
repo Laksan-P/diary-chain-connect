@@ -172,58 +172,76 @@ class FarmerHeroContent extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Icon(
-              LucideIcons.badgeCheck,
-              size: 14,
-              color: Colors.white.withValues(alpha: 0.85),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              farmerCode,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.85),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                shadows: const [
-                  Shadow(
-                    color: Color(0x66000000),
-                    blurRadius: 6,
-                    offset: Offset(0, 1),
-                  ),
-                ],
-              ),
-            ),
-            if (farmOrCenterName != null && farmOrCenterName!.isNotEmpty) ...[
-              const SizedBox(width: 12),
-              Icon(
-                LucideIcons.mapPin,
-                size: 13,
-                color: Colors.white.withValues(alpha: 0.78),
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  farmOrCenterName!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+        const SizedBox(height: 8),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.28),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.badgeCheck,
+                  size: 14,
+                  color: Colors.white.withValues(alpha: 0.92),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  farmerCode,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.78),
+                    color: Colors.white.withValues(alpha: 0.95),
                     fontSize: 12,
+                    fontWeight: FontWeight.w700,
                     shadows: const [
                       Shadow(
-                        color: Color(0x66000000),
+                        color: Color(0x99000000),
                         blurRadius: 6,
                         offset: Offset(0, 1),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ],
+                if (farmOrCenterName != null && farmOrCenterName!.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Container(
+                      width: 1,
+                      height: 14,
+                      color: Colors.white.withValues(alpha: 0.22),
+                    ),
+                  ),
+                  Icon(
+                    LucideIcons.mapPin,
+                    size: 13,
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      farmOrCenterName!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        shadows: const [
+                          Shadow(
+                            color: Color(0x99000000),
+                            blurRadius: 6,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ],
     );

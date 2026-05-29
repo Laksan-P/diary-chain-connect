@@ -47,13 +47,22 @@ class TodaysMilkHeroCard extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.deepForest.withValues(alpha: isDark ? 0.35 : 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
+        boxShadow: overlapHero
+            ? [
+                BoxShadow(
+                  color: AppColors.deepForest.withValues(alpha: isDark ? 0.35 : 0.12),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: AppColors.deepForest.withValues(alpha: isDark ? 0.22 : 0.08),
+                  blurRadius: 14,
+                  spreadRadius: -2,
+                  offset: const Offset(0, 6),
+                ),
+              ],
       ),
       child: Material(
         color: cardColor,
@@ -120,11 +129,12 @@ class TodaysMilkHeroCard extends StatelessWidget {
                   ),
                 ] else ...[
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
                           children: [
                             Flexible(
                               child: Text(
@@ -141,7 +151,7 @@ class TodaysMilkHeroCard extends StatelessWidget {
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.only(left: 6, bottom: 6),
+                              padding: const EdgeInsets.only(left: 6),
                               child: Text(
                                 Translations.get('liters_short', locale),
                                 style: TextStyle(
@@ -157,55 +167,72 @@ class TodaysMilkHeroCard extends StatelessWidget {
                         ),
                       ),
                       if (avgFat != null)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              Translations.get('todays_fat', locale),
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.72)
-                                    : AppColors.deepForest.withValues(alpha: 0.65),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryGreen.withValues(alpha: isDark ? 0.16 : 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                Translations.get('todays_fat', locale),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.72)
+                                      : AppColors.deepForest.withValues(alpha: 0.65),
+                                ),
                               ),
-                            ),
-                            Text(
-                              '${avgFat!.toStringAsFixed(1)}%',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: isDark ? AppColors.darkAccent : AppColors.primaryGreen,
+                              const SizedBox(height: 2),
+                              Text(
+                                '${avgFat!.toStringAsFixed(1)}%',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? AppColors.darkAccent : AppColors.primaryGreen,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                     ],
                   ),
                   if (qualityDisplayKey != null ||
                       collectionDisplayKey != null) ...[
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if (qualityDisplayKey != null) ...[
-                          Text(
-                            '${Translations.get('quality_status', locale)}:',
-                            style: labelStyle,
-                          ),
-                          StatusChip(
-                            status: qualityDisplayKey!,
-                            displayKey: qualityDisplayKey,
-                            locale: locale,
-                            compact: true,
-                          ),
-                        ],
-                        if (collectionDisplayKey != null) ...[
-                          Text(
-                            '${Translations.get('collection_status', locale)}:',
-                            style: labelStyle,
+                    const SizedBox(height: 16),
+                    if (qualityDisplayKey != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 118,
+                              child: Text(
+                                '${Translations.get('quality_status', locale)}:',
+                                style: labelStyle,
+                              ),
+                            ),
+                            StatusChip(
+                              status: qualityDisplayKey!,
+                              displayKey: qualityDisplayKey,
+                              locale: locale,
+                              compact: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (collectionDisplayKey != null)
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 118,
+                            child: Text(
+                              '${Translations.get('collection_status', locale)}:',
+                              style: labelStyle,
+                            ),
                           ),
                           StatusChip(
                             status: collectionDisplayKey!,
@@ -214,8 +241,7 @@ class TodaysMilkHeroCard extends StatelessWidget {
                             compact: true,
                           ),
                         ],
-                      ],
-                    ),
+                      ),
                   ],
                   if (failureReason != null && failureReason!.isNotEmpty) ...[
                     const SizedBox(height: 12),

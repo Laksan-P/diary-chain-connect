@@ -1001,7 +1001,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final contentBg = Theme.of(context).scaffoldBackgroundColor;
     final topInset = MediaQuery.paddingOf(context).top;
     final heroHeight = HeroBackgroundService.homeHeroHeight + topInset;
-    const heroToMilkGap = 16.0;
+    const heroToMilkGap = 32.0;
     const contentGapAfterMilk = 32.0;
     final bottomScrollPadding =
         MediaQuery.paddingOf(context).bottom + 180;
@@ -1025,7 +1025,7 @@ class _HomeScreenState extends State<HomeScreen> {
               fadeToColor: contentBg,
               child: FarmerHeroContent(
                 layout: FarmerHeroLayout.embedded,
-                bottomContentInset: 28,
+                bottomContentInset: 56,
                 locale: locale,
                 farmerName: user['name']?.toString() ?? '',
                 farmerCode: user['farmerCode']?.toString() ?? '',
