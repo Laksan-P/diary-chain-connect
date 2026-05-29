@@ -4,7 +4,9 @@ import {
   AlertCircle,
   BarChart3,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Info,
   Phone,
   TrendingUp,
@@ -51,6 +53,7 @@ const CCFarmerPerformance: React.FC = () => {
   const { user } = useAuth();
   const centerId = user?.chillingCenterId;
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [attentionOpen, setAttentionOpen] = useState(false);
 
   const { data: farmers = [], isLoading: loadingFarmers } = useQuery({
     queryKey: ['cc_performance_farmers', centerId],
@@ -154,11 +157,34 @@ const CCFarmerPerformance: React.FC = () => {
       {/* Farmers Requiring Attention */}
       <Card className="border-amber-200/60 dark:border-amber-900/40">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-amber-600" />
-            Farmers Requiring Attention
-          </CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              Farmers Requiring Attention
+              {!isLoading && attentionFarmers.length > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs">
+                  {attentionFarmers.length}
+                </Badge>
+              )}
+            </CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={() => setAttentionOpen((open) => !open)}
+              aria-expanded={attentionOpen}
+            >
+              {attentionOpen ? 'Hide' : 'Show'}
+              {attentionOpen ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
         </CardHeader>
+        {attentionOpen && (
         <CardContent>
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -221,6 +247,7 @@ const CCFarmerPerformance: React.FC = () => {
             </div>
           )}
         </CardContent>
+        )}
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
