@@ -6,6 +6,7 @@ import {
   isDuplicateCollection,
   isOfflineId,
   isValidQualityPendingData,
+  buildFarmerSyncPayload,
   mergeFarmersWithPending as mergeFarmersWithPendingHelper,
   normalizeFarmerKey,
   pendingRegistrationsToFarmers as pendingRegistrationsToFarmersHelper,
@@ -235,12 +236,23 @@ export const syncActions = async (): Promise<void> => {
 
   const run = async () => {
     const idMappings = getCache('sync_id_mappings') || { collections: {}, farmers: {} };
-    const { registerFarmerByCenter } = await import('@/services/api');
+    const { registerFarmerByCenter, getStoredUser } = await import('@/services/api');
+    const fallbackCenterId = getStoredUser()?.chillingCenterId;
 
     for (const action of getPendingActions().filter(a => a.type === 'farmer_registration')) {
       updateActionStatus(action.id, { syncStatus: 'syncing', errorMessage: undefined });
       try {
-        const result = await registerFarmerByCenter({ ...action.data, offline_id: action.id } as Parameters<typeof registerFarmerByCenter>[0] & { offline_id: string });
+        const payload = buildFarmerSyncPayload(action, fallbackCenterId);
+        if (!payload.name || !payload.chillingCenterId) {
+          updateActionStatus(action.id, {
+            syncStatus: 'failed',
+            errorMessage: 'Missing required fields',
+          });
+          console.error(`[OfflineSync] Farmer sync failed for ${action.data.name}: Missing required fields`);
+          continue;
+        }
+
+        const result = await registerFarmerByCenter(payload as Parameters<typeof registerFarmerByCenter>[0] & { offline_id: string });
         if (result?.id) {
           mapFarmerSyncResult(action, result.id, idMappings);
           saveCache('sync_id_mappings', idMappings);

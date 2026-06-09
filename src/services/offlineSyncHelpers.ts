@@ -215,3 +215,38 @@ export const mergeFarmersWithPending = (
 
 export const stripOfflineRecords = <T extends Record<string, unknown>>(records: T[]): T[] =>
   records.filter(r => !isOfflineId(r?.id) && !isOfflineId(r?.farmerId));
+
+const parseChillingCenterId = (value: unknown): number | undefined => {
+  if (value == null || value === '') return undefined;
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : undefined;
+};
+
+export const resolveChillingCenterId = (
+  data: Record<string, unknown>,
+  fallbackCenterId?: number
+): number | undefined =>
+  parseChillingCenterId(data.chillingCenterId ?? data.chilling_center_id) ?? fallbackCenterId;
+
+/** API payload for register-farmer-by-center — omits offline-only fields and fills missing center id. */
+export const buildFarmerSyncPayload = (
+  action: PendingActionData,
+  fallbackCenterId?: number
+): Record<string, unknown> => {
+  const data = action.data;
+  const chillingCenterId = resolveChillingCenterId(data, fallbackCenterId);
+
+  return {
+    name: typeof data.name === 'string' ? data.name.trim() : data.name,
+    address: data.address ?? '',
+    phone: data.phone ?? '',
+    nic: data.nic ?? '',
+    chillingCenterId,
+    bankName: data.bankName ?? '',
+    accountNumber: data.accountNumber ?? '',
+    branch: data.branch ?? '',
+    email: data.email ?? '',
+    password: data.password ?? '',
+    offline_id: action.id,
+  };
+};

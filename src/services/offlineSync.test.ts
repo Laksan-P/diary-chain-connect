@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
+  buildFarmerSyncPayload,
   dedupeFarmers,
   findDuplicatePendingAction,
   isDuplicateCollection,
   mergeFarmersWithPending,
   normalizeCollectionKey,
   normalizeFarmerKey,
+  resolveChillingCenterId,
   type PendingActionData,
 } from './offlineSyncHelpers';
 
@@ -334,6 +336,25 @@ describe('offlineSync storage integration', () => {
   });
 });
 
+describe('buildFarmerSyncPayload', () => {
+  it('resolves null chillingCenterId from logged-in user fallback', () => {
+    const action = farmerPending({ chillingCenterId: null });
+    const payload = buildFarmerSyncPayload(action, 7);
+
+    expect(payload.chillingCenterId).toBe(7);
+    expect(payload.name).toBe('Tharun Perera');
+    expect(payload.offline_id).toBe('action-1');
+    expect(payload).not.toHaveProperty('tempId');
+    expect(payload).not.toHaveProperty('farmerId');
+  });
+
+  it('treats NaN-like center ids as missing', () => {
+    expect(resolveChillingCenterId({ chillingCenterId: null })).toBeUndefined();
+    expect(resolveChillingCenterId({ chillingCenterId: '' })).toBeUndefined();
+    expect(resolveChillingCenterId({ chilling_center_id: 3 })).toBe(3);
+  });
+});
+
 describe('syncActions ordering and failure handling', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -349,6 +370,7 @@ describe('syncActions ordering and failure handling', () => {
 
     vi.doMock('./api', () => ({
       registerFarmerByCenter,
+      getStoredUser: () => null,
       createCollection,
       submitQualityTest,
       createDispatch,
@@ -387,9 +409,45 @@ describe('syncActions ordering and failure handling', () => {
     expect(getPendingActions()).toHaveLength(0);
   });
 
+  it('syncs farmer when pending chillingCenterId was stored as null', async () => {
+    const registerFarmerByCenter = vi.fn().mockResolvedValue({ id: 88, farmerId: 'FRM-088' });
+
+    vi.doMock('./api', () => ({
+      registerFarmerByCenter,
+      getStoredUser: () => ({ chillingCenterId: 4 }),
+      createCollection: vi.fn(),
+      submitQualityTest: vi.fn(),
+      createDispatch: vi.fn(),
+    }));
+
+    const { savePendingAction, syncActions, getPendingActions } = await import('./offlineSync');
+
+    savePendingAction('farmer_registration', {
+      name: 'Krishna',
+      nic: '199012345679',
+      phone: '0771234568',
+      address: 'Colombo',
+      chillingCenterId: null,
+      tempId: 'OFF-KRISHNA',
+      farmerId: 'OFF-KRISHNA',
+    });
+
+    await syncActions();
+
+    expect(registerFarmerByCenter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Krishna',
+        chillingCenterId: 4,
+        offline_id: expect.any(String),
+      })
+    );
+    expect(getPendingActions()).toHaveLength(0);
+  });
+
   it('keeps failed actions pending with error status', async () => {
     vi.doMock('./api', () => ({
       registerFarmerByCenter: vi.fn().mockRejectedValue(new Error('Network error')),
+      getStoredUser: () => null,
       createCollection: vi.fn(),
       submitQualityTest: vi.fn(),
       createDispatch: vi.fn(),
