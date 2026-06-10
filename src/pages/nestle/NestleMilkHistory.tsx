@@ -57,7 +57,18 @@ const NestleMilkHistory: React.FC = () => {
     { key: 'milkType', header: 'Milk Type', render: (r: MilkCollection) => r.milkType || 'Cow' },
     { key: 'quantity', header: 'Qty (L)', render: (r: MilkCollection) => formatQuantity(r.quantity) },
     { key: 'qualityResult', header: 'Quality', render: (r: MilkCollection) => r.qualityResult ? <StatusBadge status={r.qualityResult} /> : '—' },
-    { key: 'dispatchStatus', header: 'Dispatch Status', render: (r: MilkCollection) => r.dispatchStatus ? <StatusBadge status={r.dispatchStatus} /> : <span className="text-muted-foreground">Pending</span> },
+    {
+      key: 'dispatchStatus',
+      header: 'Dispatch Status',
+      render: (r: MilkCollection) => {
+        if (r.qualityResult === 'Fail') return <StatusBadge status="Rejected" />;
+        return r.dispatchStatus ? (
+          <StatusBadge status={r.dispatchStatus} />
+        ) : (
+          <span className="text-muted-foreground">Pending</span>
+        );
+      },
+    },
   ];
 
   return (
